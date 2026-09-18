@@ -37,6 +37,16 @@ Docker (Postgres only). TypeScript 5.7 throughout.
 - ⚠️ **Never `docker compose down -v`** — `-v` wipes `devdigest_pgdata` (all imported repos/reviews).
 - This branch is the **course starter** — homework/features live in forks, not `main`.
 
+## Session Protocol (engineering-insights)
+- **Start:** before writing code, read the `INSIGHTS.md` of the module(s) this
+  task touches (`client/` · `server/` · `reviewer-core/` · `e2e/`); treat entries
+  as high-confidence guidance.
+- **During:** when a non-obvious learning surfaces, capture it with the
+  `engineering-insights` skill.
+- **End:** only if the session produced something substantial and not already
+  recorded, run `/engineering-insights`; re-read first to avoid duplicates.
+  **Append-only — never rewrite existing entries.**
+
 ## Deeper context — read the file when the task touches it (don't preload)
 - [`README.md`](./README.md) — full overview + architecture diagram + quick start
 - [`TESTING.md`](./TESTING.md) — cross-package test strategy & CI workflows

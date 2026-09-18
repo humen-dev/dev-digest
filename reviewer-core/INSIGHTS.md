@@ -8,6 +8,23 @@ avoid. Linked (not preloaded) from [`CLAUDE.md`](./CLAUDE.md) — read on demand
 > (Claude reads the code). One insight per bullet; newest on top. Date each
 > entry so stale ones are easy to prune. Prompt/grounding subtleties belong here.
 
-## Insights
+## What Works
+_(none yet)_
 
-- _(none yet — add the first non-obvious thing you learn working in `reviewer-core/`)_
+## What Doesn't Work
+_(none yet)_
+
+## Codebase Patterns
+_(none yet)_
+
+## Tool & Library Notes
+_(none yet)_
+
+## Recurring Errors & Fixes
+_(none yet)_
+
+## Session Notes
+_(none yet)_
+
+## Open Questions
+_(none yet)_
