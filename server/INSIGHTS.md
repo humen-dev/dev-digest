@@ -21,7 +21,7 @@ _(none yet)_
 _(none yet)_
 
 ## Recurring Errors & Fixes
-_(none yet)_
+- 2026-09-18 — Deriving a parent dir with `full.lastIndexOf('/')` breaks on Windows: `path.join` normalizes separators to `\`, so there is no `/` → `slash = -1` → `mkdir` skipped → `writeFile` fails ENOENT (6 tests). ALWAYS use `dirname()` for the parent dir, never a hardcoded `/` scan (`server/test/indexer-pipeline.test.ts:140`).
 
 ## Session Notes
 _(none yet)_
