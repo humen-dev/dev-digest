@@ -64,6 +64,9 @@ export const RunStats = z.object({
   tokens_out: z.number().int(),
   findings: z.number().int(),
   grounding: z.string(),
+  // Real provider-reported run cost (USD); nullish so historical traces (written
+  // before cost attribution) keep validating. Never an estimate.
+  cost_usd: z.number().nullish(),
 });
 export type RunStats = z.infer<typeof RunStats>;
 
@@ -110,5 +113,7 @@ export const RunSummary = z.object({
   // findings that trip the agent's gate. Null on failed/cancelled runs.
   score: z.number().int().nullable(),
   blockers: z.number().int().nullable(),
+  // Real provider-reported run cost (USD); null when unpriced or failed/cancelled.
+  cost_usd: z.number().nullable(),
 });
 export type RunSummary = z.infer<typeof RunSummary>;

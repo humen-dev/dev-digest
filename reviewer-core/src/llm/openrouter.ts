@@ -105,6 +105,9 @@ export class OpenRouterProvider implements LLMProvider {
           tokensIn,
           tokensOut,
           costUsd: costFromApi ?? this.estimateCost?.(req.model, tokensIn, tokensOut) ?? null,
+          // Real provider cost ONLY (no estimate fallback) — this is what the
+          // server persists into agent_runs.cost_usd.
+          apiCostUsd: costFromApi,
           raw: lastRaw,
           attempts: attempt,
         };

@@ -8,4 +8,5 @@ Good fits: route request/response contracts, validation & error-envelope rules,
 rate-limit policy, security invariants (grounding, injection guard).
 
 ## Index
+- [`cost-attribution.md`](./cost-attribution.md) — run cost persistence + API contracts
 - _(add specs here, e.g. `reviews-api.md`, `error-envelope.md`)_

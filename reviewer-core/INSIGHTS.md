@@ -15,10 +15,10 @@ _(none yet)_
 _(none yet)_
 
 ## Codebase Patterns
-_(none yet)_
+- 2026-09-18 — Real vs estimated cost are DISTINCT fields. `StructuredResult.costUsd` is best-effort (real provider cost OR an estimate fallback); `StructuredResult.apiCostUsd` is the REAL provider cost only (OpenRouter `usage.cost`), `null` otherwise (`reviewer-core/src/llm/openrouter.ts:107`). `reviewPullRequest` sums `apiCostUsd` across chunks into `ReviewOutcome.apiCostUsd` — null until a chunk reports one (`reviewer-core/src/review/run.ts:184`). For anything money-facing persist `apiCostUsd`, never `costUsd`.
 
 ## Tool & Library Notes
-_(none yet)_
+- 2026-09-18 — `@devdigest/shared` resolves via tsconfig path alias to `../server/src/vendor/shared` (`reviewer-core/tsconfig.json`), and there are TWO canonical vendored copies (`server/src/vendor/shared` + `client/src/vendor/shared`) with NO sync script. ALWAYS apply a contract edit to BOTH copies — drift produces the `tsc` error "Two different types with this name exist, but they are unrelated".
 
 ## Recurring Errors & Fixes
 _(none yet)_

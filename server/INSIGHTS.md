@@ -15,7 +15,7 @@ _(none yet)_
 _(none yet)_
 
 ## Codebase Patterns
-_(none yet)_
+- 2026-09-18 — Only OpenRouter reports a REAL per-call USD cost (`usage.cost`); the `openai`/`anthropic` adapters always return `estimateCost(...)` (`server/src/adapters/llm/openai.ts:84`). Persist real cost only: `run-executor` writes `ReviewOutcome.apiCostUsd` into `agent_runs.cost_usd` (null for openai/anthropic/unpriced runs), never the estimate (`server/src/modules/reviews/run-executor.ts`). PR-list COST is the latest run whose `cost_usd` is non-null, so a just-failed newest run doesn't blank the column (`server/src/modules/pulls/routes.ts`).
 
 ## Tool & Library Notes
 _(none yet)_
