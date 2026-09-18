@@ -88,6 +88,50 @@ describe('reviewPullRequest (engine)', () => {
     expect(outcome.review.score).toBe(100);
   });
 
+  it('surfaces the provider real cost (apiCostUsd) on the outcome', async () => {
+    // The server mock reports a real provider cost of 0.001 per call.
+    const llm = new MockLLMProvider('openrouter', { structured: fixture });
+    const diff = await new MockGitClient().diff();
+    const outcome = await reviewPullRequest({
+      systemPrompt: 's',
+      model: 'deepseek/deepseek-v4-flash',
+      diff,
+      llm,
+    });
+    // single-pass ⇒ exactly one chunk ⇒ apiCostUsd equals the one call's real cost.
+    expect(outcome.apiCostUsd).toBeCloseTo(0.001, 6);
+  });
+
+  it('apiCostUsd stays null when the provider reports no real cost', async () => {
+    const noCost: LLMProvider = {
+      id: 'openrouter',
+      async completeStructured<T>(req): Promise<StructuredResult<T>> {
+        return {
+          data: fixture as unknown as T,
+          model: req.model,
+          tokensIn: 10,
+          tokensOut: 5,
+          costUsd: 0.002, // an ESTIMATE only
+          apiCostUsd: null, // no real provider cost
+          raw: '',
+          attempts: 1,
+        };
+      },
+      async listModels() {
+        return [];
+      },
+      async complete() {
+        throw new Error('not used');
+      },
+      async embed() {
+        return [];
+      },
+    };
+    const diff = await new MockGitClient().diff();
+    const outcome = await reviewPullRequest({ systemPrompt: 's', model: 'm', diff, llm: noCost });
+    expect(outcome.apiCostUsd).toBeNull();
+  });
+
   it('checkCancelled throwing aborts before the LLM call', async () => {
     const llm = new MockLLMProvider('openai', { structured: fixture });
     const diff = await new MockGitClient().diff();
@@ -116,6 +160,7 @@ describe('reviewPullRequest (engine)', () => {
           tokensIn: 0,
           tokensOut: 0,
           costUsd: 0,
+          apiCostUsd: null,
           raw: '',
           attempts: 1,
         };
