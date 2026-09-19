@@ -9,7 +9,7 @@ the provider already returns.
 
 | Question | Decision | Consequence |
 |---|---|---|
-| PR-list `cost_usd` | Cost of the **latest run** that has a cost | One latest-run-per-PR lookup |
+| PR-list `cost_usd` | **Sum** of every priced run for the PR | One IN-query + JS sum per PR |
 | Persistence | New column `agent_runs.cost_usd`, store **real cost only** | Runs without a provider-reported cost → `null` (rendered `—`) |
 | Historical runs | **No backfill** | Pre-feature runs show `null`/`—` |
 
@@ -54,10 +54,10 @@ Migration is additive; **not applied on boot** — run `pnpm db:migrate`.
 
 ### `GET /repos/:id/pulls` → `PrMeta[]`
 - Adds `cost_usd: number | null`.
-- Value = `cost_usd` of the **most recent agent run (by `ran_at`) that has a
-  non-null `cost_usd`** for that PR. Rationale: a just-failed newest run (cost
-  `null`) must not blank the column when an earlier priced run exists.
-- No priced run for the PR → `null`.
+- Value = **sum of `cost_usd` across all priced agent runs** (non-null
+  `cost_usd`) for that PR — the PR's total review spend. Failed/unpriced runs
+  contribute nothing.
+- No priced run for the PR → `null` (never `0`).
 
 ### `GET /pulls/:id/runs` → `RunSummary[]`
 - Each row adds `cost_usd: number | null` straight from the row.
@@ -78,8 +78,8 @@ Migration is additive; **not applied on boot** — run `pnpm db:migrate`.
   `apiCostUsd` from `usage.cost` and `null` when absent; `reviewPullRequest`
   sums `apiCostUsd` across chunks (single-pass + map-reduce).
 - **server** (`*.it.test.ts`, DB): `completeAgentRun` persists `cost_usd`;
-  `listRunsForPull` returns it; `GET /repos/:id/pulls` returns the latest priced
-  run's cost; failed run → `null`.
+  `listRunsForPull` returns it; `GET /repos/:id/pulls` returns the **sum** of a
+  PR's priced runs; a PR with no priced run → `null`.
 
 ## Build order
 1. Contracts (`apiCostUsd`) in both copies.

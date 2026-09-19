@@ -130,10 +130,11 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
-    // Latest PRICED run's cost per PR for the list's COST column. Only real
-    // provider-reported costs are stored (cost_usd not null), so a just-failed
-    // newest run doesn't blank the column when an earlier priced run exists.
-    const latestRunCostByPr = new Map<string, number>();
+    // TOTAL cost per PR for the list's COST column — the sum of every priced run
+    // for that PR. Only real provider-reported costs are stored (cost_usd not
+    // null), so failed/unpriced runs contribute nothing; a PR with no priced run
+    // stays null (rendered "—"), never 0.
+    const costByPr = new Map<string, number>();
     if (prIds.length > 0) {
       const costRows = await container.db
         .select({ prId: t.agentRuns.prId, costUsd: t.agentRuns.costUsd })
@@ -144,12 +145,10 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
             inArray(t.agentRuns.prId, prIds),
             isNotNull(t.agentRuns.costUsd),
           ),
-        )
-        .orderBy(desc(t.agentRuns.ranAt));
-      // Newest-first → first seen per PR is the latest priced run.
+        );
       for (const cr of costRows) {
-        if (cr.prId && cr.costUsd != null && !latestRunCostByPr.has(cr.prId)) {
-          latestRunCostByPr.set(cr.prId, cr.costUsd);
+        if (cr.prId && cr.costUsd != null) {
+          costByPr.set(cr.prId, (costByPr.get(cr.prId) ?? 0) + cr.costUsd);
         }
       }
     }
@@ -196,7 +195,7 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         opened_at: r.openedAt?.toISOString() ?? null,
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
-        cost_usd: latestRunCostByPr.get(r.id) ?? null,
+        cost_usd: costByPr.get(r.id) ?? null,
         findings: findingsByPr.get(r.id) ?? null,
       };
     });

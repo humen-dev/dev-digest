@@ -184,6 +184,35 @@ d('Testcontainers: DB-backed routes via app.inject', () => {
     await app.close();
   });
 
+  it('GET /repos/:id/pulls returns cost_usd summed across a PR\'s priced runs', async () => {
+    const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
+    const app = await buildApp({
+      config,
+      db: pg.handle.db,
+      overrides: { git: new MockGitClient(), github: new MockGitHubClient() },
+    });
+    const db = pg.handle.db;
+    const repoId = (await app.inject({ method: 'GET', url: '/repos' })).json()[0]!.id;
+    const [pr] = await db.select().from(t.pullRequests).where(eq(t.pullRequests.repoId, repoId));
+    const [ws] = await db.select().from(t.workspaces).where(eq(t.workspaces.name, 'default'));
+
+    const costOf = async () => {
+      const list = await app.inject({ method: 'GET', url: `/repos/${repoId}/pulls` });
+      return (list.json().find((p: { number: number }) => p.number === pr!.number).cost_usd ?? 0) as number;
+    };
+    const baseline = await costOf();
+
+    // Two priced runs + one unpriced (null) → only the priced ones sum in.
+    await db.insert(t.agentRuns).values([
+      { workspaceId: ws!.id, prId: pr!.id, status: 'done', costUsd: 0.001 },
+      { workspaceId: ws!.id, prId: pr!.id, status: 'done', costUsd: 0.002 },
+      { workspaceId: ws!.id, prId: pr!.id, status: 'failed', costUsd: null },
+    ]);
+
+    expect(await costOf()).toBeCloseTo(baseline + 0.003, 6);
+    await app.close();
+  });
+
   it('POST /repos/:id/poll syncs PR list and does NOT trigger a review', async () => {
     const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
     const app = await buildApp({
