@@ -15,6 +15,7 @@ _(none yet)_
 _(none yet)_
 
 ## Codebase Patterns
+- 2026-09-19 — The PR list (`GET /repos/:id/pulls`) enriches each `PrMeta` with fields computed on READ (no denormalization): latest-review `score`, `cost_usd`, and `findings` — each a single `IN (...prIds)` query + JS grouping (`server/src/modules/pulls/routes.ts:114-190`). `findings` aggregates across **all** `kind='review'` reviews of a PR (matches the detail page), mapped to the `Finding` contract via `findingRowToDto` (`server/src/modules/reviews/helpers.ts:34`). **SUPERSEDES the 2026-09-18 cost note below:** PR-list `cost_usd` is now the **SUM** of every priced run for the PR (its total spend), not the latest priced run (`server/src/modules/pulls/routes.ts:132-155`).
 - 2026-09-18 — Only OpenRouter reports a REAL per-call USD cost (`usage.cost`); the `openai`/`anthropic` adapters always return `estimateCost(...)` (`server/src/adapters/llm/openai.ts:84`). Persist real cost only: `run-executor` writes `ReviewOutcome.apiCostUsd` into `agent_runs.cost_usd` (null for openai/anthropic/unpriced runs), never the estimate (`server/src/modules/reviews/run-executor.ts`). PR-list COST is the latest run whose `cost_usd` is non-null, so a just-failed newest run doesn't blank the column (`server/src/modules/pulls/routes.ts`).
 
 ## Tool & Library Notes
