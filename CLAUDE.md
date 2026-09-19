@@ -24,6 +24,8 @@ Docker (Postgres only). TypeScript 5.7 throughout.
   Flags: `--no-seed` · `--no-client` · `--db-only` · `--help`.
 - `./scripts/e2e.sh` — hermetic e2e stack (alt ports), runs flows, tears down.
 - Per-package `dev` / `test` / `typecheck` — see that package's CLAUDE.md.
+- **Checks:** every package exposes `test` + `typecheck`; **`tsc --noEmit` is the
+  lint gate** — there is no separate ESLint step, so a clean typecheck is required.
 
 ## Conventions (non-default)
 - Cross-package imports resolve through **tsconfig path aliases** to `src` —
@@ -32,8 +34,21 @@ Docker (Postgres only). TypeScript 5.7 throughout.
   edit at the source, not the copies.
 - Only **Postgres** runs in Docker; API and web run on the host.
 
+## Naming conventions
+- **Files/dirs:** feature UI in `_components/<PascalCase>/` with an `index.ts`
+  barrel; colocated tests `*.test.ts(x)`; colocated styles `styles.ts`.
+- **Code:** React components & Zod contracts `PascalCase`; hooks `useX`;
+  values/functions `camelCase`; module-level constants `UPPER_SNAKE`.
+- **Server:** one plugin per `src/modules/<kebab>/` (`routes.ts` + service).
+- **DB:** Drizzle tables/columns `snake_case`; migrations `NNNN_name.sql` (ordered).
+- **i18n:** `messages/<locale>/<namespace>.json`. **e2e flows:** `specs/NN-name.flow.json`.
+
 ## Gotchas / do-not-touch
 - **Migrations are NOT applied on boot** — `cd server && pnpm db:migrate` (pgvector via `0000`).
+  Migrations under `server/src/db/migrations/` are **append-only history — never
+  edit or delete an applied `NNNN_*.sql`**; change the schema with a new migration.
+- **Do not hand-edit or delete lockfiles** (`pnpm-lock.yaml` / `package-lock.json`) —
+  each package pins its own; change deps only via the package manager (`pnpm`/`npm`).
 - ⚠️ **Never `docker compose down -v`** — `-v` wipes `devdigest_pgdata` (all imported repos/reviews).
 - This branch is the **course starter** — homework/features live in forks, not `main`.
 
