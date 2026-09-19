@@ -11,4 +11,5 @@ structured-output schema expectations.
 > course lesson L05). These Markdown files are project specs, not that runtime slot.
 
 ## Index
-- _(add specs here, e.g. `grounding-contract.md`, `injection-defense.md`)_
+- [`grounding-contract.md`](./grounding-contract.md) — citation gate, injection defense, deterministic verdict
+- _(add specs here, e.g. `structured-output.md`)_

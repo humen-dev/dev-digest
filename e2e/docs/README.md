@@ -8,4 +8,5 @@ Good fits: runner internals (`run.ts`), the hermetic-stack setup, agent-browser
 locator strategy, adding a new flow, CI wiring, ADRs.
 
 ## Index
-- _(add docs here, e.g. `hermetic-stack.md`, `writing-a-flow.md`)_
+- [`hermetic-stack.md`](./hermetic-stack.md) — the runner, hermetic ports, determinism rules
+- _(add docs here, e.g. `writing-a-flow.md`)_

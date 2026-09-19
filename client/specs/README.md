@@ -8,6 +8,7 @@ Good fits: page/flow acceptance criteria, UI states, edge cases, a11y contracts.
 (Executable browser journeys live in [`../../e2e/specs`](../../e2e/specs).)
 
 ## Index
+- [`pages.md`](./pages.md) — route map + what each screen must show
 - [`cost-attribution.md`](./cost-attribution.md) — run cost in PR list, timeline, trace
-- [`severity-findings-filter.md`](./severity-findings-filter.md) — aggregate severity counters + filter on PR detail
-- _(add specs here, e.g. `pr-review-detail.md`, `onboarding.md`)_
+- [`severity-findings-filter.md`](./severity-findings-filter.md) — per-run severity counters + filter on PR detail
+- _(add specs here, e.g. `onboarding.md`)_

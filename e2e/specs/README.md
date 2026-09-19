@@ -4,9 +4,10 @@ The executable e2e **flows** for the web app. Each `NN-name.flow.json` is an
 ordered list of agent-browser commands run against one shared session by
 [`../run.ts`](../run.ts). Linked (not preloaded) from [`../CLAUDE.md`](../CLAUDE.md).
 
-Format & conventions: see [`../README.md`](../README.md) ("How a flow works").
-Deterministic locators only (`--url` / `--text` / `find role|text|label`);
-`wait --text` / `wait --url` are the assertions. Target read-only seeded data.
+Format & conventions: [`flows.md`](./flows.md) (the flow-file contract) and
+[`../README.md`](../README.md) ("How a flow works"). Deterministic locators only
+(`--url` / `--text` / `find role|text|label`); `wait --text` / `wait --url` are the
+assertions. Target read-only seeded data.
 
 ## Flows
 | Spec | Flow |

@@ -40,7 +40,7 @@ Package manager: **pnpm**. `"type": "module"`.
 
 ## Deeper context — read the file when the task touches it (don't preload)
 - [`README.md`](./README.md) — overview + request/DI + API-map diagrams
-- [`docs/`](./docs/) — detailed design docs (architecture, deep dives)
-- [`specs/`](./specs/) — behavior specs / API contracts
+- [`docs/`](./docs/) — deep dives, e.g. [`architecture.md`](./docs/architecture.md)
+- [`specs/`](./specs/) — behavior specs, e.g. [`review-flow.md`](./specs/review-flow.md) · [`cost-attribution.md`](./specs/cost-attribution.md)
 - [`INSIGHTS.md`](./INSIGHTS.md) — accumulated gotchas & non-obvious learnings
 - [`../TESTING.md`](../TESTING.md) — cross-package test strategy

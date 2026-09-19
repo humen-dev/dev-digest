@@ -36,7 +36,7 @@ Vercel **agent-browser** (native Rust + CDP) driven by `tsx`.
 
 ## Deeper context — read the file when the task touches it (don't preload)
 - [`README.md`](./README.md) — overview + how a flow works + coverage table
-- [`docs/`](./docs/) — detailed design docs (runner internals, deep dives)
-- [`specs/`](./specs/) — the flow specs (`NN-name.flow.json`)
+- [`docs/`](./docs/) — deep dives, e.g. [`hermetic-stack.md`](./docs/hermetic-stack.md)
+- [`specs/`](./specs/) — flow specs (`NN-name.flow.json`) + contract [`flows.md`](./specs/flows.md)
 - [`INSIGHTS.md`](./INSIGHTS.md) — accumulated gotchas & non-obvious learnings
 - [`../TESTING.md`](../TESTING.md) — cross-package test strategy

@@ -8,4 +8,5 @@ Good fits: module/adapter deep-dives, DI-container design, DB schema rationale,
 repo-intel indexing internals, review-run execution, ADRs.
 
 ## Index
-- _(add docs here, e.g. `di-container.md`, `repo-intel.md`, `db-schema.md`)_
+- [`architecture.md`](./architecture.md) — DI container, plugin order, request lifecycle, adapters
+- _(add docs here, e.g. `repo-intel.md`, `db-schema.md`)_

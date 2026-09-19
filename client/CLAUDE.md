@@ -32,7 +32,7 @@ Tailwind v4 · TypeScript 5.7 · vitest 2 + jsdom. Package manager: **pnpm**.
 
 ## Deeper context — read the file when the task touches it (don't preload)
 - [`README.md`](./README.md) — overview + UI route-map diagram
-- [`docs/`](./docs/) — detailed design docs (architecture, deep dives)
-- [`specs/`](./specs/) — behavior specs / UI contracts
+- [`docs/`](./docs/) — deep dives, e.g. [`ui-architecture.md`](./docs/ui-architecture.md)
+- [`specs/`](./specs/) — behavior specs, e.g. [`pages.md`](./specs/pages.md) · [`severity-findings-filter.md`](./specs/severity-findings-filter.md)
 - [`INSIGHTS.md`](./INSIGHTS.md) — accumulated gotchas & non-obvious learnings
 - [`../TESTING.md`](../TESTING.md) — cross-package test strategy

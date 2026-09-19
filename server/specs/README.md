@@ -8,5 +8,6 @@ Good fits: route request/response contracts, validation & error-envelope rules,
 rate-limit policy, security invariants (grounding, injection guard).
 
 ## Index
+- [`review-flow.md`](./review-flow.md) — review trigger, per-run lifecycle, determinism guarantees
 - [`cost-attribution.md`](./cost-attribution.md) — run cost persistence + API contracts
-- _(add specs here, e.g. `reviews-api.md`, `error-envelope.md`)_
+- _(add specs here, e.g. `error-envelope.md`)_

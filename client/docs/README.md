@@ -8,4 +8,5 @@ Good fits: architecture deep-dives, data-flow / state-management decisions,
 component-system rationale, migration notes, ADRs.
 
 ## Index
-- _(add docs here, e.g. `state-management.md`, `routing.md`)_
+- [`ui-architecture.md`](./ui-architecture.md) — App Router, Client/Server boundaries, data flow, patterns
+- _(add docs here, e.g. `state-management.md`)_

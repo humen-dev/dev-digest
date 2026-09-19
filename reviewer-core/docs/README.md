@@ -8,4 +8,5 @@ Good fits: prompt-assembly deep-dive, grounding-gate algorithm, structured-outpu
 parse/repair, map-reduce path, prompt-slot design, ADRs.
 
 ## Index
-- _(add docs here, e.g. `grounding.md`, `prompt-assembly.md`)_
+- [`pipeline.md`](./pipeline.md) — the 5 stages: prompt → model → structured output → grounding → reduce
+- _(add docs here, e.g. `prompt-assembly.md`)_

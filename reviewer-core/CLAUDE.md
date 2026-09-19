@@ -37,7 +37,7 @@ side effect is an injected `LLMProvider`. `"type": "module"`.
 
 ## Deeper context — read the file when the task touches it (don't preload)
 - [`README.md`](./README.md) — overview + pipeline diagram
-- [`docs/`](./docs/) — detailed design docs (architecture, deep dives)
-- [`specs/`](./specs/) — behavior specs / engine contracts
+- [`docs/`](./docs/) — deep dives, e.g. [`pipeline.md`](./docs/pipeline.md)
+- [`specs/`](./specs/) — behavior specs, e.g. [`grounding-contract.md`](./specs/grounding-contract.md)
 - [`INSIGHTS.md`](./INSIGHTS.md) — accumulated gotchas & non-obvious learnings
 - [`../TESTING.md`](../TESTING.md) — cross-package test strategy
