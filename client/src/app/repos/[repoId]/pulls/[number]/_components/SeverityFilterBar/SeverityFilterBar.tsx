@@ -1,6 +1,8 @@
-/* SeverityFilterBar — aggregate "3 CRITICAL · 5 WARNING · 2 SUGGESTION" counters
-   across all review runs. Clicking a level filters the findings below to that
-   severity only; clicking the active level again clears back to "all". */
+/* SeverityFilterBar — per-run "3 CRITICAL · 5 WARNING · 2 SUGGESTION" counters,
+   shown under the verdict inside an expanded review-run card. Only severities
+   actually present are rendered. Clicking a level filters that run's findings to
+   it; clicking the active level again clears back to "all". Counts are grouped
+   from the run's findings (no LLM). */
 "use client";
 
 import React from "react";
@@ -26,13 +28,12 @@ export function SeverityFilterBar({
   onSelect: (sev: Severity | null) => void;
 }) {
   const t = useTranslations("prReview");
+  const present = SEVERITY_LEVELS.filter((sev) => counts[sev] > 0);
 
   return (
     <div style={s.bar} role="group" aria-label={t("severityBar.groupLabel")}>
-      {SEVERITY_LEVELS.map((sev, i) => {
+      {present.map((sev, i) => {
         const color = SEV_COLOR[sev] ?? SEV_COLOR_FALLBACK;
-        const count = counts[sev];
-        const disabled = count === 0;
         const isActive = active === sev;
         const label = t(LABEL_KEY[sev]);
         return (
@@ -40,13 +41,12 @@ export function SeverityFilterBar({
             {i > 0 && <span style={s.sep} aria-hidden>·</span>}
             <button
               type="button"
-              disabled={disabled}
               aria-pressed={isActive}
               aria-label={t("severityBar.aria", { severity: label })}
               onClick={() => onSelect(isActive ? null : sev)}
-              style={chipStyle(color, isActive, disabled)}
+              style={chipStyle(color, isActive, false)}
             >
-              <span className="mono">{count}</span> {label}
+              <span className="mono">{counts[sev]}</span> {label}
             </button>
           </React.Fragment>
         );

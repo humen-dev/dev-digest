@@ -1,10 +1,10 @@
 # Severity findings filter — spec (client UI)
 
-On the PR detail page (**Agent runs** tab), show an aggregate counter of findings
-by severity — `3 CRITICAL · 5 WARNING · 2 SUGGESTION` — above the review-run list,
-and let clicking a level filter the findings below to that severity only.
-**No new data calls** — counts derive from the already-loaded review runs
-(`usePrReviews` → `ReviewRecord[]`, each with `findings`).
+On the PR detail page (**Agent runs** tab → **Review runs**), each expanded
+review-run card shows a per-run counter of its findings by severity —
+`3 CRITICAL · 5 WARNING · 2 SUGGESTION` — and clicking a level filters that run's
+findings to it. **No new data calls** — counts come from the already-loaded
+review's `findings`.
 
 ## Taxonomy
 - Severity is the fixed 3-value enum `CRITICAL | WARNING | SUGGESTION`
@@ -12,40 +12,41 @@ and let clicking a level filter the findings below to that severity only.
 - Colours reuse `SEV_COLOR` (`FindingCard/constants.ts`):
   `var(--crit)` · `var(--warn)` · `var(--sugg)`.
 
-## Counts — `severityCounts(runs: ReviewRecord[])`
-- Sum findings by severity across **all** runs → `{ CRITICAL, WARNING, SUGGESTION }`.
-- Dismissed findings **are** counted (they still render in the list, so the
-  headline number stays stable) and counts are independent of any per-panel
-  "hide low confidence" toggle.
+## Counts — `runSeverityCounts(findings: FindingRecord[])`
+- Group one run's findings by severity → `{ CRITICAL, WARNING, SUGGESTION }`.
+- Pure grouping (a `for` loop) — **never** an LLM call, on page load or on filter
+  toggle.
+- Dismissed findings **are** counted (they still render as muted cards, so the
+  pill count matches the cards shown below).
 
-## Surface — SeverityFilterBar (PR detail · Agent runs)
-- Rendered above the **Review runs** section, only when total findings ≥ 1.
-- One chip per severity: `{count} {LABEL}`, tinted by `SEV_COLOR[sev]`, joined by `·`.
-- Interaction (single-select toggle):
-  - click an inactive level → filter to that severity;
+## Surface — SeverityFilterBar (inside the expanded ReviewRunAccordion)
+- Rendered under the run's `VerdictBanner`, above its `FindingsPanel`, only when
+  the run has ≥1 finding.
+- One pill per **present** severity (`count > 0`): `{count} {LABEL}`, tinted by
+  `SEV_COLOR[sev]`, joined by `·`. A severity with zero findings has no pill.
+- Interaction (single-select toggle, local to this card):
+  - click an inactive level → filter this run's findings to that severity;
   - click the active level → clear back to "all".
-- Active chip is emphasized (filled tint + coloured border); inactive chips are
-  outlined/muted. A **zero-count** chip is dimmed and non-interactive (`disabled`).
-- a11y: chips are `<button aria-pressed>`; bar is a labelled `role="group"`.
+- Active pill is emphasized (filled tint + coloured border); inactive pills are
+  outlined/muted.
+- a11y: pills are `<button aria-pressed>`; the row is a labelled `role="group"`.
 - i18n: `prReview.severityBar.{critical,warning,suggestion,aria,groupLabel}`.
 
 ## Filter behavior
-- Active severity threads down `FindingsTab → ReviewRunAccordion → FindingsPanel`;
-  `visibleFindings(findings, hideLow, severityFilter)` drops non-matching severities
-  and composes with the existing low-confidence filter + severity sort.
-- When a severity is active, review-run accordions with **no** matching finding are
-  hidden (`runHasSeverity`), so only runs containing that severity remain; the first
-  remaining run auto-opens (`defaultOpen`).
-- A run that matches but whose findings are all hidden by its own hide-low toggle
-  falls back to the panel's existing "No findings match" empty state.
+- The active severity is `ReviewRunAccordion` local state, passed to that card's
+  `FindingsPanel`; `visibleFindings(findings, hideLow, severityFilter)` drops
+  non-matching severities and composes with the existing low-confidence filter +
+  severity sort. Each run card filters independently.
+- Filtered-to-empty falls back to the panel's existing "No findings match" state.
 
 ## States
-- No findings at all: bar not rendered (existing "No findings yet" empty state).
-- Filter is ephemeral React state (resets on reload), consistent with the
-  hide-low-confidence toggle — not persisted to URL/query.
+- Run with no findings: no bar (findings panel shows its own empty state).
+- Filter is ephemeral React state per card (resets on collapse/reload), consistent
+  with the hide-low-confidence toggle — not persisted to URL/query.
 
 ## Testing (`pnpm test`, fetch mocked)
-- `SeverityFilterBar`: renders `{count} {LABEL}` per level; zero-count disabled;
-  `onSelect(sev)` on click, `onSelect(null)` on re-click of the active level.
+- `SeverityFilterBar`: renders `{count} {LABEL}` per present level; omits zero-count
+  severities; `onSelect(sev)` on click, `onSelect(null)` on re-click of the active
+  level.
 - `visibleFindings`: severity filter restricts to one level and composes with
   `hideLow`.

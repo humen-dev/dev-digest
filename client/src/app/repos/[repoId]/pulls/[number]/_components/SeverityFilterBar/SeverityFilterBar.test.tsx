@@ -27,10 +27,11 @@ describe("SeverityFilterBar", () => {
     expect(screen.getByRole("button", { name: /SUGGESTION/ })).toHaveTextContent("2 SUGGESTION");
   });
 
-  it("disables a zero-count chip", () => {
+  it("omits severities that have no findings", () => {
     renderBar({ counts: { CRITICAL: 0, WARNING: 1, SUGGESTION: 0 } });
-    expect(screen.getByRole("button", { name: /CRITICAL/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /WARNING/ })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /CRITICAL/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /SUGGESTION/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /WARNING/ })).toHaveTextContent("1 WARNING");
   });
 
   it("selects a level on click", () => {
