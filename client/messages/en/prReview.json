@@ -39,7 +39,6 @@
     "suggestion": "SUGGESTION"
   },
   "findingsPreview": {
-    "count": "{count} findings",
     "inRun": "{count} findings in this run"
   },
   "runReview": {

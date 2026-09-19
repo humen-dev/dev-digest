@@ -23,7 +23,7 @@ export function FindingsCell({ findings }: { findings?: Finding[] | null }) {
   return (
     <FindingsHoverCard
       width={380}
-      panel={<FindingsPreviewList findings={items} title={t("findingsPreview.count", { count: items.length })} />}
+      panel={<FindingsPreviewList findings={items} title={t("findingsPreview.inRun", { count: items.length })} />}
     >
       <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
         {LEVELS.filter((sev) => (counts[sev] ?? 0) > 0).map((sev) => (
