@@ -9,4 +9,5 @@ Good fits: page/flow acceptance criteria, UI states, edge cases, a11y contracts.
 
 ## Index
 - [`cost-attribution.md`](./cost-attribution.md) — run cost in PR list, timeline, trace
+- [`severity-findings-filter.md`](./severity-findings-filter.md) — aggregate severity counters + filter on PR detail
 - _(add specs here, e.g. `pr-review-detail.md`, `onboarding.md`)_

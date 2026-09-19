@@ -15,7 +15,7 @@ _(none yet)_
 - 2026-09-18 — A fixed-decimal cost format (e.g. 4 dp under a cent) FLATTENS real cheap-model costs: a deepseek/OpenRouter review run costs ~$0.00004, which 4 dp renders as "$0.0000" (looks free) and collapses distinct tiny values ($0.000175 vs $0.000248) onto one string. Use 2 significant figures below $0.01 (`toPrecision(2)`), keep 3 dp at/above $0.01 (`client/src/lib/format-cost.ts`). Only surfaced against LIVE seeded costs in the browser — the design mock values ($0.0013+) hid it.
 
 ## Codebase Patterns
-_(none yet)_
+- 2026-09-19 — A hover popover anchored inside the PR-list table (`pulls/styles.ts` `tableCard` has `overflow:hidden`) gets CLIPPED if positioned `absolute` within a row — worst on the last row. Render it in a **portal to `document.body`** with `position:fixed` computed from the trigger's `getBoundingClientRect()`, and clamp `maxHeight` to `innerHeight - top - 12` so it never overflows the viewport (no flip logic needed). See `pulls/_components/FindingsHoverCard`. There is no Tooltip/Popover primitive in `@devdigest/ui` — only a click `Dropdown` (`vendor/ui/kit`), so hover popovers are hand-rolled; reuse `FindingsHoverCard` + `FindingsPreviewList` (shared by the list cell and the Agent-runs timeline).
 
 ## Tool & Library Notes
 _(none yet)_

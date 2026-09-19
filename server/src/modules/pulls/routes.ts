@@ -8,6 +8,7 @@ import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import { deriveReviewStatus } from './status.js';
+import { findingRowToDto } from '../reviews/helpers.js';
 
 /**
  * F1 — pulls module. PR import via Octokit (list + per-PR detail).
@@ -153,6 +154,24 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
+    // All findings across the PR's review runs, for the list's FINDINGS column
+    // (per-severity counts + hover preview). Aggregated across every kind='review'
+    // review — matching the detail page's totals — unlike `score`, which is the
+    // single latest review. One IN-query joined to reviews; grouped in JS.
+    const findingsByPr = new Map<string, ReturnType<typeof findingRowToDto>[]>();
+    if (prIds.length > 0) {
+      const findingRows = await container.db
+        .select({ prId: t.reviews.prId, f: t.findings })
+        .from(t.findings)
+        .innerJoin(t.reviews, eq(t.findings.reviewId, t.reviews.id))
+        .where(and(inArray(t.reviews.prId, prIds), eq(t.reviews.kind, 'review')));
+      for (const row of findingRows) {
+        const list = findingsByPr.get(row.prId) ?? [];
+        list.push(findingRowToDto(row.f));
+        findingsByPr.set(row.prId, list);
+      }
+    }
+
     const now = Date.now();
     return rows.map((r) => {
       const review = latestReviewByPr.get(r.id);
@@ -178,6 +197,7 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
         cost_usd: latestRunCostByPr.get(r.id) ?? null,
+        findings: findingsByPr.get(r.id) ?? null,
       };
     });
   });
