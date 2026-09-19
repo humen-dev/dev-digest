@@ -25,11 +25,13 @@ export function FindingsPreviewList({ findings, title }: { findings: Finding[]; 
         {sorted.map((f) => (
           <div key={f.id} style={s.item}>
             <div style={s.itemHead}>
-              <SeverityBadge severity={f.severity as Severity} compact />
+              <span style={{ flexShrink: 0, display: "inline-flex" }}>
+                <SeverityBadge severity={f.severity as Severity} compact />
+              </span>
               <span style={s.itemTitle}>{f.title}</span>
-              <CategoryTag category={f.category as Category} />
             </div>
             <div style={s.meta}>
+              <CategoryTag category={f.category as Category} />
               <span className="mono" style={s.loc}>
                 {f.file}:{f.start_line}
                 {f.end_line !== f.start_line ? `-${f.end_line}` : ""}

@@ -19,12 +19,13 @@ export const s = {
   } satisfies CSSProperties,
   itemHead: {
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 8,
     marginBottom: 5,
-    flexWrap: "wrap",
   } satisfies CSSProperties,
   itemTitle: {
+    flex: 1,
+    minWidth: 0,
     fontSize: 13,
     fontWeight: 600,
     color: "var(--text-primary)",
