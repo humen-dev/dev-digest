@@ -1,7 +1,7 @@
 # client — UI architecture (`@devdigest/web`)
 
 How the Next.js studio is structured. Read alongside the map in
-[`../CLAUDE.md`](../CLAUDE.md); this is the on-demand deep dive.
+[`../AGENTS.md`](../AGENTS.md); this is the on-demand deep dive.
 
 ## App Router & component boundaries
 - Routes are `src/app/**/page.tsx` (App Router). **Pages are thin** — they wire

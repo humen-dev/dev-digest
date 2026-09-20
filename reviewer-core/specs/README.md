@@ -2,7 +2,7 @@
 
 Behavior **specifications / contracts** for the review engine: the guarantees
 the pipeline must uphold, independent of implementation. Linked (not preloaded)
-from [`../CLAUDE.md`](../CLAUDE.md); read a spec when a task touches it.
+from [`../AGENTS.md`](../AGENTS.md); read a spec when a task touches it.
 
 Good fits: grounding guarantees, injection-defense contract, verdict/score rules,
 structured-output schema expectations.

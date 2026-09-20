@@ -89,7 +89,7 @@ This skill is **append-only** and must never clobber existing content:
 
 Skip it if it's obvious to anyone reading the code. Do **not** record:
 generic programming knowledge · one-time issues · anything already in
-`README`/`docs`/`CLAUDE.md` · verbose prose.
+`README`/`docs`/`AGENTS.md` · verbose prose.
 
 - ❌ "Promises can be tricky" → ✅ "`Promise.all()` on the ingest pipeline times
   out past 30 items — use `Promise.allSettled()` batched by 10 (`server/src/modules/repo-intel/ingest.ts:42`)."

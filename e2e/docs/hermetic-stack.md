@@ -1,7 +1,7 @@
 # e2e — hermetic stack & runner (`@devdigest/e2e`)
 
 How the deterministic browser flows run. Read alongside the map in
-[`../CLAUDE.md`](../CLAUDE.md).
+[`../AGENTS.md`](../AGENTS.md).
 
 ## The runner (`run.ts`)
 - Executes one flow — an ordered JSON list of **agent-browser** commands — in a

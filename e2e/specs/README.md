@@ -2,7 +2,7 @@
 
 The executable e2e **flows** for the web app. Each `NN-name.flow.json` is an
 ordered list of agent-browser commands run against one shared session by
-[`../run.ts`](../run.ts). Linked (not preloaded) from [`../CLAUDE.md`](../CLAUDE.md).
+[`../run.ts`](../run.ts). Linked (not preloaded) from [`../AGENTS.md`](../AGENTS.md).
 
 Format & conventions: [`flows.md`](./flows.md) (the flow-file contract) and
 [`../README.md`](../README.md) ("How a flow works"). Deterministic locators only

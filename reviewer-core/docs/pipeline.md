@@ -2,7 +2,7 @@
 
 The pure review engine: diff in, grounded `ReviewOutcome` out, with **no** DB /
 GitHub / filesystem access — the only side effect is the injected `LLMProvider`.
-Read alongside the map in [`../CLAUDE.md`](../CLAUDE.md).
+Read alongside the map in [`../AGENTS.md`](../AGENTS.md).
 
 ## Stages (one run)
 1. **Assemble prompt** — `prompt.ts` `assemblePrompt(...)` builds the agent prompt.
