@@ -153,21 +153,42 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
-    // All findings across the PR's review runs, for the list's FINDINGS column
-    // (per-severity counts + hover preview). Aggregated across every kind='review'
-    // review — matching the detail page's totals — unlike `score`, which is the
-    // single latest review. One IN-query joined to reviews; grouped in JS.
+    // Findings for the list's FINDINGS column, grouped per agent per PR. Unlike
+    // `score` (single latest review), findings show only the latest review per agent,
+    // then union across all agents for that PR. Two-pass: collect latest review IDs
+    // per (prId, agentId), then fetch findings only from those reviews.
     const findingsByPr = new Map<string, ReturnType<typeof findingRowToDto>[]>();
     if (prIds.length > 0) {
-      const findingRows = await container.db
-        .select({ prId: t.reviews.prId, f: t.findings })
-        .from(t.findings)
-        .innerJoin(t.reviews, eq(t.findings.reviewId, t.reviews.id))
-        .where(and(inArray(t.reviews.prId, prIds), eq(t.reviews.kind, 'review')));
-      for (const row of findingRows) {
-        const list = findingsByPr.get(row.prId) ?? [];
-        list.push(findingRowToDto(row.f));
-        findingsByPr.set(row.prId, list);
+      // Pass 1: select all reviews, ordered by createdAt desc, to identify latest per agent
+      const reviewMeta = await container.db
+        .select({ id: t.reviews.id, prId: t.reviews.prId, agentId: t.reviews.agentId })
+        .from(t.reviews)
+        .where(and(inArray(t.reviews.prId, prIds), eq(t.reviews.kind, 'review')))
+        .orderBy(desc(t.reviews.createdAt));
+
+      // For each (prId, agentId) pair, keep only the first (newest) review ID
+      const latestReviewIdToPrId = new Map<string, string>();
+      const seen = new Set<string>();
+      for (const row of reviewMeta) {
+        const key = `${row.prId}::${row.agentId ?? 'null'}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          latestReviewIdToPrId.set(row.id, row.prId);
+        }
+      }
+
+      // Pass 2: fetch findings only from these latest-per-agent reviews
+      if (latestReviewIdToPrId.size > 0) {
+        const findingRows = await container.db
+          .select({ reviewId: t.findings.reviewId, f: t.findings })
+          .from(t.findings)
+          .where(inArray(t.findings.reviewId, [...latestReviewIdToPrId.keys()]));
+        for (const row of findingRows) {
+          const prId = latestReviewIdToPrId.get(row.reviewId)!;
+          const list = findingsByPr.get(prId) ?? [];
+          list.push(findingRowToDto(row.f));
+          findingsByPr.set(prId, list);
+        }
       }
     }
 
