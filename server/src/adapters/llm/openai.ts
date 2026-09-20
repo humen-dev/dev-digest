@@ -120,6 +120,9 @@ export class OpenAIProvider implements LLMProvider {
           tokensIn,
           tokensOut,
           costUsd: estimateCost(req.model, tokensIn, tokensOut),
+          // OpenAI's API reports no per-call USD cost — only an estimate exists,
+          // which is never persisted.
+          apiCostUsd: null,
           raw: lastRaw,
           attempts: attempt,
         };

@@ -7,9 +7,11 @@
 
 import React from "react";
 import { Icon, Badge } from "@devdigest/ui";
-import type { ReviewRecord, Verdict } from "@devdigest/shared";
+import type { ReviewRecord, Verdict, Severity } from "@devdigest/shared";
 import { FindingsPanel } from "../FindingsPanel";
 import { VerdictBanner } from "../VerdictBanner";
+import { SeverityFilterBar } from "../SeverityFilterBar";
+import { runSeverityCounts } from "../FindingsTab/helpers";
 import { useDeleteReview } from "../../../../../../../lib/hooks/reviews";
 
 const VERDICT_COLOR: Record<string, string> = {
@@ -43,6 +45,8 @@ export function ReviewRunAccordion({
   targetNonce?: number;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
+  // Per-run severity filter (the pills below the verdict). Local to this card.
+  const [severityFilter, setSeverityFilter] = React.useState<Severity | null>(null);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     if (review.run_id && review.run_id === targetRunId) {
@@ -54,6 +58,7 @@ export function ReviewRunAccordion({
   const del = useDeleteReview(prId);
   const findings = review.findings;
   const blockers = findings.filter((f) => f.severity === "CRITICAL" && !f.dismissed_at).length;
+  const sevCounts = React.useMemo(() => runSeverityCounts(findings), [findings]);
   const verdictColor = review.verdict ? VERDICT_COLOR[review.verdict] ?? "var(--text-muted)" : "var(--text-muted)";
 
   return (
@@ -147,11 +152,15 @@ export function ReviewRunAccordion({
               />
             </div>
           )}
+          {findings.length > 0 && (
+            <SeverityFilterBar counts={sevCounts} active={severityFilter} onSelect={setSeverityFilter} />
+          )}
           <FindingsPanel
             findings={findings}
             prId={prId}
             repoFullName={repoFullName}
             headSha={headSha}
+            severityFilter={severityFilter}
           />
         </div>
       )}

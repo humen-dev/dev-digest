@@ -99,6 +99,8 @@ export class MockLLMProvider implements LLMProvider {
       tokensIn: 100,
       tokensOut: 50,
       costUsd: 0.001,
+      // Mock reports a real provider cost so persistence paths see a non-null value.
+      apiCostUsd: 0.001,
       raw: JSON.stringify(fixture),
       attempts: 1,
     };

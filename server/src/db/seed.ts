@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { createDb, type Db } from './client.js';
 import * as t from './schema.js';
 import { eq, and } from 'drizzle-orm';
+import { pathToFileURL } from 'node:url';
 import {
   GENERAL_REVIEWER_PROMPT,
   SECURITY_REVIEWER_PROMPT,
@@ -220,11 +221,142 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     if (!existing) await db.insert(t.agents).values(a);
   }
 
+  // ---- demo agent_runs for PR #482 (so cost/tokens show in the UI) ----
+  // Idempotent: only seed when this PR has no runs yet. Costs are REAL-style
+  // values (as if reported by OpenRouter usage.cost); the failed run has none.
+  const existingRuns = await db
+    .select({ id: t.agentRuns.id })
+    .from(t.agentRuns)
+    .where(eq(t.agentRuns.prId, pr!.id));
+  if (existingRuns.length === 0) {
+    const agentRows = await db
+      .select({ id: t.agents.id, name: t.agents.name })
+      .from(t.agents)
+      .where(eq(t.agents.workspaceId, workspaceId));
+    const agentId = (name: string) => agentRows.find((a) => a.name === name)?.id ?? null;
+    const at = (min: number) => new Date(Date.now() - min * 60_000);
+
+    const [securityRun] = await db
+      .insert(t.agentRuns)
+      .values([
+        {
+          workspaceId,
+          agentId: agentId('Security Reviewer'),
+          prId: pr!.id,
+          ranAt: at(2),
+          provider: DEFAULT_PROVIDER,
+          model: DEFAULT_MODEL,
+          durationMs: 8200,
+          tokensIn: 7900,
+          tokensOut: 1219,
+          costUsd: 0.0013,
+          status: 'done',
+          source: 'local',
+          findingsCount: 3,
+          grounding: '3/3 passed',
+          score: 38,
+          blockers: 2,
+        },
+        {
+          workspaceId,
+          agentId: agentId('Performance Reviewer'),
+          prId: pr!.id,
+          ranAt: at(3),
+          provider: DEFAULT_PROVIDER,
+          model: DEFAULT_MODEL,
+          durationMs: 9100,
+          tokensIn: 10500,
+          tokensOut: 1511,
+          costUsd: 0.0014,
+          status: 'done',
+          source: 'local',
+          findingsCount: 2,
+          grounding: '2/2 passed',
+          score: 64,
+          blockers: 0,
+        },
+        {
+          // Failed run: no usage → cost stays null (UI shows "—", not "$0.00").
+          workspaceId,
+          agentId: agentId('General Reviewer'),
+          prId: pr!.id,
+          ranAt: at(3),
+          provider: 'openai',
+          model: 'gpt-4.1',
+          durationMs: 400,
+          tokensIn: 0,
+          tokensOut: 0,
+          costUsd: null,
+          status: 'failed',
+          source: 'local',
+          error: '429 You exceeded your current quota, please check your plan and billing details.',
+          findingsCount: 0,
+          grounding: '0/0 passed',
+        },
+        {
+          workspaceId,
+          agentId: agentId('Performance Reviewer'),
+          prId: pr!.id,
+          ranAt: at(720),
+          provider: DEFAULT_PROVIDER,
+          model: DEFAULT_MODEL,
+          durationMs: 7600,
+          tokensIn: 7100,
+          tokensOut: 1357,
+          costUsd: 0.0012,
+          status: 'done',
+          source: 'local',
+          findingsCount: 5,
+          grounding: '5/5 passed',
+          score: 0,
+          blockers: 2,
+        },
+      ])
+      .returning({ id: t.agentRuns.id });
+
+    // One trace document (Security run) so the trace drawer shows the Cost tile.
+    if (securityRun) {
+      await db.insert(t.runTraces).values({
+        runId: securityRun.id,
+        trace: {
+          config: {
+            agent: 'Security Reviewer',
+            version: '1',
+            provider: DEFAULT_PROVIDER,
+            model: DEFAULT_MODEL,
+            pr: 482,
+            source: 'local',
+          },
+          stats: {
+            duration_ms: 8200,
+            tokens_in: 7900,
+            tokens_out: 1219,
+            findings: 3,
+            grounding: '3/3 passed',
+            cost_usd: 0.0013,
+          },
+          prompt_assembly: {
+            system: SECURITY_REVIEWER_PROMPT,
+            user: 'Review PR #482 — Add rate limiting to public API endpoints.',
+          },
+          tool_calls: [{ tool: 'review_file', args: 'all files', meta: 'single-pass', ms: 8200 }],
+          raw_output: '{"verdict":"request_changes","score":38,"findings":[…]}',
+          memory_pulled: [],
+          specs_read: [],
+          log: [
+            { t: '00.10', kind: 'info', msg: 'Loading PR diff' },
+            { t: '08.20', kind: 'result', msg: 'Citation grounding: 3/3 passed' },
+          ],
+        },
+      });
+    }
+  }
+
   return { workspaceId, userId };
 }
 
 // CLI entrypoint
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const url = process.env.DATABASE_URL;
   if (!url) {
     console.error('DATABASE_URL is required');

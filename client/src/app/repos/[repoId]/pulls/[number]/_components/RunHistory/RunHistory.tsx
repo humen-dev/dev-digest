@@ -3,7 +3,10 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Badge, Icon, CircularScore, type IconName } from "@devdigest/ui";
-import type { RunSummary, PrCommit } from "@devdigest/shared";
+import type { RunSummary, PrCommit, FindingRecord } from "@devdigest/shared";
+import { formatCost } from "@/lib/format-cost";
+import { FindingsHoverCard } from "../../../_components/FindingsHoverCard";
+import { FindingsPreviewList } from "../../../_components/FindingsPreviewList";
 
 /**
  * PR timeline — every agent run interleaved with the PR's commits, newest-first
@@ -87,12 +90,15 @@ function tsOf(s: string | null | undefined): number {
 export function RunHistory({
   runs,
   commits = [],
+  findingsByRun,
   onOpenTrace,
   onGoToReview,
   onDelete,
 }: {
   runs: RunSummary[];
   commits?: PrCommit[];
+  /** run_id → that run's findings, for the row hover-preview popover. */
+  findingsByRun?: Map<string, FindingRecord[]>;
   /** Open the trace + log drawer for a run (the logs icon). */
   onOpenTrace: (runId: string) => void;
   /** Jump to this run's inline review accordion below (clicking the agent name). */
@@ -188,15 +194,46 @@ export function RunHistory({
                   {r.error}
                 </div>
               )}
-              {settled && (
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  {t("runStatus.findings", { count: r.findings_count ?? 0 })}
-                  {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
-                </div>
-              )}
+              {settled &&
+                (() => {
+                  const runFindings = findingsByRun?.get(r.run_id) ?? [];
+                  const countsLine = (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--text-muted)",
+                        width: "fit-content",
+                        borderBottom: runFindings.length > 0 ? "1px dotted var(--border-strong)" : undefined,
+                      }}
+                    >
+                      {t("runStatus.findings", { count: r.findings_count ?? 0 })}
+                      {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
+                    </div>
+                  );
+                  return runFindings.length > 0 ? (
+                    <FindingsHoverCard
+                      width={380}
+                      panel={
+                        <FindingsPreviewList
+                          findings={runFindings}
+                          title={t("findingsPreview.inRun", { count: runFindings.length })}
+                        />
+                      }
+                    >
+                      {countsLine}
+                    </FindingsHoverCard>
+                  ) : (
+                    countsLine
+                  );
+                })()}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
               {r.ran_at && <span>{new Date(r.ran_at).toLocaleTimeString()}</span>}
+              {settled && (
+                <span className="mono">
+                  {((r.tokens_in ?? 0) + (r.tokens_out ?? 0)).toLocaleString()} tok · {formatCost(r.cost_usd)}
+                </span>
+              )}
             </div>
             <button
               type="button"

@@ -68,7 +68,14 @@ export interface StructuredResult<T> {
   model: string;
   tokensIn: number;
   tokensOut: number;
+  /** Best-effort cost: real provider cost when available, else an estimate. */
   costUsd: number | null;
+  /**
+   * REAL provider-reported cost (OpenRouter `usage.cost`); null when the
+   * provider does not report one. This is what gets persisted — an estimate is
+   * never stored.
+   */
+  apiCostUsd: number | null;
   raw: string;
   attempts: number;
 }

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
 import * as t from '../../db/schema.js';
@@ -8,6 +8,7 @@ import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import { deriveReviewStatus } from './status.js';
+import { findingRowToDto } from '../reviews/helpers.js';
 
 /**
  * F1 — pulls module. PR import via Octokit (list + per-PR detail).
@@ -129,6 +130,47 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
+    // TOTAL cost per PR for the list's COST column — the sum of every priced run
+    // for that PR. Only real provider-reported costs are stored (cost_usd not
+    // null), so failed/unpriced runs contribute nothing; a PR with no priced run
+    // stays null (rendered "—"), never 0.
+    const costByPr = new Map<string, number>();
+    if (prIds.length > 0) {
+      const costRows = await container.db
+        .select({ prId: t.agentRuns.prId, costUsd: t.agentRuns.costUsd })
+        .from(t.agentRuns)
+        .where(
+          and(
+            eq(t.agentRuns.workspaceId, workspaceId),
+            inArray(t.agentRuns.prId, prIds),
+            isNotNull(t.agentRuns.costUsd),
+          ),
+        );
+      for (const cr of costRows) {
+        if (cr.prId && cr.costUsd != null) {
+          costByPr.set(cr.prId, (costByPr.get(cr.prId) ?? 0) + cr.costUsd);
+        }
+      }
+    }
+
+    // All findings across the PR's review runs, for the list's FINDINGS column
+    // (per-severity counts + hover preview). Aggregated across every kind='review'
+    // review — matching the detail page's totals — unlike `score`, which is the
+    // single latest review. One IN-query joined to reviews; grouped in JS.
+    const findingsByPr = new Map<string, ReturnType<typeof findingRowToDto>[]>();
+    if (prIds.length > 0) {
+      const findingRows = await container.db
+        .select({ prId: t.reviews.prId, f: t.findings })
+        .from(t.findings)
+        .innerJoin(t.reviews, eq(t.findings.reviewId, t.reviews.id))
+        .where(and(inArray(t.reviews.prId, prIds), eq(t.reviews.kind, 'review')));
+      for (const row of findingRows) {
+        const list = findingsByPr.get(row.prId) ?? [];
+        list.push(findingRowToDto(row.f));
+        findingsByPr.set(row.prId, list);
+      }
+    }
+
     const now = Date.now();
     return rows.map((r) => {
       const review = latestReviewByPr.get(r.id);
@@ -153,6 +195,8 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         opened_at: r.openedAt?.toISOString() ?? null,
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
+        cost_usd: costByPr.get(r.id) ?? null,
+        findings: findingsByPr.get(r.id) ?? null,
       };
     });
   });

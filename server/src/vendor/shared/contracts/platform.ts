@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Provider } from './knowledge.js';
+import { Finding } from './findings.js';
 
 /**
  * Platform / scaffolding DTOs owned by F1:
@@ -170,6 +171,13 @@ export const PrMeta = z.object({
   updated_at: z.string().nullish(),
   // Latest-review score (list endpoint only; null/absent until reviewed).
   score: z.number().int().nullish(),
+  // Total review cost (USD) for this PR — sum of every priced run (list
+  // endpoint only). Null when no run has a real provider-reported cost. Never
+  // an estimate.
+  cost_usd: z.number().nullish(),
+  // All findings across the PR's review runs (list endpoint only; null/absent
+  // until reviewed). Powers the FINDINGS column counts + hover preview.
+  findings: z.array(Finding).nullish(),
 });
 export type PrMeta = z.infer<typeof PrMeta>;
 

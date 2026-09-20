@@ -249,6 +249,8 @@ export class ReviewRunExecutor {
         grounding,
         score: outcome.review.score,
         blockers,
+        // Real provider cost only (null for openai/anthropic or unpriced OpenRouter).
+        costUsd: outcome.apiCostUsd,
         error: null,
       });
 
@@ -267,6 +269,7 @@ export class ReviewRunExecutor {
           tokens_out: tokensOut,
           findings: findingRows.length,
           grounding,
+          cost_usd: outcome.apiCostUsd,
         },
         prompt_assembly: outcome.assembly,
         tool_calls: outcome.chunks.map((c) => ({

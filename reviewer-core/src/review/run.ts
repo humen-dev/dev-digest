@@ -107,7 +107,14 @@ export interface ReviewOutcome {
   chunks: { label: string }[];
   tokensIn: number;
   tokensOut: number;
+  /** Best-effort cost: real provider cost when available, else an estimate. */
   costUsd: number | null;
+  /**
+   * REAL provider-reported cost (summed across chunks); null when NO chunk
+   * reported one. This is the value the server persists — an estimate is never
+   * stored. Distinct from `costUsd`, which may fall back to an estimate.
+   */
+  apiCostUsd: number | null;
   /** Joined raw model outputs (for the run trace). */
   raw: string;
 }
@@ -157,6 +164,8 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
   let tokensIn = 0;
   let tokensOut = 0;
   let costUsd: number | null = 0;
+  // Real provider cost: null until a chunk reports one, then the running sum.
+  let apiCostUsd: number | null = null;
   const raws: string[] = [];
 
   for (const chunk of chunks) {
@@ -182,6 +191,8 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     tokensIn += res.tokensIn;
     tokensOut += res.tokensOut;
     costUsd = costUsd == null || res.costUsd == null ? null : costUsd + res.costUsd;
+    // Real cost is additive over chunks; stays null when no chunk reports one.
+    if (res.apiCostUsd != null) apiCostUsd = (apiCostUsd ?? 0) + res.apiCostUsd;
     raws.push(res.raw);
     partials.push(res.data);
     emit('result', `${chunk.label}: ${res.data.findings.length} candidate finding(s)`);
@@ -214,6 +225,7 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     tokensIn,
     tokensOut,
     costUsd,
+    apiCostUsd,
     raw: raws.join('\n---\n'),
   };
 }
