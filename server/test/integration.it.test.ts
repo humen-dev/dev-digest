@@ -131,7 +131,7 @@ d('Testcontainers: DB-backed routes via app.inject', () => {
     await app.close();
   });
 
-  it('GET /repos/:id/pulls returns per-PR findings aggregated across review runs', async () => {
+  it('GET /repos/:id/pulls returns per-PR findings aggregated from latest review per agent', async () => {
     const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
     const app = await buildApp({
       config,
@@ -150,37 +150,164 @@ d('Testcontainers: DB-backed routes via app.inject', () => {
     const baseline: number =
       (before.json().find((p: { number: number }) => p.number === pr!.number).findings ?? []).length;
 
-    // Two NEW review runs for the same PR → findings must aggregate across both,
-    // proving the list column isn't limited to a single (latest) review.
-    const titles = ['agg-CRITICAL-a', 'agg-WARNING-a', 'agg-WARNING-b', 'agg-SUGGESTION-b'];
-    for (const [sevs, ts] of [
-      [['CRITICAL', 'WARNING'], titles.slice(0, 2)],
-      [['WARNING', 'SUGGESTION'], titles.slice(2, 4)],
-    ] as const) {
-      const [rv] = await db
-        .insert(t.reviews)
-        .values({ workspaceId: ws!.id, prId: pr!.id, kind: 'review', score: 60 })
-        .returning();
-      await db.insert(t.findings).values(
-        sevs.map((severity, i) => ({
-          reviewId: rv!.id,
+    // Get the first user for createdBy.
+    const [user] = await db.select().from(t.users).limit(1);
+
+    // Two agents, each with two runs. Only the latest run per agent should contribute findings.
+    const [agentA] = await db
+      .insert(t.agents)
+      .values({
+        workspaceId: ws!.id,
+        name: 'agent-a',
+        provider: 'anthropic',
+        model: 'claude-3-sonnet',
+        systemPrompt: 'Review the code.',
+        version: 1,
+        createdBy: user!.id,
+      })
+      .returning();
+    const [agentB] = await db
+      .insert(t.agents)
+      .values({
+        workspaceId: ws!.id,
+        name: 'agent-b',
+        provider: 'anthropic',
+        model: 'claude-3-sonnet',
+        systemPrompt: 'Review the code.',
+        version: 1,
+        createdBy: user!.id,
+      })
+      .returning();
+
+    // Agent A: two runs (old, then new). Only new should be included.
+    const [agentAOldRun] = await db
+      .insert(t.agentRuns)
+      .values({
+        workspaceId: ws!.id,
+        agentId: agentA!.id,
+        prId: pr!.id,
+        status: 'completed',
+      })
+      .returning();
+    const [rvAgentAOld] = await db
+      .insert(t.reviews)
+      .values({
+        workspaceId: ws!.id,
+        prId: pr!.id,
+        agentId: agentA!.id,
+        runId: agentAOldRun!.id,
+        kind: 'review',
+        score: 60,
+      })
+      .returning();
+    await db.insert(t.findings).values(
+      [
+        {
+          reviewId: rvAgentAOld!.id,
           file: 'src/x.ts',
-          startLine: i + 1,
-          endLine: i + 1,
-          severity,
+          startLine: 1,
+          endLine: 1,
+          severity: 'CRITICAL',
           category: 'bug',
-          title: ts[i]!,
-          rationale: 'why',
+          title: 'agent-a-old-critical',
+          rationale: 'old run',
           confidence: 0.9,
-        })),
-      );
-    }
+        },
+      ],
+    );
+
+    const [agentANewRun] = await db
+      .insert(t.agentRuns)
+      .values({
+        workspaceId: ws!.id,
+        agentId: agentA!.id,
+        prId: pr!.id,
+        status: 'completed',
+      })
+      .returning();
+    const [rvAgentANew] = await db
+      .insert(t.reviews)
+      .values({
+        workspaceId: ws!.id,
+        prId: pr!.id,
+        agentId: agentA!.id,
+        runId: agentANewRun!.id,
+        kind: 'review',
+        score: 80,
+      })
+      .returning();
+    await db.insert(t.findings).values(
+      [
+        {
+          reviewId: rvAgentANew!.id,
+          file: 'src/x.ts',
+          startLine: 2,
+          endLine: 2,
+          severity: 'WARNING',
+          category: 'bug',
+          title: 'agent-a-new-warning',
+          rationale: 'new run',
+          confidence: 0.9,
+        },
+      ],
+    );
+
+    // Agent B: one run with two findings.
+    const [agentBRun] = await db
+      .insert(t.agentRuns)
+      .values({
+        workspaceId: ws!.id,
+        agentId: agentB!.id,
+        prId: pr!.id,
+        status: 'completed',
+      })
+      .returning();
+    const [rvAgentB] = await db
+      .insert(t.reviews)
+      .values({
+        workspaceId: ws!.id,
+        prId: pr!.id,
+        agentId: agentB!.id,
+        runId: agentBRun!.id,
+        kind: 'review',
+        score: 70,
+      })
+      .returning();
+    await db.insert(t.findings).values([
+      {
+        reviewId: rvAgentB!.id,
+        file: 'src/y.ts',
+        startLine: 1,
+        endLine: 1,
+        severity: 'WARNING',
+        category: 'style',
+        title: 'agent-b-warning-1',
+        rationale: 'style issue',
+        confidence: 0.85,
+      },
+      {
+        reviewId: rvAgentB!.id,
+        file: 'src/y.ts',
+        startLine: 2,
+        endLine: 2,
+        severity: 'SUGGESTION',
+        category: 'perf',
+        title: 'agent-b-suggestion-1',
+        rationale: 'perf issue',
+        confidence: 0.75,
+      },
+    ]);
 
     const list = await app.inject({ method: 'GET', url: `/repos/${repoId}/pulls` });
     const row = list.json().find((p: { number: number }) => p.number === pr!.number);
-    expect(row.findings).toHaveLength(baseline + 4);
+    // Should have baseline + 3: agent-a-new-warning, agent-b-warning-1, agent-b-suggestion-1
+    // (agent-a-old-critical is from an older run and should be excluded)
+    expect(row.findings).toHaveLength(baseline + 3);
     const gotTitles = new Set(row.findings.map((f: { title: string }) => f.title));
-    for (const want of titles) expect(gotTitles.has(want)).toBe(true);
+    expect(gotTitles.has('agent-a-new-warning')).toBe(true);
+    expect(gotTitles.has('agent-b-warning-1')).toBe(true);
+    expect(gotTitles.has('agent-b-suggestion-1')).toBe(true);
+    expect(gotTitles.has('agent-a-old-critical')).toBe(false);
     await app.close();
   });
 
