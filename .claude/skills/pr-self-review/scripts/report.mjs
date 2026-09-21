@@ -5,6 +5,7 @@
  * CRITICAL | WARNING | SUGGESTION, verdict is request_changes | approve |
  * comment, and the score is always RECOMPUTED from the findings.
  */
+import { codePackages } from './checks.mjs';
 import { scoreFromFindings, verdictFromFindings } from './lib.mjs';
 
 const ORDER = ['CRITICAL', 'WARNING', 'SUGGESTION'];
@@ -144,13 +145,17 @@ export function prBody(run) {
   L.push('');
   L.push('## Test plan');
   L.push('');
-  if (byPkg.has('server')) L.push('- [ ] `cd server && pnpm typecheck && pnpm exec vitest run --exclude "**/*.it.test.ts"`');
-  if (byPkg.has('client')) L.push('- [ ] `cd client && pnpm typecheck && pnpm test`');
-  if (byPkg.has('reviewer-core')) L.push('- [ ] `cd reviewer-core && npm run typecheck && npm test`');
-  if (byPkg.has('e2e')) L.push('- [ ] `./scripts/e2e.sh`');
-  if (![...byPkg.keys()].some((k) => ['server', 'client', 'reviewer-core', 'e2e'].includes(k))) {
-    L.push('- [ ] No package code changed — nothing to run.');
-  }
+  // Driven by codePackages(), the same signal planChecks() uses — a package
+  // touched only in Markdown gets no entry, so this never contradicts "Checks".
+  const touched = codePackages(run.paths);
+  const plan = {
+    server: '`cd server && pnpm typecheck && pnpm exec vitest run --exclude "**/*.it.test.ts"`',
+    client: '`cd client && pnpm typecheck && pnpm test`',
+    'reviewer-core': '`cd reviewer-core && npm run typecheck && npm test`',
+    e2e: '`./scripts/e2e.sh` — the gate typechecks the flows but never runs them',
+  };
+  for (const pkg of touched) L.push('- [ ] ' + plan[pkg]);
+  if (!touched.length) L.push('- [ ] No package code changed — nothing to run.');
   L.push('');
   L.push('## Self-review');
   L.push('');

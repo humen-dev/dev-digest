@@ -22,9 +22,19 @@ const WIN = process.platform === 'win32';
 const bin = (name) => name;
 const TSC_CAP = 20;
 
+export const PACKAGES = ['client', 'server', 'reviewer-core', 'e2e'];
+
 /** Source files only: a docs-only touch inside a package must not trigger a build. */
 const codeIn = (paths, pkg) =>
   paths.filter((p) => posix(p).startsWith(pkg + '/') && !/\.(md|txt)$/i.test(p));
+
+/**
+ * Which packages this change set touches *in code*. The single source of truth
+ * for "does this package matter here" — `planChecks` and the drafted PR body's
+ * test plan must agree, or the body asks the author to run checks the gate
+ * already decided were unnecessary.
+ */
+export const codePackages = (paths) => PACKAGES.filter((pkg) => codeIn(paths, pkg).length > 0);
 
 /**
  * Build the check plan from the change set.
