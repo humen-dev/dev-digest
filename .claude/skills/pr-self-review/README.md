@@ -84,6 +84,8 @@ reference is read only when the task needs it.
 | Blocking threshold | `gate.gateFailOn`, default `critical` | Mirrors `agents.ciFailOn`; configuration, not code |
 | Skills vs Markdown | Skills are code lenses | A `.md` file has no skill lens; routing it produced nonsense like `e2e/specs/README.md` → `typescript-expert` |
 | Docs-only diffs | Fast path | The branch this was built on is 56 files of near-pure Markdown |
+| Phase-3 cache store | A separate keyed file, not `run.json` | `run.json` is the last run's record, so a cache miss would erase it — change a file, run, revert, and a paid-for review is gone |
+| What `configHash` covers | Config, routed skill bodies **and the gate's own scripts** | A key must cover the code that produces the result: editing a parser in `checks.mjs` has to invalidate a cached `ok` |
 | Hook placement | `.claude/settings.json`, matcher `Bash` | `settings.local.json` is gitignored and would not reach the team. The matcher narrows to the tool; command discrimination is in the script |
 | Bypass source | The command text, not `process.env` | It must be typed each time and stay visible in the transcript |
 

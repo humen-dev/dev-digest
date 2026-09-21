@@ -35,6 +35,9 @@ const ROOT = repoRoot();
 const SKILL = join(ROOT, '.claude', 'skills', 'pr-self-review');
 const OUT = stateDir(ROOT);
 
+/** Hashed into `configHash` so changing the gate's own logic invalidates the cache. */
+const SELF_SCRIPTS = ['signature.mjs', 'lib.mjs', 'rules.mjs', 'checks.mjs', 'report.mjs', 'pr-self-review.mjs'];
+
 const flag = (argv, name) => argv.includes('--' + name);
 const opt = (argv, name) => {
   const pre = '--' + name + '=';
@@ -98,10 +101,25 @@ function collect(argv) {
   const fileHashes = {};
   for (const [path, f] of files) fileHashes[path] = sha256(f.added.map((a) => a.line + ':' + a.text).join('\n'));
 
+  // Per-bundle hash of the exact slice a subagent would be shown. This is what
+  // lets an unchanged bundle reuse its Phase-3 findings on the next run.
+  const bundleHashes = {};
+  for (const b of routed.bundles) {
+    bundleHashes[b.bundle] = sha256(b.files.map((f) => f + ':' + (fileHashes[f] || '')).join('\n'));
+  }
+
+  // The cache key must cover the code that PRODUCES a result, not only its
+  // inputs: editing a parser or a command in checks.mjs has to invalidate a
+  // cached "ok", or a stale pass is sealed under the new logic's name.
+  const selfScripts = SELF_SCRIPTS.map((n) => {
+    try { return readFileSync(join(SKILL, 'scripts', n), 'utf8'); } catch { return n; }
+  });
+
   const configHash = sha256(
     [
       JSON.stringify(routing),
       JSON.stringify(accepted),
+      ...selfScripts,
       ...routed.kept.map((s) => {
         try { return readFileSync(join(ROOT, '.claude', 'skills', s, 'SKILL.md'), 'utf8'); } catch { return s; }
       }),
@@ -119,6 +137,7 @@ function collect(argv) {
     cap: routing.maxSkillsPerRun ?? 6,
     docsOnly,
     fileHashes,
+    bundleHashes,
     configHash,
     gate: routing.gate || {},
     _files: files,
@@ -156,6 +175,57 @@ function ground(findings, files) {
     return false;
   });
   return { kept, dropped };
+}
+
+/**
+ * Merge Phase-3 findings into the run: dedupe, ground, then filter through
+ * accepted.json. Shared by `run` (when every bundle came from cache) and by
+ * `report --phase3`, so the two paths can never diverge.
+ */
+function applyPhase3(run, incoming, unparsed = []) {
+  const merged = dedupe([...run.findings, ...incoming]);
+  const g = ground(merged, run._files);
+  const split = splitAccepted(g.kept, run._accepted);
+  run.findings = split.kept;
+  run.suppressed = [...(run.suppressed || []), ...split.suppressed];
+  run.grounding = { dropped: g.dropped };
+  if (unparsed.length) run.incomplete = 'bundle(s) unparseable: ' + unparsed.join(', ');
+}
+
+/**
+ * Phase-3 cache — keyed storage, deliberately NOT `run.json`.
+ *
+ * `run.json` is the record of the LAST run, so using it as the store means a run
+ * that misses the cache erases it: change a file, run, change it back, and the
+ * review you already paid for is gone. Keyed entries survive that round trip.
+ */
+const PHASE3_CACHE = 'phase3-cache.json';
+const CACHE_LIMIT = 50;
+
+/** Phase-3 findings for bundles whose diff slice is byte-identical to a past run. */
+function cachedBundles(run, noCache) {
+  if (noCache) return [];
+  const store = read(PHASE3_CACHE);
+  const entries = (store && store.entries) || [];
+  return run.routing.bundles
+    .map((b) =>
+      entries.find(
+        (e) => e.configHash === run.configHash && e.bundle === b.bundle && e.sliceHash === run.bundleHashes[b.bundle],
+      ),
+    )
+    .filter(Boolean);
+}
+
+function rememberBundles(run, bundles) {
+  const store = read(PHASE3_CACHE) || { version: 1, entries: [] };
+  const fresh = bundles
+    .filter((b) => b.sliceHash)
+    .map((b) => ({ configHash: run.configHash, bundle: b.bundle, sliceHash: b.sliceHash, findings: b.findings, at: new Date().toISOString() }));
+  const key = (e) => e.configHash + '|' + e.bundle + '|' + e.sliceHash;
+  const keep = new Set(fresh.map(key));
+  store.entries = [...fresh, ...(store.entries || []).filter((e) => !keep.has(key(e)))].slice(0, CACHE_LIMIT);
+  store.version = 1;
+  write(PHASE3_CACHE, store);
 }
 
 /* --------------------------------------------------------------------- seal */
@@ -350,13 +420,46 @@ function cmdRun(argv) {
     return finish(run);
   }
 
-  /* Phase 3 is the agent's job. Persist the run and say so. */
-  run.phases.push({ name: 'Phase 3 · Skill review', state: 'PENDING', detail: '(dispatch the bundles, then `report --phase3`)' });
+  /* Phase 3 — the agent's job, except for bundles whose slice has not moved. */
   run.totalMs = Date.now() - t0;
+
+  if (!run.routing.bundles.length) {
+    // Nothing routed means nothing for a subagent to review. Without this the
+    // run would sit at PENDING forever and the gate could never open.
+    run.phases.push({ name: 'Phase 3 · Skill review', state: 'SKIPPED', detail: '(no changed file matched a skill route)' });
+    run.phase3Bundles = [];
+    return finish(run);
+  }
+
+  const cached = cachedBundles(run, noCache);
+  run.phase3Bundles = cached;
+  const pending = run.routing.bundles.filter((b) => !cached.some((c) => c.bundle === b.bundle));
+  if (cached.length) {
+    run.cacheReused = [...(run.cacheReused || []), ...cached.map((c) => 'phase 3: ' + c.bundle)];
+  }
+
+  if (!pending.length) {
+    applyPhase3(run, cached.flatMap((c) => c.findings.map((f) => ({ ...f, phase: 3 }))));
+    run.phases.push({
+      name: 'Phase 3 · Skill review',
+      state: 'PASS',
+      detail: '— all ' + cached.length + ' bundle(s) reused from cache',
+    });
+    return finish(run);
+  }
+
+  run.pendingBundles = pending.map((b) => b.bundle);
+  run.phases.push({
+    name: 'Phase 3 · Skill review',
+    state: 'PENDING',
+    detail: '(dispatch ' + pending.length + ' bundle(s), then `report --phase3`)',
+  });
   const code = finish(run, { sealIfGreen: false });
   process.stdout.write(
-    '\nPHASE3_REQUIRED — dispatch one subagent per bundle above, then:\n' +
-      '  node .claude/skills/pr-self-review/scripts/pr-self-review.mjs report --phase3 <file.json>\n',
+    '\nPHASE3_REQUIRED — dispatch one subagent per bundle listed below, then:\n' +
+      '  node .claude/skills/pr-self-review/scripts/pr-self-review.mjs report --phase3 <file.json>\n' +
+      '  to dispatch: ' + run.pendingBundles.join(', ') + '\n' +
+      (cached.length ? '  reused from cache (do not re-dispatch): ' + cached.map((c) => c.bundle).join(', ') + '\n' : ''),
   );
   return code;
 }
@@ -383,24 +486,36 @@ function cmdReport(argv) {
   run._files = addUntracked(parsePatch(normalizeEOL(trackedPatch(ROOT, run.base))), untrackedEntries(ROOT));
   run._accepted = loadJson(join(SKILL, 'accepted.json'), { accepted: [] });
 
-  const incoming = [];
+  const dispatched = [];
   const unparsed = [];
   for (const b of payload.bundles || []) {
     if (b.error || !Array.isArray(b.findings)) { unparsed.push(b.bundle || 'unknown'); continue; }
-    for (const f of b.findings) incoming.push({ ...f, phase: 3, kind: f.kind || 'finding' });
+    dispatched.push({
+      bundle: b.bundle,
+      sliceHash: (run.bundleHashes || {})[b.bundle] || null,
+      findings: b.findings.map((f) => ({ ...f, phase: 3, kind: f.kind || 'finding' })),
+    });
   }
 
-  const merged = dedupe([...run.findings, ...incoming]);
-  const g = ground(merged, run._files);
-  const split = splitAccepted(g.kept, run._accepted);
+  // Bundles `run` already reused, plus the ones just dispatched. Storing both
+  // is what lets the NEXT run reuse a bundle whose slice has not moved.
+  const carried = (run.phase3Bundles || []).filter((c) => !dispatched.some((n) => n.bundle === c.bundle));
+  run.phase3Bundles = [...carried, ...dispatched];
+  if (!unparsed.length) rememberBundles(run, dispatched);
 
-  run.findings = split.kept;
-  run.suppressed = [...(run.suppressed || []), ...split.suppressed];
-  run.grounding = { dropped: g.dropped };
-  run.incomplete = unparsed.length ? 'bundle(s) unparseable: ' + unparsed.join(', ') : false;
+  const incoming = run.phase3Bundles.flatMap((b) => b.findings.map((f) => ({ ...f, phase: 3 })));
+  run.incomplete = false;
+  applyPhase3(run, incoming, unparsed);
+
+  const reviewed = run.phase3Bundles.length;
   run.phases = run.phases.map((p) =>
     p.name.startsWith('Phase 3')
-      ? { ...p, state: unparsed.length ? 'PARTIAL' : 'PASS', detail: '— ' + incoming.length + ' finding(s) from ' + (payload.bundles || []).length + ' bundle(s)' }
+      ? {
+          ...p,
+          state: unparsed.length ? 'PARTIAL' : 'PASS',
+          detail: '— ' + incoming.length + ' finding(s) from ' + reviewed + ' bundle(s)' +
+            (carried.length ? ', ' + carried.length + ' reused' : ''),
+        }
       : p,
   );
   delete run._files;

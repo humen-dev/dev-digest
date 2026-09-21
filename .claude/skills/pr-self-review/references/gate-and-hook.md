@@ -33,6 +33,7 @@ The first 8 hex characters are what the report shows.
 | `run.json` | Phase artifacts: change set, routing, file hashes, timings — the cache input |
 | `last-report.md` / `.json` | The rendered and structured report |
 | `pr-body.md` | The drafted PR body, written on a green seal |
+| `phase3-cache.json` | Phase-3 findings keyed by (configHash, bundle, sliceHash) — accumulating, not last-run |
 
 ```json
 { "version": 1, "signature": "…", "headSha": "…", "base": "…", "branch": "…",

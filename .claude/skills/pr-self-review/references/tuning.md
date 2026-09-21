@@ -26,19 +26,44 @@ of holes in the skill library — today, `server/.dependency-cruiser.cjs`.
 
 ## The incremental cache
 
-The loop is *run → fix → run*, so the second pass must be cheap. `run.json` stores
-a per-file hash of the added lines. A package's checks are reused from the
-previous run when **all** of:
+The loop is *run → fix → run*, so the second pass must be cheap. There are two
+caches, and they are stored differently for a reason.
 
-- `configHash` matches — that hash covers `routing.json`, `accepted.json` **and
-  the body of every routed `SKILL.md`**, so changing a skill invalidates the cache;
-- the base is unchanged;
-- the check passed last time;
-- every changed path under that package has an unchanged hash.
+### `configHash` — the shared invalidator
 
-`--no-cache` and `--full` bypass it, and a run that reused anything says so in the
-report. The incremental path is the one place a wrong answer can be *sealed*, so
-the rule is: any doubt ⇒ full run.
+Both caches are keyed on it. It covers `routing.json`, `accepted.json`, the body
+of every routed `SKILL.md`, **and the gate's own `scripts/*.mjs`**.
+
+That last part is not decoration. A cache key must cover the code that *produces*
+a result, not only its inputs: edit a parser in `checks.mjs` so it catches a
+failure it used to miss, re-run with no source change, and a key without the
+scripts would hand back the old `ok` — a stale pass sealed under the new logic's
+name. This is the one place where a wrong answer can be **sealed**, so the rule
+is: any doubt ⇒ full run.
+
+### Phase 2 — per package, stored in `run.json`
+
+A package's checks are reused when `configHash` matches, the base is unchanged,
+the check passed last time, and every changed path under that package has an
+unchanged content hash.
+
+### Phase 3 — per bundle, stored in `phase3-cache.json`
+
+Keyed on `(configHash, bundle, sliceHash)`, where `sliceHash` covers the exact
+file list and content a subagent would be shown. A bundle whose slice has not
+moved reuses its findings, re-grounded against the current changed-line index, so
+a finding whose lines no longer intersect a hunk is dropped rather than kept.
+
+This one is a **separate, accumulating store on purpose**. `run.json` is the
+record of the last run, so using it as the cache means a run that misses erases
+it: change a file, run, change it back, and the review already paid for is gone.
+Keyed entries survive that round trip. The store keeps the 50 newest entries.
+
+When only some bundles hit, the run reports which to dispatch and which not to
+re-dispatch; when all hit, Phase 3 completes with no subagent at all and the run
+seals directly — measured at **0.7s** for a full cycle on this repo.
+
+`--no-cache` and `--full` bypass both.
 
 ## `accepted.json` — the false-positive valve
 
