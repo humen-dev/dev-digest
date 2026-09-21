@@ -65,6 +65,13 @@ jobs:
 
       - run: pnpm typecheck
 
+      # Onion-architecture fitness rules (server/.dependency-cruiser.cjs). Known
+      # drift lives in .dependency-cruiser-known-violations.json and is ignored;
+      # any NEW violation fails. Inlined (no `arch:check` script) for the same
+      # skip-worktree reason as the vitest step below.
+      - name: Architecture rules
+        run: pnpm exec depcruise src --config .dependency-cruiser.cjs --ignore-known
+
   unit:
     name: tests
     runs-on: ubuntu-latest
