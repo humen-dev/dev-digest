@@ -24,6 +24,11 @@ Docker (Postgres only). TypeScript 5.7 throughout.
   Flags: `--no-seed` · `--no-client` · `--db-only` · `--help`.
 - `./scripts/e2e.sh` — hermetic e2e stack (alt ports), runs flows, tears down.
 - Per-package `dev` / `test` / `typecheck` — see that package's AGENTS.md.
+- `/pr-self-review` — **pre-PR gate**: reviews all open local changes (branch +
+  working tree), routes the repo's skills onto the changed files, runs the touched
+  packages' checks. A `PreToolUse` hook blocks `gh pr create` until it is green;
+  deliberate override is `PR_SELF_REVIEW_BYPASS=1`. Retire a false positive with
+  `pr-self-review.mjs accept "<key>" --reason "…"` — never with a habitual bypass.
 - **Checks:** every package exposes `test` + `typecheck`; **`tsc --noEmit` is the
   lint gate** — there is no separate ESLint step, so a clean typecheck is required.
 

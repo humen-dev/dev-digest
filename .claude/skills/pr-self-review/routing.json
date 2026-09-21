@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "maxSkillsPerRun": 6,
+  "excluded": {
+    "engineering-insights": "authoring skill, not a review lens",
+    "mermaid-diagram": "authoring skill, not a review lens",
+    "pr-self-review": "this skill — it does not review itself as a lens"
+  },
+  "gate": {
+    "gateFailOn": "critical",
+    "docsOnlyGlobs": [
+      "**/*.md",
+      "docs/**",
+      "**/AGENTS.md",
+      "**/CLAUDE.md",
+      "**/INSIGHTS.md",
+      "LICENSE",
+      ".gitignore",
+      "**/*.txt"
+    ],
+    "unroutedIgnoreGlobs": [
+      "docs/**",
+      "**/*.json",
+      "**/*.sql",
+      ".github/**/*.md"
+    ],
+    "largeDiff": { "files": 60, "lines": 2000 },
+    "staleSealSeconds": 14400
+  },
+  "bundles": {
+    "frontend": { "areaGlobs": ["client/**"] },
+    "backend": { "areaGlobs": ["server/**"] },
+    "engine": { "areaGlobs": ["reviewer-core/**", "e2e/**"] },
+    "crosscut": { "areaGlobs": ["**"] }
+  },
+  "routes": [
+    {
+      "globs": [
+        "client/src/app/**",
+        "client/src/components/**",
+        "client/src/**/_components/**"
+      ],
+      "skills": ["frontend-ui-architecture", "react-best-practices"],
+      "bundle": "frontend"
+    },
+    {
+      "globs": [
+        "client/src/app/**/{page,layout,route,loading,error,not-found,template}.tsx",
+        "client/src/app/**/route.ts",
+        "client/next.config.*"
+      ],
+      "skills": ["next-best-practices"],
+      "bundle": "frontend"
+    },
+    {
+      "globs": [
+        "client/src/**/*.test.tsx",
+        "client/src/**/*.test.ts",
+        "client/src/test/**"
+      ],
+      "skills": ["react-testing-library"],
+      "bundle": "frontend"
+    },
+    {
+      "globs": [
+        "client/src/lib/**",
+        "client/src/i18n/**",
+        "client/messages/**/*.json",
+        "client/src/vendor/ui/**"
+      ],
+      "skills": ["frontend-ui-architecture"],
+      "bundle": "frontend"
+    },
+    {
+      "globs": [
+        "server/src/modules/**",
+        "server/src/platform/**",
+        "server/src/adapters/**",
+        "server/src/{app,server}.ts"
+      ],
+      "skills": ["onion-architecture"],
+      "bundle": "backend"
+    },
+    {
+      "globs": [
+        "server/src/modules/**/routes.ts",
+        "server/src/app.ts",
+        "server/src/platform/{sse,jobs}.ts"
+      ],
+      "skills": ["fastify-best-practices"],
+      "bundle": "backend"
+    },
+    {
+      "globs": [
+        "server/src/modules/**/{repository,mappers}.ts",
+        "server/src/modules/**/repository/**",
+        "server/src/db/**"
+      ],
+      "skills": ["drizzle-orm-patterns", "onion-architecture"],
+      "bundle": "backend"
+    },
+    {
+      "globs": ["server/src/db/schema/**", "server/src/db/migrations/**"],
+      "skills": ["postgresql-table-design"],
+      "bundle": "backend"
+    },
+    {
+      "globs": ["server/test/**"],
+      "skills": ["onion-architecture"],
+      "bundle": "backend"
+    },
+    {
+      "globs": ["reviewer-core/src/**"],
+      "skills": ["onion-architecture", "typescript-expert"],
+      "bundle": "engine"
+    },
+    {
+      "globs": ["e2e/specs/**", "e2e/lib/**", "e2e/run.ts"],
+      "skills": ["typescript-expert"],
+      "bundle": "engine"
+    },
+    {
+      "globs": [
+        "server/src/**",
+        "client/src/**",
+        "reviewer-core/src/**",
+        ".github/workflows/**",
+        "scripts/*.sh",
+        "docker-compose.yml"
+      ],
+      "skills": ["security"],
+      "bundle": "crosscut"
+    },
+    {
+      "globs": ["**/src/vendor/shared/**"],
+      "skills": ["zod", "typescript-expert"],
+      "bundle": "crosscut"
+    }
+  ],
+  "contentTriggers": [
+    {
+      "skill": "zod",
+      "bundle": "crosscut",
+      "pathGlobs": ["**/*.ts", "**/*.tsx"],
+      "pattern": "\\bz\\.(object|string|number|enum|infer|safeParse|array|union)\\b"
+    },
+    {
+      "skill": "typescript-expert",
+      "bundle": "crosscut",
+      "pathGlobs": ["**/*.ts", "**/*.tsx", "**/*.d.ts"],
+      "pattern": "\\b(infer\\s|satisfies\\s|as const)\\b"
+    }
+  ]
+}
