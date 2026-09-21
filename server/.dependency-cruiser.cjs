@@ -167,6 +167,11 @@ module.exports = {
     // Also see `import type` edges: a leaked `import type { AgentRow }` is still a
     // dependency on the infrastructure ring.
     tsPreCompilationDeps: true,
+    // Keep npm paths as node_modules/<pkg>/... instead of following pnpm symlinks into
+    // node_modules/.pnpm/<pkg>@<ver>/... . Without it the resolved path (which the baseline is
+    // keyed on) differs between Windows dev machines and Linux CI, so baselined drizzle-orm
+    // edges look 'new' in CI.
+    preserveSymlinks: true,
     moduleSystems: ['es6', 'cjs'],
     enhancedResolveOptions: {
       exportsFields: ['exports'],

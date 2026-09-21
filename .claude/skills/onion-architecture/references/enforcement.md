@@ -70,6 +70,11 @@ the same check (`depcruise --help`).
   agent reads when it fires.
 - Match npm packages with the `npm([...])` helper in the config: it matches the resolved
   `…/node_modules/<pkg>/…` path, which also works for pnpm's nested layout.
+- `preserveSymlinks: true` is on so an npm package always resolves to `node_modules/<pkg>/…`. Without it
+  the path differs between a Windows dev machine (`node_modules/.pnpm/<pkg>@<ver>/…`) and Linux CI, and
+  because the **baseline is keyed on the resolved path**, baselined npm edges (the `drizzle-orm` ones)
+  look new in CI and fail it. Never turn it off; after any change to the baseline or the options, confirm
+  on CI, not only locally.
 - `tsPreCompilationDeps: true` is on so that `import type` edges are seen. Do not turn it off; a type
   leak (`AgentRow` in a service) is exactly what the skill wants to catch.
 - **Prove it**: create a throw-away probe file that violates the rule, run without `--ignore-known`,
