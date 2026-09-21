@@ -29,6 +29,10 @@ Package manager: **pnpm**. `"type": "module"`.
   → 422 before the handler. Don't hand-roll `Schema.parse(req.body)`.
 - Plugins (helmet/cors/rate-limit/SSE + error handler) register **before**
   modules so encapsulated module plugins inherit them.
+- **Onion architecture:** deps point inward (routes/repositories → service → domain);
+  routes never touch Drizzle, services take narrow ports not `Container`, SDKs only in
+  `src/adapters/`. Use the `onion-architecture` skill for any backend structure work; CI
+  runs `pnpm exec depcruise src --config .dependency-cruiser.cjs --ignore-known` — never grow the baseline.
 
 ## Gotchas / do-not-touch
 - **Migrations are NOT applied on boot** — run `pnpm db:migrate` (pgvector via `0000`).
@@ -42,5 +46,6 @@ Package manager: **pnpm**. `"type": "module"`.
 - [`README.md`](./README.md) — overview + request/DI + API-map diagrams
 - [`docs/`](./docs/) — deep dives, e.g. [`architecture.md`](./docs/architecture.md)
 - [`specs/`](./specs/) — behavior specs, e.g. [`review-flow.md`](./specs/review-flow.md) · [`cost-attribution.md`](./specs/cost-attribution.md)
+- [`../.claude/skills/onion-architecture/SKILL.md`](../.claude/skills/onion-architecture/SKILL.md) — ring rules, "where does X go", known drift & migration order
 - [`INSIGHTS.md`](./INSIGHTS.md) — accumulated gotchas & non-obvious learnings
 - [`../TESTING.md`](../TESTING.md) — cross-package test strategy
