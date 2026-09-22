@@ -64,3 +64,34 @@ describe('assemblePrompt — ## PR description', () => {
     expect((assembly.pr_description as string).length).toBe(4000);
   });
 });
+
+describe('assemblePrompt — ## Skills / rules (Skills feature, L02)', () => {
+  it('renders the section and places it BEFORE ## Diff to review when skills are given', () => {
+    const { messages, assembly } = assemblePrompt({
+      system: 'sys',
+      diff: 'DIFF',
+      skills: [
+        '### Skill: Uncovered Branch Gate (rubric)\nEvery new branch needs a test.',
+        '### Skill: Mock Overuse Gate (convention)\nDo not mock the thing under test.',
+      ],
+    });
+    const user = messages[1]!.content;
+    expect(user).toContain('## Skills / rules');
+    expect(user).toContain('Uncovered Branch Gate');
+    expect(user).toContain('Mock Overuse Gate');
+    expect(user.indexOf('## Skills / rules')).toBeLessThan(user.indexOf('## Diff to review'));
+    expect(assembly.skills).toContain('Uncovered Branch Gate');
+  });
+
+  it('omits the section and leaves assembly.skills === null when skills is undefined', () => {
+    const { messages, assembly } = assemblePrompt({ system: 'sys', diff: 'DIFF' });
+    expect(messages[1]!.content).not.toContain('## Skills / rules');
+    expect(assembly.skills ?? null).toBeNull();
+  });
+
+  it('omits the section and leaves assembly.skills === null when skills is an empty array', () => {
+    const { messages, assembly } = assemblePrompt({ system: 'sys', diff: 'DIFF', skills: [] });
+    expect(messages[1]!.content).not.toContain('## Skills / rules');
+    expect(assembly.skills ?? null).toBeNull();
+  });
+});
