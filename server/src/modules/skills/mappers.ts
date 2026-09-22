@@ -1,5 +1,5 @@
 import type { Skill, SkillSource, SkillType, SkillVersion } from '@devdigest/shared';
-import type { SkillRow, SkillVersionRow } from './repository.js';
+import type { SkillRow, SkillVersionRow } from './ports.js';
 
 /**
  * Pure helpers for the skills module — DB row ⇄ DTO mapping. No I/O.

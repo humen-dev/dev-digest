@@ -3,18 +3,23 @@ import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import { INITIAL_SKILL_VERSION } from './constants.js';
 import type { InsertSkill, UpdateSkill } from './types.js';
-import type { AgentSummaryRow, SkillsRepositoryPort } from './ports.js';
+import type {
+  AgentSummaryRow,
+  SkillRow,
+  SkillsRepositoryPort,
+  SkillVersionRow,
+  SkillWithCount,
+} from './ports.js';
 
 /**
  * Skills data-access. Owns `skills` and `skill_versions`; the `agent_skills`
  * link table is owned by the agents module (A2) — this repository only READS
  * it (for `agent_count` / `agentsUsing`), never writes it. Workspace-scoped
  * throughout except where the caller already resolved the skill's workspace.
+ * Row types (`SkillRow` etc.) are the plain interfaces from `ports.ts` — the
+ * Drizzle rows returned by `db.select()`/`.returning()` below satisfy them
+ * structurally, no mapping needed.
  */
-
-export type SkillRow = typeof t.skills.$inferSelect;
-export type SkillVersionRow = typeof t.skillVersions.$inferSelect;
-export type SkillWithCount = SkillRow & { agentCount: number };
 
 export class SkillsRepository implements SkillsRepositoryPort {
   constructor(private db: Db) {}

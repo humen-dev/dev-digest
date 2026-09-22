@@ -1,4 +1,4 @@
-import type { SkillRow, SkillVersionRow, SkillWithCount } from './repository.js';
+import type { SkillSource, SkillType } from '@devdigest/shared';
 import type { InsertSkill, UpdateSkill } from './types.js';
 
 /**
@@ -9,12 +9,43 @@ import type { InsertSkill, UpdateSkill } from './types.js';
  * what keeps `service.ts` out of the depcruise dependency graph onto
  * `platform/container.ts` — see `AGENTS.md` / the module's onion-architecture
  * note (`repo-intel` is the other module that follows this shape).
+ *
+ * Row shapes are declared here as PLAIN interfaces, not imported from
+ * `repository.ts` (`typeof t.skills.$inferSelect`) — a port depending on the
+ * repository's Drizzle-inferred type is both a domain→infrastructure
+ * dependency (`domain-no-outer-layers`) and, since `repository.ts` imports
+ * this port, a cycle. `SkillsRepository`'s actual return values are
+ * structurally assignable to these (same field names/types), so no mapping
+ * or cast is needed at the boundary.
  */
 export interface AgentSummaryRow {
   id: string;
   name: string;
   enabled: boolean;
 }
+
+export interface SkillRow {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description: string;
+  type: SkillType;
+  source: SkillSource;
+  body: string;
+  enabled: boolean;
+  version: number;
+  evidenceFiles: string[] | null;
+  createdAt: Date;
+}
+
+export interface SkillVersionRow {
+  skillId: string;
+  version: number;
+  body: string;
+  createdAt: Date;
+}
+
+export type SkillWithCount = SkillRow & { agentCount: number };
 
 export interface SkillsRepositoryPort {
   list(workspaceId: string): Promise<SkillRow[]>;
