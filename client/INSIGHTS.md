@@ -15,10 +15,26 @@ _(none yet)_
 - 2026-09-18 — A fixed-decimal cost format (e.g. 4 dp under a cent) FLATTENS real cheap-model costs: a deepseek/OpenRouter review run costs ~$0.00004, which 4 dp renders as "$0.0000" (looks free) and collapses distinct tiny values ($0.000175 vs $0.000248) onto one string. Use 2 significant figures below $0.01 (`toPrecision(2)`), keep 3 dp at/above $0.01 (`client/src/lib/format-cost.ts:12`). Only surfaced against LIVE seeded costs in the browser — the design mock values ($0.0013+) hid it.
 
 ## Codebase Patterns
+- 2026-09-22 — `client/src/vendor/ui/nav.ts` (WORKSPACE items + `SHORTCUTS`) was edited
+  directly to add the `skills` nav entry, even though `src/vendor/*` is normally
+  "vendored — edit at the source package, not here" (client/CLAUDE.md). There is no
+  upstream `@devdigest/ui` package in this repo to edit instead — the vendored copy
+  *is* the source — so this is a deliberate, documented exception, not drift. Next
+  time a nav item needs adding, edit `nav.ts` in place; don't go looking for an
+  upstream repo that doesn't exist.
 - 2026-09-19 — A hover popover anchored inside the PR-list table (`client/src/app/repos/[repoId]/pulls/styles.ts:91` `tableCard` has `overflow:hidden`) gets CLIPPED if positioned `absolute` within a row — worst on the last row. Render it in a **portal to `document.body`** with `position:fixed` computed from the trigger's `getBoundingClientRect()`, and clamp `maxHeight` to `innerHeight - top - 12` so it never overflows the viewport (no flip logic needed). See `client/src/app/repos/[repoId]/pulls/_components/FindingsHoverCard/FindingsHoverCard.tsx:73`. There is no Tooltip/Popover primitive in `@devdigest/ui` — only a click `Dropdown` (`vendor/ui/kit`), so hover popovers are hand-rolled; reuse `FindingsHoverCard` + `FindingsPreviewList` (shared by the list cell and the Agent-runs timeline).
 
 ## Tool & Library Notes
-_(none yet)_
+- 2026-09-22 — `SkillBodyEditor` (`client/src/app/skills/[id]/_components/SkillEditor/_components/ConfigTab/_components/SkillBodyEditor/SkillBodyEditor.tsx`)
+  ships as a plain monospace `<textarea>` + a synced line-number gutter, with NO
+  markdown syntax highlighting. The plan explicitly allowed falling back from a
+  transparent-textarea-over-`<pre>` regex-highlight overlay if it proved fragile
+  (scroll/wrap desync) rather than pulling in CodeMirror for one field — we took
+  that fallback up front instead of building the overlay first, since jsdom
+  doesn't lay out text (no real `scrollHeight`/wrapping), so the one thing that
+  would actually validate overlay alignment (visual scroll sync) can't be unit
+  tested anyway. If highlighting is wanted later, prototype it manually in the
+  browser before trusting any test to catch desync.
 
 ## Recurring Errors & Fixes
 _(none yet)_
