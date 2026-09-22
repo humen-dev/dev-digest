@@ -115,7 +115,13 @@ export type MemoryItem = z.infer<typeof MemoryItem>;
 export const SkillType = z.enum(['rubric', 'convention', 'security', 'custom']);
 export type SkillType = z.infer<typeof SkillType>;
 
-export const SkillSource = z.enum(['manual', 'imported_url', 'extracted', 'community']);
+export const SkillSource = z.enum([
+  'manual',
+  'imported_url',
+  'imported_file',
+  'extracted',
+  'community',
+]);
 export type SkillSource = z.infer<typeof SkillSource>;
 
 export const Skill = z.object({
@@ -128,8 +134,35 @@ export const Skill = z.object({
   enabled: z.boolean(),
   version: z.number().int(),
   evidence_files: z.array(z.string()).nullish(),
+  // Server-computed; not persisted on the row.
+  body_tokens: z.number().int(),
+  agent_count: z.number().int(),
 });
 export type Skill = z.infer<typeof Skill>;
+
+export const SkillVersion = z.object({
+  skill_id: z.string(),
+  version: z.number().int(),
+  body: z.string(),
+  created_at: z.string(),
+});
+export type SkillVersion = z.infer<typeof SkillVersion>;
+
+export const SkillImportDraft = z.object({
+  name: z.string(),
+  description: z.string(),
+  type: SkillType,
+  body: z.string(),
+});
+export type SkillImportDraft = z.infer<typeof SkillImportDraft>;
+
+export const SkillImportPreview = z.object({
+  draft: SkillImportDraft,
+  /** Archive entries the product deliberately did NOT process (scripts, binaries, nested .md). */
+  ignored_entries: z.array(z.string()),
+  warnings: z.array(z.string()),
+});
+export type SkillImportPreview = z.infer<typeof SkillImportPreview>;
 
 export const CommunitySkill = z.object({
   name: z.string(),
