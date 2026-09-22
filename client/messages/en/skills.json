@@ -7,13 +7,15 @@
     "searchPlaceholder": "Search skills…",
     "loadError": "Could not load skills.",
     "menu": {
+      "create": "Create from scratch",
       "fromFile": "Import from file",
       "fromUrl": "Import from URL",
       "community": "Search community skills…"
     },
+    "defaultName": "New Skill",
     "empty": {
       "title": "No skills yet",
-      "body": "Import a skill from a file, a URL, or the community catalog.",
+      "body": "Create a skill from scratch or import one from a file.",
       "cta": "Import from file"
     },
     "selectPrompt": {
@@ -32,13 +34,27 @@
   },
   "drawer": {
     "title": "Add a skill",
-    "subtitle": "Import from a file, a URL, or search vetted community skills",
+    "subtitle": "Import a .md or .zip file — you'll see the full body before it's saved.",
     "tabs": {
       "file": "From file",
       "url": "From URL",
       "community": "Community"
     },
-    "importFailed": "Import failed"
+    "importFailed": "Import failed",
+    "chooseFile": "Choose a .md or .zip file…",
+    "chosenFile": "Selected: {name}",
+    "previewing": "Reading file…",
+    "previewTitle": "Preview",
+    "nameLabel": "Name",
+    "descriptionLabel": "Description",
+    "typeLabel": "Type",
+    "ignoredEntries": "Not processed (ignored)",
+    "warnings": "Warnings",
+    "untrustedNotice": "This body is inserted into the trusted part of the agent's prompt without being wrapped as untrusted data. Read it fully before confirming.",
+    "cancel": "Cancel",
+    "confirm": "Add skill",
+    "confirming": "Adding…",
+    "importedToast": "Imported \"{name}\" as an untrusted-origin skill."
   },
   "file": {
     "nameLabel": "Skill name",
@@ -84,8 +100,10 @@
       "manual": "Manual",
       "extracted": "Extracted",
       "community": "Community",
-      "imported_url": "Imported"
-    }
+      "imported_url": "Imported",
+      "imported_file": "Imported"
+    },
+    "agentCount": "{count, plural, one {# agent} other {# agents}}"
   },
   "preview": {
     "untrustedBadge": "untrusted source",
@@ -97,5 +115,60 @@
     "bodyLabel": "Skill body (Markdown)",
     "bodyHint": "Saving a changed body creates a new immutable version.",
     "version": "v{version}"
+  },
+  "tabs": {
+    "config": "Config",
+    "preview": "Preview",
+    "stats": "Stats",
+    "versions": "Versions"
+  },
+  "config": {
+    "title": "Configuration",
+    "enabled": "Enabled",
+    "name": "Name",
+    "description": "Description",
+    "descriptionHint": "The description IS the skill's interface — the agent reads it to decide when this skill applies to a review.",
+    "type": "Type",
+    "typeOptions": {
+      "rubric": "Rubric",
+      "convention": "Convention",
+      "security": "Security",
+      "custom": "Custom"
+    },
+    "version": "v{version}",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved (v{version})",
+    "savedToast": "Skill saved (v{version})"
+  },
+  "bodyEditor": {
+    "unsaved": "unsaved",
+    "tokens": "{count, plural, one {# token} other {# tokens}}",
+    "countingTokens": "counting…"
+  },
+  "previewTab": {
+    "caption": "Rendered as the reviewing agent receives it.",
+    "empty": "Nothing to preview yet — add a body in Config.",
+    "untrustedNotice": "This skill was imported from a file and is rendered as-is — vet its body before enabling it for an agent."
+  },
+  "stats": {
+    "usedBy": "USED BY",
+    "versions": "VERSIONS",
+    "bodyTokens": "BODY TOKENS",
+    "source": "SOURCE",
+    "agentsUsing": "Agents using this skill",
+    "noAgents": "No agents use this skill yet.",
+    "open": "Open"
+  },
+  "versionsTab": {
+    "count": "{count, plural, one {# version} other {# versions}}",
+    "caption": "Every save of the body snapshots a new version. Editing name, description, type or enabled does not.",
+    "current": "Current",
+    "diff": "Diff",
+    "restore": "Restore",
+    "restoring": "Restoring…",
+    "restoreConfirm": "Restore v{version}? This creates a new version with v{version}'s body — the history is kept.",
+    "diffModalTitle": "v{version} → current",
+    "diffEmpty": "No differences."
   }
 }
