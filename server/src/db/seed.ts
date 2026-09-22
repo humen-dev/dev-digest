@@ -7,7 +7,70 @@ import {
   GENERAL_REVIEWER_PROMPT,
   SECURITY_REVIEWER_PROMPT,
   PERFORMANCE_REVIEWER_PROMPT,
+  TEST_QUALITY_REVIEWER_PROMPT,
 } from './seed-prompts.js';
+
+/**
+ * Bodies for the three skills seeded onto the Test Quality Reviewer (L02
+ * "Skills" feature). Kept here rather than in `seed-prompts.ts` because they
+ * are skill bodies, not agent system prompts — nothing outside this file
+ * mirrors them (unlike the reviewer prompts, which have human-readable
+ * originals under `docs/agent-prompts/`).
+ *
+ * A fourth skill, `flaky-test-patterns`, is deliberately NOT seeded here — it
+ * exists only as an import-demo fixture under `docs/skill-fixtures/` so the
+ * import-preview flow has something live to import during the demo.
+ */
+const UNCOVERED_BRANCH_GATE_SKILL = `## Branch coverage gate
+
+Every new or changed branch introduced by this diff — an \`if\`/\`else\` arm, a
+\`catch\` block, an early \`return\`, a \`switch\`/\`case\`, or a ternary's untaken
+side — must be exercised by at least one test in the diff.
+
+For each branch that has NO test reaching it:
+- Flag it as a finding citing the branch's exact \`file:line\`.
+- State which branch is untested (e.g. "the \`expedited === true\` arm of
+  \`refundFee\` at \`src/services/refundFees.ts:6\` has no test").
+- Severity is at least WARNING; use CRITICAL when the untested branch changes
+  the function's return value or triggers an external effect (write, network
+  call, thrown error).
+
+Do not flag branches that existed before this diff and were not touched.`;
+
+const CORNER_CASE_CHECKLIST_SKILL = `## Corner-case checklist
+
+For every new or changed function in the diff, check whether its tests cover
+the inputs that most often hide bugs. Walk this checklist and flag any item
+that plausibly applies to the changed function but has no test:
+
+- Empty input (empty string, empty array/object, empty collection).
+- Zero and negative numbers, where the domain allows them.
+- The boundary values of any range or limit the code checks (\`>=\` vs \`>\`, the
+  first/last page, the max array length).
+- Unicode / non-ASCII text where the code parses, slices, or compares strings.
+- Timezone and DST edges where the code handles dates or timestamps.
+- Concurrency: two callers racing on the same resource, where the code is not
+  obviously single-threaded-safe.
+
+Only flag items that are plausible for the specific function under review —
+do not list the whole checklist against every diff. Cite the missing case and
+the function's \`file:line\`.`;
+
+const MOCK_OVERUSE_GATE_SKILL = `## Mock overuse gate
+
+Flag a test as a finding when it does either of the following:
+
+- **Mocks the unit under test.** The test replaces the very function, method,
+  or module the PR is supposed to verify with a mock/stub/spy, so the test
+  exercises the mock's behaviour instead of the real implementation.
+- **Asserts on the mock instead of on behaviour.** The test's assertions check
+  that a mock was called with certain arguments (\`toHaveBeenCalledWith\`, spy
+  call counts) but never check the resulting output, state, or side effect the
+  caller actually depends on.
+
+A legitimate mock of a genuine external boundary (network, filesystem, clock,
+a different module entirely) is fine and should not be flagged. Cite the
+offending test's \`file:line\` and name which of the two patterns applies.`;
 
 /** Default provider/model for the built-in reviewer agents. */
 const DEFAULT_PROVIDER = 'openrouter' as const;
@@ -19,11 +82,18 @@ const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash';
  *
  * Seeds: default workspace + system user + membership, default settings,
  * demo repo (acme/payments-api), PR #482 with files/commits, a sample review
- * with a few findings, and the three built-in agents (General + Security +
- * Performance), all on the default openrouter/deepseek-v4-flash provider+model.
+ * with a few findings, PR #483 (a control-experiment fixture for the Test
+ * Quality Reviewer — see below), and the four built-in agents (General +
+ * Security + Performance + Test Quality), all on the default
+ * openrouter/deepseek-v4-flash provider+model.
  *
- * Course lessons populate the other tables (skills, conventions, memory, eval,
- * …) once their features are built — they start empty here.
+ * L02 ("Skills"): the Test Quality Reviewer agent gets three skills linked in
+ * order (`uncovered-branch-gate`, `corner-case-checklist`, `mock-overuse-gate`).
+ * A fourth skill, `flaky-test-patterns`, is intentionally NOT seeded — it lives
+ * as an import-demo fixture under `docs/skill-fixtures/` instead.
+ *
+ * Course lessons populate the other tables (conventions, memory, eval, …) once
+ * their features are built — they start empty here.
  */
 
 export const DEFAULT_WORKSPACE_NAME = 'default';
@@ -176,7 +246,86 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     ]);
   }
 
-  // ---- built-in agents (the three starter presets) ----
+  // ---- PR #483 (control-experiment fixture for the Test Quality Reviewer) --
+  // Adds `refundFee()` with two branches (expedited / not) but a test that
+  // covers ONLY the happy (non-expedited) path — no branch/edge-case test.
+  // Expected A/B result (run manually, not asserted here): with the three
+  // skills below disabled, Test Quality Reviewer has nothing to flag about
+  // coverage; with them enabled, it flags the untested `expedited` branch
+  // plus a missing edge case (e.g. amountCents <= 0). Toggling is done via
+  // the skill's `enabled` flag — the agent's system prompt never changes —
+  // so the experiment isolates the skills' effect. See
+  // docs/agent-prompts/test-quality-reviewer.md.
+  let [refundFeePr] = await db
+    .select()
+    .from(t.pullRequests)
+    .where(and(eq(t.pullRequests.repoId, repoId), eq(t.pullRequests.number, 483)));
+  if (!refundFeePr) {
+    [refundFeePr] = await db
+      .insert(t.pullRequests)
+      .values({
+        workspaceId,
+        repoId,
+        number: 483,
+        title: 'Add refund fee calculation for expedited refunds',
+        author: 'dana.oyelaran',
+        branch: 'feat/refund-fee-expedited',
+        base: 'main',
+        headSha: 'f7e6d5c4b3a2',
+        additions: 13,
+        deletions: 0,
+        filesCount: 2,
+        status: 'needs_review',
+        body: 'Adds refundFee() with an expedited-refund surcharge branch.',
+      })
+      .returning();
+
+    await db.insert(t.prFiles).values([
+      {
+        prId: refundFeePr!.id,
+        path: 'src/services/refundFees.ts',
+        additions: 7,
+        deletions: 0,
+        patch: `@@ -1,3 +1,10 @@
+ export function baseFee(amountCents: number): number {
+   return Math.round(amountCents * 0.01);
+ }
++
++export function refundFee(amountCents: number, expedited: boolean): number {
++  if (expedited) {
++    return Math.round(amountCents * 0.05);
++  }
++  return Math.round(amountCents * 0.02);
++}`,
+      },
+      {
+        prId: refundFeePr!.id,
+        path: 'src/services/refundFees.test.ts',
+        additions: 6,
+        deletions: 0,
+        patch: `@@ -6,4 +6,10 @@
+   it('computes the 1% base fee', () => {
+     expect(baseFee(10000)).toBe(100);
+   });
+ });
++
++describe('refundFee', () => {
++  it('computes the standard 2% fee for a non-expedited refund', () => {
++    expect(refundFee(10000, false)).toBe(200);
++  });
++});`,
+      },
+    ]);
+
+    await db.insert(t.prCommits).values({
+      prId: refundFeePr!.id,
+      sha: 'f7e6d5c4b3a2',
+      message: 'Add refundFee() with expedited surcharge',
+      author: 'dana.oyelaran',
+    });
+  }
+
+  // ---- built-in agents (the four starter presets) ----
   // Prompt bodies live in ./seed-prompts.ts (mirrored in docs/agent-prompts/*.md).
   const seedAgents: Array<typeof t.agents.$inferInsert> = [
     {
@@ -212,6 +361,17 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       version: 1,
       createdBy: userId,
     },
+    {
+      workspaceId,
+      name: 'Test Quality Reviewer',
+      description: 'Judges whether the diff\'s tests adequately cover the diff\'s code.',
+      provider: DEFAULT_PROVIDER,
+      model: DEFAULT_MODEL,
+      systemPrompt: TEST_QUALITY_REVIEWER_PROMPT,
+      enabled: true,
+      version: 1,
+      createdBy: userId,
+    },
   ];
   for (const a of seedAgents) {
     const [existing] = await db
@@ -219,6 +379,80 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       .from(t.agents)
       .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, a.name)));
     if (!existing) await db.insert(t.agents).values(a);
+  }
+
+  // ---- Test Quality Reviewer skills (L02 "Skills" feature) -----------------
+  // Three skills linked to the agent in this order. Only the `body` on a
+  // fresh `skills` row also seeds `skill_versions` v1 — matches the "editing
+  // the body bumps the version" contract the skills module owns.
+  const [testQualityAgent] = await db
+    .select({ id: t.agents.id })
+    .from(t.agents)
+    .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, 'Test Quality Reviewer')));
+
+  if (testQualityAgent) {
+    const seedSkills: Array<typeof t.skills.$inferInsert> = [
+      {
+        workspaceId,
+        name: 'uncovered-branch-gate',
+        description:
+          'Require a test for every new branch (if/else, catch, early return) introduced in the diff.',
+        type: 'rubric',
+        source: 'manual',
+        body: UNCOVERED_BRANCH_GATE_SKILL,
+        enabled: true,
+        version: 1,
+      },
+      {
+        workspaceId,
+        name: 'corner-case-checklist',
+        description:
+          'Check new/changed functions against commonly-missed edge cases (empty, zero, negative, boundary, Unicode, timezone, concurrency).',
+        type: 'rubric',
+        source: 'manual',
+        body: CORNER_CASE_CHECKLIST_SKILL,
+        enabled: true,
+        version: 1,
+      },
+      {
+        // The one skill seeded with source 'extracted': it plausibly comes
+        // from the team's existing test-review conventions rather than being
+        // hand-authored for this workspace — so the badge in the skills list
+        // shows all four `source` values across the seed data.
+        workspaceId,
+        name: 'mock-overuse-gate',
+        description:
+          'Flag tests that mock the unit under test or assert on mock calls instead of real behaviour.',
+        type: 'convention',
+        source: 'extracted',
+        body: MOCK_OVERUSE_GATE_SKILL,
+        enabled: true,
+        version: 1,
+      },
+    ];
+
+    for (let order = 0; order < seedSkills.length; order++) {
+      const s = seedSkills[order]!;
+      let [existingSkill] = await db
+        .select({ id: t.skills.id })
+        .from(t.skills)
+        .where(and(eq(t.skills.workspaceId, workspaceId), eq(t.skills.name, s.name)));
+      if (!existingSkill) {
+        [existingSkill] = await db.insert(t.skills).values(s).returning({ id: t.skills.id });
+        await db.insert(t.skillVersions).values({
+          skillId: existingSkill!.id,
+          version: 1,
+          body: s.body,
+        });
+      }
+      await db
+        .insert(t.agentSkills)
+        .values({ agentId: testQualityAgent.id, skillId: existingSkill!.id, order })
+        .onConflictDoUpdate({
+          target: [t.agentSkills.agentId, t.agentSkills.skillId],
+          set: { order },
+        });
+    }
   }
 
   // ---- demo agent_runs for PR #482 (so cost/tokens show in the UI) ----
