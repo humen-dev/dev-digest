@@ -3,9 +3,10 @@
   "description": "Opens the seeded uncovered-branch-gate skill, switches to its Versions tab, and confirms the v1 snapshot created at seed time renders as the current version. Exercises GET /skills/:id/versions.",
   "steps": [
     { "cmd": ["open", "{BASE}/skills"], "label": "load the skills index" },
-    { "cmd": ["wait", "--url", "/skills/"], "label": "redirected to a skill's detail route" },
     { "cmd": ["wait", "--load", "networkidle"], "label": "skills fetch settles" },
+    { "cmd": ["wait", "--text", "uncovered-branch-gate"], "label": "seeded skill is listed in the grid" },
     { "cmd": ["find", "text", "uncovered-branch-gate", "click"], "label": "open uncovered-branch-gate" },
+    { "cmd": ["wait", "--url", "/skills/"], "label": "navigated to the skill detail route" },
     { "cmd": ["find", "text", "Versions", "click"], "label": "switch to the Versions tab" },
     { "cmd": ["wait", "--url", "tab=versions"], "label": "versions tab is active in the URL" },
     { "cmd": ["wait", "--load", "networkidle"], "label": "version history fetch settles" },

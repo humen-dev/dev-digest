@@ -61,7 +61,13 @@ export default function SkillEditorPage() {
             background: "var(--bg-surface)",
           }}
         >
-          <SkillsListColumn activeId={id} onSelect={(skId) => router.push(`/skills/${skId}?tab=${tab}`)} />
+          <SkillsListColumn
+            activeId={id}
+            onSelect={(skId) => router.push(`/skills/${skId}?tab=${tab}`)}
+            onDeleted={(skId) => {
+              if (skId === id) router.replace("/skills");
+            }}
+          />
         </div>
 
         {isLoading || !skill ? (

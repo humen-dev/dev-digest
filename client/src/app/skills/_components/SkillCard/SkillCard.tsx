@@ -1,11 +1,13 @@
-/* SkillCard — mono name, enabled toggle, description, type badge, source badge
-   (an extra "Imported" badge for imported_file — untrusted origin), agent count. */
+/* SkillCard — mono name, enabled toggle, delete, description, type badge, source
+   badge (an extra "Imported" badge for imported_file — untrusted origin), agent
+   count. */
 "use client";
 
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Icon, Badge, Toggle } from "@devdigest/ui";
 import type { Skill } from "@devdigest/shared";
+import { useDeleteSkill } from "../../../../lib/hooks/skills";
 import { s } from "./styles";
 
 export function SkillCard({
@@ -13,13 +15,16 @@ export function SkillCard({
   active,
   onClick,
   onToggle,
+  onDeleted,
 }: {
   skill: Skill;
   active?: boolean;
   onClick?: () => void;
   onToggle?: (enabled: boolean) => void;
+  onDeleted?: () => void;
 }) {
   const t = useTranslations("skills");
+  const del = useDeleteSkill();
   const isImported = skill.source === "imported_file";
   return (
     <div onClick={onClick} style={s.card(!!active, skill.enabled)}>
@@ -35,6 +40,19 @@ export function SkillCard({
             <Toggle on={skill.enabled} onChange={onToggle} size={14} />
           </div>
         )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (window.confirm(t("listItem.deleteConfirm", { name: skill.name })))
+              del.mutate(skill.id, { onSuccess: () => onDeleted?.() });
+          }}
+          disabled={del.isPending}
+          title={t("listItem.delete")}
+          aria-label={t("listItem.delete")}
+          style={s.deleteBtn(del.isPending)}
+        >
+          <Icon.Trash size={14} style={del.isPending ? s.deleteSpinner : undefined} />
+        </button>
       </div>
       <div style={s.description}>{skill.description}</div>
       <div style={s.metaRow}>

@@ -1,14 +1,19 @@
 {
-  "name": "Skills list renders the seeded skills and opens a skill's Config tab",
-  "description": "Loads /skills, confirms the redirect to a skill detail and that all three seeded Test Quality Reviewer skills are listed in the rail, then opens corner-case-checklist and confirms its Config tab (name/description/type) renders — including the description-is-the-interface hint that only exists on this tab.",
+  "name": "Skills list renders the seeded skills as a grid and opens a skill's Config tab",
+  "description": "Loads /skills, confirms it stays on the index (no redirect to the first skill) and that all three seeded Test Quality Reviewer skills are listed in the grid, then opens corner-case-checklist and confirms the detail route plus its Config tab (name/description/type) renders — including the description-is-the-interface hint that only exists on this tab.",
   "steps": [
     { "cmd": ["open", "{BASE}/skills"], "label": "load the skills index" },
-    { "cmd": ["wait", "--url", "/skills/"], "label": "redirected to a skill's detail route" },
+    { "cmd": ["wait", "--url", "/skills"], "label": "skills route reached" },
     { "cmd": ["wait", "--load", "networkidle"], "label": "skills fetch settles" },
-    { "cmd": ["wait", "--text", "uncovered-branch-gate"], "label": "seeded skill 1 is listed in the rail" },
-    { "cmd": ["wait", "--text", "corner-case-checklist"], "label": "seeded skill 2 is listed in the rail" },
-    { "cmd": ["wait", "--text", "mock-overuse-gate"], "label": "seeded skill 3 is listed in the rail" },
+    {
+      "cmd": ["wait", "--text", "Reusable review rules. Each = a body the agent reads, plus the agents it is linked to."],
+      "label": "the list view (not a skill detail) is rendered"
+    },
+    { "cmd": ["wait", "--text", "uncovered-branch-gate"], "label": "seeded skill 1 is listed in the grid" },
+    { "cmd": ["wait", "--text", "corner-case-checklist"], "label": "seeded skill 2 is listed in the grid" },
+    { "cmd": ["wait", "--text", "mock-overuse-gate"], "label": "seeded skill 3 is listed in the grid" },
     { "cmd": ["find", "text", "corner-case-checklist", "click"], "label": "open corner-case-checklist" },
+    { "cmd": ["wait", "--url", "/skills/"], "label": "navigated to the skill detail route" },
     { "cmd": ["wait", "--text", "corner-case-checklist"], "label": "editor header shows the selected skill" },
     { "cmd": ["wait", "--text", "The description IS the skill's interface — the agent reads it to decide when this skill applies to a review."], "label": "Config tab's description hint renders" }
   ]

@@ -3,6 +3,7 @@
     "crumbLab": "Skills Lab",
     "crumbSkills": "Skills",
     "heading": "Skills",
+    "subtitle": "Reusable review rules. Each = a body the agent reads, plus the agents it is linked to.",
     "addSkill": "Add Skill",
     "searchPlaceholder": "Search skills…",
     "loadError": "Could not load skills.",
@@ -90,6 +91,8 @@
   "listItem": {
     "needsVetting": "needs vetting",
     "vettingTitle": "Untrusted source — vet before enabling",
+    "delete": "Delete skill",
+    "deleteConfirm": "Delete skill \"{name}\"? This cannot be undone.",
     "type": {
       "rubric": "rubric",
       "convention": "convention",

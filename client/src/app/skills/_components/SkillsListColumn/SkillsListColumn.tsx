@@ -16,9 +16,11 @@ import { s } from "./styles";
 export function SkillsListColumn({
   activeId,
   onSelect,
+  onDeleted,
 }: {
   activeId: string | null;
   onSelect: (id: string) => void;
+  onDeleted?: (id: string) => void;
 }) {
   const t = useTranslations("skills");
   const { data: skills, isLoading, isError, refetch } = useSkills();
@@ -91,6 +93,7 @@ export function SkillsListColumn({
             active={sk.id === activeId}
             onClick={() => onSelect(sk.id)}
             onToggle={(enabled) => update.mutate({ id: sk.id, patch: { enabled } })}
+            onDeleted={() => onDeleted?.(sk.id)}
           />
         ))}
       </div>

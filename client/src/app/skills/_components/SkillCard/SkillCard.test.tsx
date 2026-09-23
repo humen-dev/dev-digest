@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Skill } from "@devdigest/shared";
 import messages from "../../../../../messages/en/skills.json";
 import { SkillCard } from "./SkillCard";
@@ -22,7 +23,14 @@ const SKILL: Skill = {
 };
 
 function renderWithIntl(ui: React.ReactElement) {
-  return render(<NextIntlClientProvider locale="en" messages={{ skills: messages }}>{ui}</NextIntlClientProvider>);
+  const qc = new QueryClient();
+  return render(
+    <QueryClientProvider client={qc}>
+      <NextIntlClientProvider locale="en" messages={{ skills: messages }}>
+        {ui}
+      </NextIntlClientProvider>
+    </QueryClientProvider>,
+  );
 }
 
 describe("SkillCard (smoke)", () => {
@@ -46,5 +54,17 @@ describe("SkillCard (smoke)", () => {
     screen.getByRole("switch").click();
     expect(onToggle).toHaveBeenCalledWith(false);
     expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("asks for confirmation before deleting and never opens the skill", () => {
+    const onClick = vi.fn();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderWithIntl(<SkillCard skill={SKILL} onClick={onClick} />);
+
+    screen.getByRole("button", { name: "Delete skill" }).click();
+
+    expect(confirm).toHaveBeenCalledWith('Delete skill "uncovered-branch-gate"? This cannot be undone.');
+    expect(onClick).not.toHaveBeenCalled();
+    confirm.mockRestore();
   });
 });
