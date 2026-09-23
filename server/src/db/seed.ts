@@ -92,8 +92,11 @@ const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash';
  * A fourth skill, `flaky-test-patterns`, is intentionally NOT seeded — it lives
  * as an import-demo fixture under `docs/skill-fixtures/` instead.
  *
- * Course lessons populate the other tables (conventions, memory, eval, …) once
- * their features are built — they start empty here.
+ * L02 ("Conventions"): payments-api gets three accepted conventions + one past
+ * scan row, so the Conventions board renders without a clone.
+ *
+ * Course lessons populate the other tables (memory, eval, …) once their
+ * features are built — they start empty here.
  */
 
 export const DEFAULT_WORKSPACE_NAME = 'default';
@@ -584,6 +587,88 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
         },
       });
     }
+  }
+
+  // ---- L02 conventions board for payments-api (so the page + e2e have data) ----
+  // Idempotent: only when this repo has no conventions yet. payments-api has no
+  // clone, so these stand in for a past scan; a real Run Scan needs a cloned repo.
+  const existingConventions = await db
+    .select({ id: t.conventions.id })
+    .from(t.conventions)
+    .where(eq(t.conventions.repoId, repoId));
+  if (existingConventions.length === 0) {
+    const scannedAt = new Date(Date.now() - 60 * 60 * 1000);
+    await db.insert(t.conventions).values([
+      {
+        workspaceId,
+        repoId,
+        rule: 'Always use async/await instead of .then() chains',
+        rationale: 'Flag new .then()/.catch() promise chains in application code.',
+        category: 'style',
+        evidencePath: 'src/api/users.ts',
+        evidenceLine: 23,
+        evidenceSnippet: 'const user = await db.users.find(id);\nconst posts = await db.posts.findMany({ userId });',
+        occurrences: 42,
+        confidence: 0.91,
+        status: 'accepted',
+        createdAt: scannedAt,
+      },
+      {
+        workspaceId,
+        repoId,
+        rule: 'All public route handlers return typed Result<T, ApiError>',
+        rationale: 'Flag public handlers that throw or return bare values instead of ok()/err().',
+        category: 'api',
+        evidencePath: 'src/api/public/index.ts',
+        evidenceLine: 14,
+        evidenceSnippet: 'function handler(): Result<Item[], ApiError> {\n  return ok(items);\n}',
+        occurrences: 7,
+        confidence: 0.78,
+        status: 'accepted',
+        createdAt: scannedAt,
+      },
+      {
+        workspaceId,
+        repoId,
+        rule: 'Redis access goes through src/lib/redis.ts singleton',
+        rationale: 'Flag new Redis(...) clients created outside src/lib/redis.ts.',
+        category: 'data_access',
+        evidencePath: 'src/lib/redis.ts',
+        evidenceLine: 1,
+        evidenceSnippet: 'export const redis = new Redis(config.redisUrl);',
+        occurrences: 12,
+        confidence: 0.85,
+        status: 'accepted',
+        createdAt: scannedAt,
+      },
+    ]);
+    await db.insert(t.conventionScans).values({
+      workspaceId,
+      repoId,
+      sampledFiles: [
+        'package.json',
+        'tsconfig.json',
+        '.eslintrc.json',
+        'src/api/users.ts',
+        'src/api/public/index.ts',
+        'src/api/public/webhooks.ts',
+        'src/lib/redis.ts',
+        'src/config.ts',
+        'src/middleware/ratelimit.ts',
+        'src/services/refundFees.ts',
+        'src/services/refundFees.test.ts',
+      ],
+      proposed: 5,
+      droppedUngrounded: 1,
+      droppedDuplicate: 0,
+      droppedRare: 1,
+      kept: 3,
+      model: 'deepseek/deepseek-v4-flash',
+      apiCostUsd: 0.0011,
+      headSha: null,
+      durationMs: 41_000,
+      createdAt: scannedAt,
+    });
   }
 
   return { workspaceId, userId };
