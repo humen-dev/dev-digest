@@ -49,7 +49,10 @@ export function useCreateSkill() {
 
 export interface UpdateSkillInput {
   id: string;
-  patch: Partial<Pick<Skill, "name" | "description" | "type" | "body" | "enabled">>;
+  patch: Partial<Pick<Skill, "name" | "description" | "type" | "body" | "enabled">> & {
+    /** Note attached to the version this save snapshots; ignored unless `body` changed. */
+    version_message?: string | null;
+  };
 }
 
 export function useUpdateSkill() {

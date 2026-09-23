@@ -139,10 +139,22 @@
       "custom": "Custom"
     },
     "version": "v{version}",
-    "save": "Save",
+    "bodyHint": "The only text sent to the model. Editing the body is the entire skill — everything else is metadata.",
+    "versionMessage": "Version message (optional)",
+    "versionMessagePlaceholder": "Tightened scope rule…",
+    "versionMessageHint": "What changed in this version?",
+    "save": "Save skill",
     "saving": "Saving…",
+    "cancel": "Cancel",
     "saved": "Saved (v{version})",
-    "savedToast": "Skill saved (v{version})"
+    "savedToast": "Skill saved (v{version})",
+    "snapshotAs": "Saving snapshots the body as",
+    "danger": {
+      "title": "Delete skill",
+      "body": "Removes it from all agents. This can't be undone.",
+      "delete": "Delete",
+      "deleting": "Deleting…"
+    }
   },
   "bodyEditor": {
     "unsaved": "unsaved",

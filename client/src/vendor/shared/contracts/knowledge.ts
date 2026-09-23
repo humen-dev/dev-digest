@@ -144,6 +144,8 @@ export const SkillVersion = z.object({
   skill_id: z.string(),
   version: z.number().int(),
   body: z.string(),
+  /** Optional author note describing what changed — null for versions saved without one. */
+  message: z.string().nullish(),
   created_at: z.string(),
 });
 export type SkillVersion = z.infer<typeof SkillVersion>;
