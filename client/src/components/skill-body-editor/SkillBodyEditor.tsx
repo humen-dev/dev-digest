@@ -16,7 +16,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Icon, Badge } from "@devdigest/ui";
-import { useSkillTokens } from "../../../../../../../../../lib/hooks/skills";
+import { useSkillTokens } from "@/lib/hooks/skills";
 import { tokenizeMarkdown } from "./helpers";
 import { s, tokenStyle } from "./styles";
 

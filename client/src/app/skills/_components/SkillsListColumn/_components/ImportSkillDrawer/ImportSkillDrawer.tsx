@@ -15,10 +15,10 @@ import type { SkillImportPreview, SkillType } from "@devdigest/shared";
 import { useCreateSkill, useImportSkillPreview } from "../../../../../../lib/hooks/skills";
 import { ApiError } from "../../../../../../lib/api";
 import { useToast } from "../../../../../../lib/toast";
+import { SKILL_TYPE_OPTIONS } from "@/lib/skill-types";
 import { fileToBase64 } from "./helpers";
 import { s } from "./styles";
 
-const TYPE_OPTIONS: SkillType[] = ["rubric", "convention", "security", "custom"];
 
 export function ImportSkillDrawer({
   onClose,
@@ -112,7 +112,7 @@ export function ImportSkillDrawer({
             <SelectInput
               value={type}
               onChange={(v) => setType(v as SkillType)}
-              options={TYPE_OPTIONS.map((v) => ({ value: v, label: t(`config.typeOptions.${v}`) }))}
+              options={SKILL_TYPE_OPTIONS.map((v) => ({ value: v, label: t(`config.typeOptions.${v}`) }))}
             />
           </FormField>
           <FormField label={t("file.bodyLabel")}>

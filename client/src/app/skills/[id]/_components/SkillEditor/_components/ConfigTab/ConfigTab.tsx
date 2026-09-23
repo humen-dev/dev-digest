@@ -7,8 +7,8 @@ import { FormField, TextInput, SelectInput, Toggle, Button } from "@devdigest/ui
 import type { Skill, SkillType } from "@devdigest/shared";
 import { useDeleteSkill, useUpdateSkill } from "../../../../../../../lib/hooks/skills";
 import { useToast } from "../../../../../../../lib/toast";
-import { SkillBodyEditor } from "./_components/SkillBodyEditor";
-import { TYPE_OPTIONS } from "./constants";
+import { SkillBodyEditor } from "@/components/skill-body-editor";
+import { SKILL_TYPE_OPTIONS } from "@/lib/skill-types";
 import { s } from "./styles";
 
 /** Config tab — name/description/type/enabled + the SkillBodyEditor + Save,
@@ -44,7 +44,7 @@ export function ConfigTab({ skill }: { skill: Skill }) {
     reset();
   }, [skill.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const typeOptions = TYPE_OPTIONS.map((v) => ({ value: v, label: t(`config.typeOptions.${v}`) }));
+  const typeOptions = SKILL_TYPE_OPTIONS.map((v) => ({ value: v, label: t(`config.typeOptions.${v}`) }));
 
   const bodyChanged = body !== skill.body;
   const dirty =

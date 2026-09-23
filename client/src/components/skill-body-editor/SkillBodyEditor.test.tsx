@@ -1,10 +1,10 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
-import messages from "../../../../../../../../../../messages/en/skills.json";
+import messages from "../../../messages/en/skills.json";
 
 const mutate = vi.fn();
-vi.mock("../../../../../../../../../lib/hooks/skills", () => ({
+vi.mock("@/lib/hooks/skills", () => ({
   useSkillTokens: () => ({ mutate, isPending: false }),
 }));
 
