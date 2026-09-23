@@ -18,6 +18,9 @@ export const s = {
   } satisfies CSSProperties,
   bannerIcon: { color: "var(--accent)", flexShrink: 0, marginTop: 2 } satisfies CSSProperties,
   bannerRepo: { color: "var(--accent-text)" } satisfies CSSProperties,
+  row: { display: "flex", gap: 20, alignItems: "flex-start" } satisfies CSSProperties,
+  typeCol: { flex: 1, minWidth: 0 } satisfies CSSProperties,
+  enabledCol: { flex: 1, minWidth: 0 } satisfies CSSProperties,
   footer: { display: "flex", alignItems: "center", gap: 10 } satisfies CSSProperties,
   footerNote: {
     flex: 1,

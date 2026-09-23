@@ -3,12 +3,17 @@ import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/re
 import { NextIntlClientProvider } from "next-intl";
 import type { ConventionSkillDraft } from "@devdigest/shared";
 import messages from "../../../../../../../messages/en/conventions.json";
+import skillsMessages from "../../../../../../../messages/en/skills.json";
 
 const push = vi.fn();
 const createSkill = vi.fn();
 let draft: ConventionSkillDraft | undefined;
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
+vi.mock("@/lib/hooks/skills", () => ({
+  useSkillTokens: () => ({ mutate: vi.fn() }),
+}));
 
 vi.mock("@/lib/hooks/agents", () => ({
   useAgents: () => ({ data: [{ id: "ag1", name: "Backend Reviewer" }] }),
@@ -33,10 +38,11 @@ const DRAFT: ConventionSkillDraft = {
 };
 
 const onClose = vi.fn();
+const bodyBox = () => document.querySelector("textarea") as HTMLTextAreaElement;
 
 function renderModal() {
   render(
-    <NextIntlClientProvider locale="en" messages={{ conventions: messages }}>
+    <NextIntlClientProvider locale="en" messages={{ conventions: messages, skills: skillsMessages }}>
       <CreateSkillFromConventionsModal repoId="r1" repoName="payments-api" onClose={onClose} />
     </NextIntlClientProvider>,
   );
@@ -59,7 +65,8 @@ describe("CreateSkillFromConventionsModal", () => {
     expect(screen.getByDisplayValue(DRAFT.name)).toBeInTheDocument();
     expect(screen.getByDisplayValue(DRAFT.description)).toBeInTheDocument();
     expect(screen.getByText("Saved as v1 · added to Skills Lab")).toBeInTheDocument();
-    expect(screen.queryByLabelText("body")).not.toBeInTheDocument();
+    expect(bodyBox().value).toBe(DRAFT.body);
+    expect(screen.getByText("Whether this block is added to agents' prompts.")).toBeInTheDocument();
   });
 
   it("waits for the draft before rendering the form", () => {
@@ -75,9 +82,16 @@ describe("CreateSkillFromConventionsModal", () => {
     expect(screen.getByText("Create skill").closest("button")).toBeDisabled();
   });
 
+  it("disables Create skill when the body is emptied", () => {
+    renderModal();
+    fireEvent.change(bodyBox(), { target: { value: "" } });
+    expect(screen.getByText("Create skill").closest("button")).toBeDisabled();
+  });
+
   it("creates the skill from the edited draft and opens it", async () => {
     renderModal();
     fireEvent.change(screen.getByDisplayValue(DRAFT.name), { target: { value: "house-rules" } });
+    fireEvent.change(bodyBox(), { target: { value: "# edited body" } });
     fireEvent.click(screen.getByText("Create skill"));
 
     await waitFor(() =>
@@ -86,7 +100,7 @@ describe("CreateSkillFromConventionsModal", () => {
         description: DRAFT.description,
         type: "convention",
         enabled: true,
-        body: DRAFT.body,
+        body: "# edited body",
         convention_ids: DRAFT.convention_ids,
         agent_id: "ag1",
       }),

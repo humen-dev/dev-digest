@@ -1,13 +1,16 @@
-/* CreateSkillFromConventionsModal — the compact confirm step from the
-   conventions board: a banner, the assembled name and description, then
-   Cancel / Create. The body, type and enabled flag stay the server draft
-   (edited later on the skill). The new skill is appended to the first agent. */
+/* CreateSkillFromConventionsModal — "Create skill from conventions". Everything
+   is prefilled from the server draft and editable before saving: name,
+   description, type, enabled and the markdown body. The new skill is appended
+   to the first agent (criterion 42); further linking is on the agent's Skills tab. */
 "use client";
 
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button, ErrorState, FormField, Icon, Modal, TextInput } from "@devdigest/ui";
+import { Button, ErrorState, FormField, Icon, Modal, SelectInput, TextInput, Toggle } from "@devdigest/ui";
+import type { SkillType } from "@devdigest/shared";
+import { SkillBodyEditor } from "@/components/skill-body-editor";
+import { SKILL_TYPE_OPTIONS } from "@/lib/skill-types";
 import { useAgents } from "@/lib/hooks/agents";
 import { useConventionSkillDraft, useCreateSkillFromConventions } from "@/lib/hooks/conventions";
 import { CREATE_SKILL_MODAL_WIDTH } from "../../constants";
@@ -23,17 +26,24 @@ export function CreateSkillFromConventionsModal({
   onClose: () => void;
 }) {
   const t = useTranslations("conventions");
+  const ts = useTranslations("skills");
   const router = useRouter();
   const { data: draft, isLoading, isError, refetch } = useConventionSkillDraft(repoId, true);
   const create = useCreateSkillFromConventions(repoId);
   const { data: agents } = useAgents();
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
+  const [type, setType] = React.useState<SkillType>("convention");
+  const [enabled, setEnabled] = React.useState(true);
+  const [body, setBody] = React.useState("");
 
   React.useEffect(() => {
     if (!draft) return;
     setName(draft.name);
     setDescription(draft.description);
+    setType(draft.type);
+    setEnabled(draft.enabled);
+    setBody(draft.body);
   }, [draft]);
 
   const submit = async () => {
@@ -42,9 +52,9 @@ export function CreateSkillFromConventionsModal({
     const skill = await create.mutateAsync({
       name: name.trim(),
       description,
-      type: draft.type,
-      enabled: draft.enabled,
-      body: draft.body,
+      type,
+      enabled,
+      body,
       convention_ids: draft.convention_ids,
       ...(agentId ? { agent_id: agentId } : {}),
     });
@@ -52,12 +62,13 @@ export function CreateSkillFromConventionsModal({
     router.push(`/skills/${skill.id}?tab=config`);
   };
 
-  const canSubmit = !!draft && !!name.trim() && !create.isPending;
+  const canSubmit = !!draft && !!name.trim() && !!body.trim() && !create.isPending;
 
   return (
     <Modal
       width={CREATE_SKILL_MODAL_WIDTH}
       title={t("modal.title")}
+      subtitle={name || draft?.name}
       onClose={onClose}
       footer={
         <div style={s.footer}>
@@ -101,6 +112,34 @@ export function CreateSkillFromConventionsModal({
           </FormField>
           <FormField label={t("modal.fields.description")}>
             <TextInput value={description} onChange={setDescription} />
+          </FormField>
+
+          <div style={s.row}>
+            <div style={s.typeCol}>
+              <FormField label={t("modal.fields.type")}>
+                <SelectInput
+                  value={type}
+                  onChange={(v) => setType(v as SkillType)}
+                  options={SKILL_TYPE_OPTIONS.map((v) => ({ value: v, label: ts(`config.typeOptions.${v}`) }))}
+                  mono
+                />
+              </FormField>
+            </div>
+            <div style={s.enabledCol}>
+              <FormField label={t("modal.fields.enabled")} hint={t("modal.fields.enabledHint")}>
+                <Toggle on={enabled} onChange={setEnabled} size={16} />
+              </FormField>
+            </div>
+          </div>
+
+          <FormField label={t("modal.fields.body")} required>
+            <SkillBodyEditor
+              name={name || draft.name}
+              body={body}
+              savedBody=""
+              initialTokens={draft.body_tokens}
+              onChange={setBody}
+            />
           </FormField>
         </div>
       )}
