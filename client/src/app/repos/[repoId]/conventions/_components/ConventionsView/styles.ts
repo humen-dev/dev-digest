@@ -1,0 +1,43 @@
+import type { CSSProperties } from "react";
+
+/** Co-located styles for ConventionsView. */
+export const s = {
+  page: { padding: "24px 32px 44px", maxWidth: 1100, margin: "0 auto" } satisfies CSSProperties,
+  header: { display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 18 } satisfies CSSProperties,
+  headerText: { flex: 1, minWidth: 0 } satisfies CSSProperties,
+  h1: { fontSize: 24, fontWeight: 700, letterSpacing: "-0.02em" } satisfies CSSProperties,
+  repoName: { color: "var(--accent)" } satisfies CSSProperties,
+  subtitle: { fontSize: 14, color: "var(--text-secondary)", marginTop: 4 } satisfies CSSProperties,
+  scanningHint: { fontSize: 12.5, color: "var(--text-muted)", marginTop: 4 } satisfies CSSProperties,
+  summary: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+    padding: "10px 14px",
+    borderRadius: 8,
+    border: "1px solid var(--border)",
+    background: "var(--bg-surface)",
+    fontSize: 12.5,
+    color: "var(--text-secondary)",
+    marginBottom: 16,
+  } satisfies CSSProperties,
+  summaryMeta: { color: "var(--text-muted)" } satisfies CSSProperties,
+  toolbar: { display: "flex", alignItems: "center", gap: 12, marginBottom: 14 } satisfies CSSProperties,
+  acceptedCount: { flex: 1, fontSize: 13, color: "var(--text-secondary)" } satisfies CSSProperties,
+  list: { display: "flex", flexDirection: "column", gap: 12 } satisfies CSSProperties,
+  rejected: { marginTop: 22 } satisfies CSSProperties,
+  rejectedToggle: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: 0,
+    border: "none",
+    background: "transparent",
+    color: "var(--text-secondary)",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  rejectedHint: { fontSize: 12.5, color: "var(--text-muted)", margin: "6px 0 12px" } satisfies CSSProperties,
+} as const;
