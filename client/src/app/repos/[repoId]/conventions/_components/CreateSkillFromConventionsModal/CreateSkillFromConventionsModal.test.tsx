@@ -96,21 +96,22 @@ describe("CreateSkillFromConventionsModal", () => {
         enabled: false,
         body: DRAFT.body,
         convention_ids: DRAFT.convention_ids,
+        agent_id: "ag1",
       }),
     );
     await waitFor(() => expect(push).toHaveBeenCalledWith("/skills/sk9?tab=config"));
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("links the new skill to the chosen agent", async () => {
+  it("links the new skill to the first agent unless the user opts out", async () => {
     renderModal();
     const agentSelect = screen.getAllByRole("combobox")[1]!;
-    expect(screen.getByText("Don't link — add it later")).toBeInTheDocument();
-    fireEvent.change(agentSelect, { target: { value: "ag1" } });
+    expect(agentSelect).toHaveValue("ag1");
+
+    fireEvent.change(agentSelect, { target: { value: "" } });
     fireEvent.click(screen.getByText("Create skill"));
 
-    await waitFor(() =>
-      expect(createSkill).toHaveBeenCalledWith(expect.objectContaining({ agent_id: "ag1" })),
-    );
+    await waitFor(() => expect(createSkill).toHaveBeenCalled());
+    expect(createSkill.mock.calls[0]![0]).not.toHaveProperty("agent_id");
   });
 });

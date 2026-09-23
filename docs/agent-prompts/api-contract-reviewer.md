@@ -71,7 +71,7 @@ approve.
 PR #484 in the seeded `acme/payments-api` repo renames a response field and adds
 a required query parameter to `GET /v1/refunds`. Run this agent on it with the
 four attached skills disabled — it should pass the diff or raise only generic
-remarks — then enable them and re-run: `breaking-change-detector` flags the
+remarks — then enable them and re-run: `breaking-change` flags the
 removed field and the new required parameter, and `semver-discipline` flags that
 the route was not versioned. The agent's system prompt is identical in both
 runs, so the difference is the skills' effect alone.

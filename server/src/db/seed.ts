@@ -220,7 +220,7 @@ const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash';
  *
  * L02 ("Skills"): the Test Quality Reviewer agent gets three skills linked in
  * order (`uncovered-branch-gate`, `corner-case-checklist`, `mock-overuse-gate`)
- * and the API Contract Reviewer four (`breaking-change-detector`,
+ * and the API Contract Reviewer four (`breaking-change`,
  * `response-schema`, `semver-discipline`, `deprecation-policy`). One more skill,
  * `flaky-test-patterns`, is intentionally NOT seeded — it lives as an
  * import-demo fixture under `docs/skill-fixtures/` instead.
@@ -695,7 +695,7 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       // team brought in as a file rather than authored here, so the skills list
       // shows an "Imported" origin on a skill that is actually linked to an agent.
       workspaceId,
-      name: 'breaking-change-detector',
+      name: 'breaking-change',
       description:
         'Flag any route, request, or response change an existing caller cannot absorb without editing its code.',
       type: 'rubric',

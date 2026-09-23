@@ -31,7 +31,9 @@ export function CreateSkillFromConventionsModal({
   const { data: draft, isLoading, isError, refetch } = useConventionSkillDraft(repoId, true);
   const create = useCreateSkillFromConventions(repoId);
   const { data: agents } = useAgents();
-  const [agentId, setAgentId] = React.useState("");
+  /* null = the user hasn't chosen yet, so the first agent is the default (the
+     skill lands linked). "" is an explicit "don't link". */
+  const [agentId, setAgentId] = React.useState<string | null>(null);
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [type, setType] = React.useState<SkillType>("convention");
@@ -48,6 +50,10 @@ export function CreateSkillFromConventionsModal({
     setEnabled(draft.enabled);
     setBody(draft.body);
   }, [draft]);
+
+  React.useEffect(() => {
+    if (agentId === null && agents && agents.length > 0) setAgentId(agents[0]!.id);
+  }, [agents, agentId]);
 
   const submit = async () => {
     if (!draft) return;
@@ -124,7 +130,7 @@ export function CreateSkillFromConventionsModal({
           </FormField>
           <FormField label={t("modal.fields.agent")} hint={t("modal.fields.agentHint")}>
             <SelectInput
-              value={agentId}
+              value={agentId ?? ""}
               onChange={setAgentId}
               options={[
                 { value: "", label: t("modal.fields.agentNone") },

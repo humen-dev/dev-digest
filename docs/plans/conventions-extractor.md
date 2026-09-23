@@ -156,4 +156,4 @@ in both `contracts/platform.ts` copies + `client/src/lib/feature-models.ts` (the
 - Snippets from untrusted code land in a trusted skill body → user reviews in modal; noted in spec.
 
 ## Out of scope (other homework criteria, not this feature)
-- #43 four API Contract Reviewer skills (breaking-change, response-schema, semver-discipline, deprecation-policy) and #18 API Contract control experiment — not seeded on this branch; separate task.
+- #43 and #18 were deferred when this plan was written. They have since landed in the seed: the API Contract Reviewer agent, its four skills (`breaking-change`, `response-schema`, `semver-discipline`, `deprecation-policy`) and PR #484 as the control-experiment fixture (`server/src/db/seed.ts`).
