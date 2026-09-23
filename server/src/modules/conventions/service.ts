@@ -358,9 +358,8 @@ export class ConventionsService {
 
   /**
    * Persist ONE skill from the user-edited draft. Every referenced convention
-   * must be accepted and belong to this repo. `agent_id` is optional: when set,
-   * the new skill is appended to that agent's ordered list, so the extractor can
-   * hand off straight to a review without a detour through the agent editor.
+   * must be accepted and belong to this repo. Linking to an agent is NOT done
+   * here — it happens on the agent's Skills tab.
    */
   async createSkill(
     workspaceId: string,
@@ -377,7 +376,7 @@ export class ConventionsService {
         422,
       );
     }
-    const skill = await this.deps.skills.create(workspaceId, {
+    return this.deps.skills.create(workspaceId, {
       name: input.name,
       description: input.description,
       type: input.type,
@@ -386,11 +385,6 @@ export class ConventionsService {
       enabled: input.enabled,
       evidenceFiles: evidenceFilesOf((selected as ConventionRow[]).map(toSkillConvention)),
     });
-    if (input.agent_id) {
-      const linked = await this.deps.agents.linkSkill(workspaceId, input.agent_id, skill.id);
-      if (!linked) throw new NotFoundError('Agent not found');
-    }
-    return skill;
   }
 }
 

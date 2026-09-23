@@ -59,12 +59,9 @@ All routes are workspace-scoped (`getContext`); ids are uuids (422 otherwise).
 | PATCH | `/repos/:id/conventions` | `{ ids[], status }` | `ConventionBoard` (bulk, e.g. "Deselect all") |
 | PATCH | `/conventions/:id` | `{ status?, rule?, rationale?, category? }` (≥1) | `ConventionCandidate` |
 | POST | `/repos/:id/conventions/skill-draft` | `{ ids? }` | `ConventionSkillDraft` — **writes nothing** |
-| POST | `/repos/:id/conventions/skill` | `{ name, description, type, enabled, body, convention_ids[], agent_id? }` | `Skill` |
+| POST | `/repos/:id/conventions/skill` | `{ name, description, type, enabled, body, convention_ids[] }` | `Skill` |
 
-`agent_id` is optional: when present the new skill is appended to that agent's
-ordered skill list (404 when the agent is not in this workspace).
-
-Errors: 404 unknown repo/convention/agent (or other workspace) · 409 `scan_in_progress` ·
+Errors: 404 unknown repo/convention (or other workspace) · 409 `scan_in_progress` ·
 422 `repo_not_cloned` · 422 `repo_not_indexed` · 422 `model_not_configured` (points to
 Settings → Models) · 422 `no_accepted_conventions` · 422 when `convention_ids`
 contains a row that is not accepted or not in this repo.

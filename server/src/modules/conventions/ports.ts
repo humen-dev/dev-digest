@@ -113,11 +113,6 @@ export interface SkillCreatorPort {
   create(workspaceId: string, input: SkillCreateInput): Promise<Skill>;
 }
 
-/** Appends a skill to an agent's ordered list. False when the agent isn't in this workspace. */
-export interface AgentLinkerPort {
-  linkSkill(workspaceId: string, agentId: string, skillId: string): Promise<boolean>;
-}
-
 export interface TokenCounter {
   count(text: string): number;
 }
@@ -133,7 +128,6 @@ export interface ConventionsDeps {
   /** Settings → Models → Conventions (workspace override, else registry default). */
   resolveModel: (workspaceId: string) => Promise<FeatureModelChoice>;
   skills: SkillCreatorPort;
-  agents: AgentLinkerPort;
   tokenizer: TokenCounter;
   now?: () => number;
 }

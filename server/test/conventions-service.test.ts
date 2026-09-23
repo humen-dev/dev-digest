@@ -12,7 +12,6 @@ import { InMemoryConventionsRepo } from './helpers/conventions-fakes.js';
 
 const WS = 'ws-1';
 const REPO_ID = 'repo-1';
-const AGENT_ID = 'agent-1';
 
 const USERS = [
   "import { db } from '@/lib/db';",
@@ -120,7 +119,6 @@ function build(opts: Setup = {}) {
     return [];
   });
   const created: Array<{ ws: string; input: SkillCreateInput }> = [];
-  const linked: Array<{ agentId: string; skillId: string }> = [];
   const repo: RepoBasics | undefined =
     opts.repo === null
       ? undefined
@@ -163,16 +161,9 @@ function build(opts: Setup = {}) {
         };
       },
     },
-    agents: {
-      linkSkill: async (ws, agentId, skillId) => {
-        if (ws !== WS || agentId !== AGENT_ID) return false;
-        linked.push({ agentId, skillId });
-        return true;
-      },
-    },
     tokenizer: { count: (t) => Math.ceil(t.length / 4) },
   };
-  return { service: new ConventionsService(deps), conventions, codeIndex, llm, created, linked };
+  return { service: new ConventionsService(deps), conventions, codeIndex, llm, created };
 }
 
 async function expectAppError(p: Promise<unknown>, code: string, status: number) {
@@ -373,23 +364,4 @@ describe('ConventionsService triage + skill', () => {
     expect(created[0]!.input).toMatchObject({ body: '# edited body', source: 'extracted', evidenceFiles: ['src/x.ts'] });
   });
 
-  it('createSkill links the new skill to the chosen agent, and 404s on an unknown one', async () => {
-    const { service, conventions, linked } = build();
-    const ok = conventions.seed({ workspaceId: WS, repoId: REPO_ID, rule: 'R1', status: 'accepted', evidencePath: 'src/x.ts' });
-    const input = {
-      name: 'payments-api-conventions',
-      description: '1 house convention extracted from payments-api',
-      type: 'convention' as const,
-      enabled: true,
-      body: '# edited body',
-      convention_ids: [ok.id],
-    };
-
-    const skill = await service.createSkill(WS, REPO_ID, { ...input, agent_id: AGENT_ID });
-    expect(linked).toEqual([{ agentId: AGENT_ID, skillId: skill.id }]);
-
-    await expect(
-      service.createSkill(WS, REPO_ID, { ...input, agent_id: '00000000-0000-0000-0000-0000000000ff' }),
-    ).rejects.toThrow(/Agent not found/);
-  });
 });
