@@ -10,13 +10,6 @@ let draft: ConventionSkillDraft | undefined;
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
-// The body editor owns a debounced token-count mutation of its own.
-vi.mock("@/components/skill-body-editor", () => ({
-  SkillBodyEditor: ({ body, onChange }: { body: string; onChange: (v: string) => void }) => (
-    <textarea aria-label="body" value={body} onChange={(e) => onChange(e.target.value)} />
-  ),
-}));
-
 vi.mock("@/lib/hooks/agents", () => ({
   useAgents: () => ({ data: [{ id: "ag1", name: "Backend Reviewer" }] }),
 }));
@@ -65,8 +58,8 @@ describe("CreateSkillFromConventionsModal", () => {
     expect(screen.getByText("3 accepted conventions")).toBeInTheDocument();
     expect(screen.getByDisplayValue(DRAFT.name)).toBeInTheDocument();
     expect(screen.getByDisplayValue(DRAFT.description)).toBeInTheDocument();
-    expect(screen.getByLabelText("body")).toHaveValue(DRAFT.body);
-    expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByText("Saved as v1 · added to Skills Lab")).toBeInTheDocument();
+    expect(screen.queryByLabelText("body")).not.toBeInTheDocument();
   });
 
   it("waits for the draft before rendering the form", () => {
@@ -85,7 +78,6 @@ describe("CreateSkillFromConventionsModal", () => {
   it("creates the skill from the edited draft and opens it", async () => {
     renderModal();
     fireEvent.change(screen.getByDisplayValue(DRAFT.name), { target: { value: "house-rules" } });
-    fireEvent.click(screen.getByRole("switch"));
     fireEvent.click(screen.getByText("Create skill"));
 
     await waitFor(() =>
@@ -93,7 +85,7 @@ describe("CreateSkillFromConventionsModal", () => {
         name: "house-rules",
         description: DRAFT.description,
         type: "convention",
-        enabled: false,
+        enabled: true,
         body: DRAFT.body,
         convention_ids: DRAFT.convention_ids,
         agent_id: "ag1",
@@ -103,15 +95,4 @@ describe("CreateSkillFromConventionsModal", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("links the new skill to the first agent unless the user opts out", async () => {
-    renderModal();
-    const agentSelect = screen.getAllByRole("combobox")[1]!;
-    expect(agentSelect).toHaveValue("ag1");
-
-    fireEvent.change(agentSelect, { target: { value: "" } });
-    fireEvent.click(screen.getByText("Create skill"));
-
-    await waitFor(() => expect(createSkill).toHaveBeenCalled());
-    expect(createSkill.mock.calls[0]![0]).not.toHaveProperty("agent_id");
-  });
 });
