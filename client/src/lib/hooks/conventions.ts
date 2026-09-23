@@ -83,6 +83,8 @@ export interface CreateSkillFromConventionsInput {
   enabled: boolean;
   body: string;
   convention_ids: string[];
+  /** Optional: append the new skill to this agent's ordered list. */
+  agent_id?: string;
 }
 
 export function useCreateSkillFromConventions(repoId: string) {
@@ -90,6 +92,9 @@ export function useCreateSkillFromConventions(repoId: string) {
   return useMutation({
     mutationFn: (input: CreateSkillFromConventionsInput) =>
       api.post<Skill>(`/repos/${repoId}/conventions/skill`, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["skills"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["skills"] });
+      qc.invalidateQueries({ queryKey: ["agents"] });
+    },
   });
 }

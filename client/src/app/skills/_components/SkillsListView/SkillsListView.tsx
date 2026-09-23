@@ -1,5 +1,6 @@
-/* /skills — Skills list. SkillCards + create/import. Selecting a skill
-   navigates to the 4-tab editor at /skills/:id. */
+/* /skills — Skills list. SkillCards + create/import. Clicking a card previews
+   the skill in a side panel; the full 4-tab editor at /skills/:id is one click
+   further, so browsing the list never costs a route change. */
 "use client";
 
 import React from "react";
@@ -7,10 +8,12 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Dropdown, EmptyState, ErrorState, Skeleton, Icon } from "@devdigest/ui";
 import { AppShell } from "../../../../components/app-shell";
-import { useCreateSkill, useSkills, useUpdateSkill } from "../../../../lib/hooks/skills";
+import { useSkills, useUpdateSkill } from "../../../../lib/hooks/skills";
 import { SkillCard } from "../SkillCard";
 import { ImportSkillDrawer } from "../SkillsListColumn/_components/ImportSkillDrawer";
 import { filterSkills } from "../SkillsListColumn/helpers";
+import { CreateSkillModal } from "./_components/CreateSkillModal";
+import { SkillPreviewPanel } from "./_components/SkillPreviewPanel";
 import { s } from "./styles";
 
 export function SkillsListView() {
@@ -18,24 +21,15 @@ export function SkillsListView() {
   const router = useRouter();
   const { data: skills, isLoading, isError, refetch } = useSkills();
   const update = useUpdateSkill();
-  const create = useCreateSkill();
   const [search, setSearch] = React.useState("");
   const [importing, setImporting] = React.useState(false);
+  const [creating, setCreating] = React.useState(false);
+  const [previewId, setPreviewId] = React.useState<string | null>(null);
 
   const list = filterSkills(skills ?? [], search);
+  const previewed = list.find((sk) => sk.id === previewId) ?? null;
 
   const open = (id: string) => router.push(`/skills/${id}?tab=config`);
-
-  const createFromScratch = async () => {
-    const skill = await create.mutateAsync({
-      name: t("page.defaultName"),
-      description: "",
-      type: "custom",
-      body: "",
-      source: "manual",
-    });
-    open(skill.id);
-  };
 
   return (
     <AppShell crumb={[{ label: t("page.crumbLab") }, { label: t("page.crumbSkills") }]}>
@@ -63,7 +57,7 @@ export function SkillsListView() {
               </Button>
             }
             items={[
-              { label: t("page.menu.create"), icon: "Edit", onClick: () => void createFromScratch() },
+              { label: t("page.menu.create"), icon: "Edit", onClick: () => setCreating(true) },
               { label: t("page.menu.fromFile"), icon: "Upload", onClick: () => setImporting(true) },
             ]}
           />
@@ -92,13 +86,31 @@ export function SkillsListView() {
               <SkillCard
                 key={sk.id}
                 skill={sk}
-                onClick={() => open(sk.id)}
+                active={sk.id === previewId}
+                onClick={() => setPreviewId(sk.id)}
                 onToggle={(enabled) => update.mutate({ id: sk.id, patch: { enabled } })}
+                onDeleted={() => setPreviewId((id) => (id === sk.id ? null : id))}
               />
             ))}
           </div>
         )}
       </div>
+      {previewed && (
+        <SkillPreviewPanel
+          skill={previewed}
+          onClose={() => setPreviewId(null)}
+          onOpenEditor={() => open(previewed.id)}
+        />
+      )}
+      {creating && (
+        <CreateSkillModal
+          onClose={() => setCreating(false)}
+          onCreated={(id) => {
+            setCreating(false);
+            open(id);
+          }}
+        />
+      )}
       {importing && (
         <ImportSkillDrawer
           onClose={() => setImporting(false)}

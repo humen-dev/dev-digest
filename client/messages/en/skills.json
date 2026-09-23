@@ -24,6 +24,27 @@
       "body": "Pick a skill on the left to preview its body."
     }
   },
+  "createModal": {
+    "title": "Create a skill",
+    "subtitle": "A skill is its body — the text the reviewing agent reads.",
+    "name": "Name",
+    "namePlaceholder": "uncovered-branch-gate",
+    "description": "Description",
+    "descriptionPlaceholder": "When should an agent apply this skill?",
+    "descriptionHint": "The description IS the skill's interface — the agent reads it to decide when the skill applies.",
+    "type": "Type",
+    "body": "Skill body (Markdown)",
+    "footerNote": "Saved as v1 · added to Skills Lab",
+    "cancel": "Cancel",
+    "create": "Create skill",
+    "creating": "Creating…"
+  },
+  "previewPanel": {
+    "subtitle": "Preview — the body exactly as the agent receives it.",
+    "empty": "This skill has no body yet.",
+    "openEditor": "Open editor",
+    "close": "Close"
+  },
   "detail": {
     "crumbSkill": "Skill",
     "back": "← All skills",
@@ -92,7 +113,10 @@
     "needsVetting": "needs vetting",
     "vettingTitle": "Untrusted source — vet before enabling",
     "delete": "Delete skill",
-    "deleteConfirm": "Delete skill \"{name}\"? This cannot be undone.",
+    "deleteConfirm": "Delete skill \"{name}\"? It is removed from every agent it is linked to. This cannot be undone.",
+    "confirmDelete": "Delete",
+    "cancel": "Cancel",
+    "version": "v{version}",
     "type": {
       "rubric": "rubric",
       "convention": "convention",

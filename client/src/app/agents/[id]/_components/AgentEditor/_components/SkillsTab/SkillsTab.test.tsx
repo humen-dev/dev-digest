@@ -67,17 +67,31 @@ describe("SkillsTab (smoke)", () => {
     expect(setSkillsMutate).toHaveBeenCalledWith({ agentId: "ag1", skillIds: ["sk-b", "sk-a"] });
   });
 
-  it("checking an unlinked skill set-replaces with it appended", () => {
+  it("toggling an unattached skill on set-replaces with it appended", () => {
     renderWithIntl(<SkillsTab agent={AGENT} />);
-    const unlinkedCheckbox = screen.getByRole("checkbox", { name: "skill-c" });
-    fireEvent.click(unlinkedCheckbox);
+    fireEvent.click(screen.getByRole("switch", { name: "skill-c" }));
     expect(setSkillsMutate).toHaveBeenCalledWith({ agentId: "ag1", skillIds: ["sk-a", "sk-b", "sk-c"] });
   });
 
-  it("unchecking a linked skill removes it from the set", () => {
+  it("toggling an attached skill off removes it from the set", () => {
     renderWithIntl(<SkillsTab agent={AGENT} />);
-    const linkedCheckbox = screen.getByRole("checkbox", { name: "skill-a" });
-    fireEvent.click(linkedCheckbox);
+    fireEvent.click(screen.getByRole("switch", { name: "skill-a" }));
     expect(setSkillsMutate).toHaveBeenCalledWith({ agentId: "ag1", skillIds: ["sk-b"] });
+  });
+
+  it("lists every workspace skill with its type, attached or not", () => {
+    renderWithIntl(<SkillsTab agent={AGENT} />);
+    expect(screen.getAllByRole("switch")).toHaveLength(3);
+    expect(screen.getAllByText("custom")).toHaveLength(3);
+  });
+
+  it("filters the list by name without disturbing the stored order", () => {
+    renderWithIntl(<SkillsTab agent={AGENT} />);
+    fireEvent.change(screen.getByLabelText("Filter skills…"), { target: { value: "skill-b" } });
+    expect(screen.getByRole("switch", { name: "skill-b" })).toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: "skill-a" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Move up" }));
+    expect(setSkillsMutate).toHaveBeenCalledWith({ agentId: "ag1", skillIds: ["sk-b", "sk-a"] });
   });
 });

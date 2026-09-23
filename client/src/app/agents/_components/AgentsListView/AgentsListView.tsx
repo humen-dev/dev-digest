@@ -6,13 +6,31 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Dropdown, EmptyState, ErrorState, Skeleton, Icon } from "@devdigest/ui";
+import type { Agent } from "@devdigest/shared";
 import { AppShell } from "../../../../components/app-shell";
 import { useAgents, useUpdateAgent } from "../../../../lib/hooks/agents";
+import { useAgentSkills } from "../../../../lib/hooks/skills";
 import { AgentCard } from "../AgentCard";
 import { CreateAgentModal } from "./_components/CreateAgentModal";
 import { TEMPLATES } from "./constants";
 import { filterAgents } from "./helpers";
 import { s } from "./styles";
+
+/** One grid card — its own component so the per-agent skills query is a hook
+    call in a component, not inside the parent's `.map()` (same escape hatch the
+    agent rail uses). */
+function AgentGridCard({
+  ag,
+  onClick,
+  onToggle,
+}: {
+  ag: Agent;
+  onClick: () => void;
+  onToggle: (enabled: boolean) => void;
+}) {
+  const { data: links } = useAgentSkills(ag.id);
+  return <AgentCard ag={ag} skillCount={links?.length} onClick={onClick} onToggle={onToggle} />;
+}
 
 export function AgentsListView() {
   const t = useTranslations("agents");
@@ -83,7 +101,7 @@ export function AgentsListView() {
         {list.length > 0 && (
           <div style={s.grid}>
             {list.map((a) => (
-              <AgentCard
+              <AgentGridCard
                 key={a.id}
                 ag={a}
                 onClick={() => router.push(`/agents/${a.id}?tab=config`)}

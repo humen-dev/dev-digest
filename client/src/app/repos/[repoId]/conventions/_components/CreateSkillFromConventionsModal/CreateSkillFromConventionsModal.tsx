@@ -1,7 +1,8 @@
 /* CreateSkillFromConventionsModal — merges the accepted conventions into ONE
    skill. The server assembles the draft (body, name, evidence files); every
-   field here is editable before saving. No agent picker: the new skill is
-   linked on /agents/:id → Skills tab. */
+   field here is editable before saving. The agent link is optional: picking one
+   appends the skill to that agent's order, otherwise it is linked later on
+   /agents/:id → Skills tab. */
 "use client";
 
 import React from "react";
@@ -11,6 +12,7 @@ import { Button, ErrorState, FormField, Modal, SelectInput, TextInput, Toggle } 
 import type { SkillType } from "@devdigest/shared";
 import { SkillBodyEditor } from "@/components/skill-body-editor";
 import { SKILL_TYPE_OPTIONS } from "@/lib/skill-types";
+import { useAgents } from "@/lib/hooks/agents";
 import { useConventionSkillDraft, useCreateSkillFromConventions } from "@/lib/hooks/conventions";
 import { CREATE_SKILL_MODAL_WIDTH } from "../../constants";
 import { s } from "./styles";
@@ -28,6 +30,8 @@ export function CreateSkillFromConventionsModal({
   const router = useRouter();
   const { data: draft, isLoading, isError, refetch } = useConventionSkillDraft(repoId, true);
   const create = useCreateSkillFromConventions(repoId);
+  const { data: agents } = useAgents();
+  const [agentId, setAgentId] = React.useState("");
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [type, setType] = React.useState<SkillType>("convention");
@@ -54,6 +58,7 @@ export function CreateSkillFromConventionsModal({
       enabled,
       body,
       convention_ids: draft.convention_ids,
+      ...(agentId ? { agent_id: agentId } : {}),
     });
     onClose();
     router.push(`/skills/${skill.id}?tab=config`);
@@ -113,9 +118,19 @@ export function CreateSkillFromConventionsModal({
           </FormField>
           <FormField label={t("modal.fields.enabled")}>
             <div style={s.enabledRow}>
-              <Toggle on={enabled} onChange={setEnabled} />
+              <Toggle on={enabled} onChange={setEnabled} label={t("modal.fields.enabled")} />
               <span style={s.enabledHint}>{t("modal.fields.enabledHint")}</span>
             </div>
+          </FormField>
+          <FormField label={t("modal.fields.agent")} hint={t("modal.fields.agentHint")}>
+            <SelectInput
+              value={agentId}
+              onChange={setAgentId}
+              options={[
+                { value: "", label: t("modal.fields.agentNone") },
+                ...(agents ?? []).map((a) => ({ value: a.id, label: a.name })),
+              ]}
+            />
           </FormField>
           <FormField label={t("modal.fields.body")} required>
             <SkillBodyEditor

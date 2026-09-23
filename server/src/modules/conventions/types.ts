@@ -47,6 +47,8 @@ export const CreateSkillFromConventionsBody = z.object({
   enabled: z.boolean(),
   body: z.string().min(1),
   convention_ids: z.array(z.string().uuid()).min(1).max(200),
+  /** Optional: append the new skill to this agent's ordered skill list. */
+  agent_id: z.string().uuid().optional(),
 });
 export type CreateSkillFromConventionsBody = z.infer<typeof CreateSkillFromConventionsBody>;
 

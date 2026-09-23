@@ -80,6 +80,9 @@
       "type": "Type",
       "enabled": "Enabled",
       "enabledHint": "Whether this block is added to agents' prompts.",
+      "agent": "Link to agent",
+      "agentNone": "Don't link — add it later",
+      "agentHint": "The skill is appended to that agent's prompt order; you can reorder it on the agent's Skills tab.",
       "body": "Skill body"
     },
     "footerNote": "Saved as v1 · added to Skills Lab",

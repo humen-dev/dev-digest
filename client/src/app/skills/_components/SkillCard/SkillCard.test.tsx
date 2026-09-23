@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Skill } from "@devdigest/shared";
@@ -34,12 +34,13 @@ function renderWithIntl(ui: React.ReactElement) {
 }
 
 describe("SkillCard (smoke)", () => {
-  it("renders name, type badge, source badge and agent count", () => {
-    renderWithIntl(<SkillCard skill={SKILL} />);
+  it("renders name, type badge, source badge, agent count and version", () => {
+    renderWithIntl(<SkillCard skill={{ ...SKILL, version: 4 }} />);
     expect(screen.getByText("uncovered-branch-gate")).toBeInTheDocument();
     expect(screen.getByText("rubric")).toBeInTheDocument();
     expect(screen.getByText("Manual")).toBeInTheDocument();
     expect(screen.getByText("3 agents")).toBeInTheDocument();
+    expect(screen.getByText("v4")).toBeInTheDocument();
   });
 
   it("shows an Imported badge for imported_file skills", () => {
@@ -56,15 +57,23 @@ describe("SkillCard (smoke)", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("asks for confirmation before deleting and never opens the skill", () => {
+  it("opens a confirmation dialog before deleting and never opens the skill", () => {
     const onClick = vi.fn();
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     renderWithIntl(<SkillCard skill={SKILL} onClick={onClick} />);
 
-    screen.getByRole("button", { name: "Delete skill" }).click();
+    fireEvent.click(screen.getByRole("button", { name: "Delete skill" }));
 
-    expect(confirm).toHaveBeenCalledWith('Delete skill "uncovered-branch-gate"? This cannot be undone.');
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent('Delete skill "uncovered-branch-gate"?');
+    expect(within(dialog).getByText("Delete")).toBeInTheDocument();
+    expect(within(dialog).getByText("Cancel")).toBeInTheDocument();
     expect(onClick).not.toHaveBeenCalled();
-    confirm.mockRestore();
+  });
+
+  it("closes the confirmation dialog on cancel without deleting", () => {
+    renderWithIntl(<SkillCard skill={SKILL} />);
+    fireEvent.click(screen.getByRole("button", { name: "Delete skill" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByText("Cancel"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

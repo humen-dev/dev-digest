@@ -17,6 +17,10 @@ vi.mock("@/components/skill-body-editor", () => ({
   ),
 }));
 
+vi.mock("@/lib/hooks/agents", () => ({
+  useAgents: () => ({ data: [{ id: "ag1", name: "Backend Reviewer" }] }),
+}));
+
 vi.mock("@/lib/hooks/conventions", () => ({
   useConventionSkillDraft: () => ({ data: draft, isLoading: !draft, isError: false, refetch: vi.fn() }),
   useCreateSkillFromConventions: () => ({ mutateAsync: createSkill, isPending: false }),
@@ -96,5 +100,17 @@ describe("CreateSkillFromConventionsModal", () => {
     );
     await waitFor(() => expect(push).toHaveBeenCalledWith("/skills/sk9?tab=config"));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("links the new skill to the chosen agent", async () => {
+    renderModal();
+    const agentSelect = screen.getAllByRole("combobox")[1]!;
+    expect(screen.getByText("Don't link — add it later")).toBeInTheDocument();
+    fireEvent.change(agentSelect, { target: { value: "ag1" } });
+    fireEvent.click(screen.getByText("Create skill"));
+
+    await waitFor(() =>
+      expect(createSkill).toHaveBeenCalledWith(expect.objectContaining({ agent_id: "ag1" })),
+    );
   });
 });

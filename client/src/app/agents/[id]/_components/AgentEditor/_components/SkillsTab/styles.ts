@@ -9,7 +9,8 @@ export const s = {
   hint: { fontSize: 13, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 } satisfies CSSProperties,
   empty: { fontSize: 13, color: "var(--text-muted)", padding: "16px 0" } satisfies CSSProperties,
   list: { display: "flex", flexDirection: "column", gap: 6 } satisfies CSSProperties,
-  row: {
+  /** Only attached rows can be dragged, so only they get the grab cursor. */
+  row: (draggable: boolean): CSSProperties => ({
     display: "flex",
     alignItems: "center",
     gap: 10,
@@ -17,8 +18,29 @@ export const s = {
     borderRadius: 7,
     border: "1px solid var(--border)",
     background: "var(--bg-elevated)",
-    cursor: "grab",
-  } satisfies CSSProperties,
+    cursor: draggable ? "grab" : "default",
+  }),
   dragHandle: { color: "var(--text-muted)", fontSize: 13, width: 14, textAlign: "center", flexShrink: 0 } satisfies CSSProperties,
+  name: { fontSize: 13 } satisfies CSSProperties,
+  search: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "7px 12px",
+    borderRadius: 7,
+    border: "1px solid var(--border)",
+    background: "var(--bg-surface)",
+    marginBottom: 12,
+    maxWidth: 280,
+  } satisfies CSSProperties,
+  searchIcon: { color: "var(--text-muted)" } satisfies CSSProperties,
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    background: "transparent",
+    border: "none",
+    outline: "none",
+    color: "var(--text-primary)",
+  } satisfies CSSProperties,
   spacer: { flex: 1 } satisfies CSSProperties,
 } as const;

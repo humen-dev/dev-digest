@@ -138,6 +138,15 @@ export class Container {
       llm: (provider) => this.llm(provider),
       resolveModel: (workspaceId) => this.featureModels.resolve(workspaceId, 'conventions'),
       skills: new SkillsService(this.skillsRepo, this.tokenizer),
+      agents: {
+        linkSkill: async (workspaceId, agentId, skillId) => {
+          const agent = await this.agentsRepo.getById(workspaceId, agentId);
+          if (!agent) return false;
+          const linked = await this.agentsRepo.linkedSkills(agentId);
+          await this.agentsRepo.linkSkill(agentId, skillId, linked.length);
+          return true;
+        },
+      },
       tokenizer: this.tokenizer,
     }));
   }
