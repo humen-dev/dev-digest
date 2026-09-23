@@ -26,6 +26,8 @@ import { ConfigError } from './errors.js';
 import { AgentsRepository } from '../modules/agents/repository.js';
 import { ReviewRepository } from '../modules/reviews/repository.js';
 import { SkillsRepository } from '../modules/skills/repository.js';
+import { SettingsRepository } from '../modules/settings/repository.js';
+import { FeatureModelResolver } from '../modules/settings/feature-models.service.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
@@ -74,6 +76,7 @@ export class Container {
   private _agentsRepo?: AgentsRepository;
   private _reviewRepo?: ReviewRepository;
   private _skillsRepo?: SkillsRepository;
+  private _featureModels?: FeatureModelResolver;
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
@@ -104,6 +107,11 @@ export class Container {
 
   get skillsRepo(): SkillsRepository {
     return (this._skillsRepo ??= new SkillsRepository(this.db));
+  }
+
+  /** Settings → Models: per-feature provider/model, workspace override else registry default. */
+  get featureModels(): FeatureModelResolver {
+    return (this._featureModels ??= new FeatureModelResolver(new SettingsRepository(this.db)));
   }
 
   get codeIndex(): CodeIndex {
