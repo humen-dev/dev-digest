@@ -49,6 +49,20 @@ describe("SkillBodyEditor (smoke)", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
+  it("paints a highlight layer that repeats the body under the textarea", () => {
+    const body = "## Correctness\n- check the boundary";
+    const { container } = renderWithIntl(
+      <SkillBodyEditor name="my-skill" body={body} savedBody={body} initialTokens={7} onChange={vi.fn()} />,
+    );
+
+    // The overlay must reproduce the body verbatim — any drift here is drift
+    // between the colours and the caret in the browser.
+    const highlight = container.querySelector("pre");
+    expect(highlight?.textContent).toBe(body);
+    expect(highlight?.querySelectorAll("span").length).toBeGreaterThan(2);
+    expect(container.querySelector("textarea")).toHaveValue(body);
+  });
+
   it("shows the file name as <name>.md", () => {
     renderWithIntl(
       <SkillBodyEditor name="uncovered-branch-gate" body="" savedBody="" initialTokens={0} onChange={vi.fn()} />,
