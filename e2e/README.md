@@ -103,3 +103,4 @@ a CI artifact by `.github/workflows/e2e-web.yml`).
 | `08-skills` | `/skills` → seeded skills listed in the grid → open one → Config tab renders |
 | `09-skill-versions` | seeded skill → Versions tab → v1 snapshot shown as Current |
 | `10-agent-skills-tab` | Test Quality Reviewer agent → Skills tab → its 3 linked skills render |
+| `11-conventions` | sidebar → Conventions → seeded scan summary + 3 accepted rules → create-skill modal → Cancel |
