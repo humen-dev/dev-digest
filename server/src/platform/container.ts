@@ -26,8 +26,13 @@ import { ConfigError } from './errors.js';
 import { AgentsRepository } from '../modules/agents/repository.js';
 import { ReviewRepository } from '../modules/reviews/repository.js';
 import { SkillsRepository } from '../modules/skills/repository.js';
+import { SkillsService } from '../modules/skills/service.js';
 import { SettingsRepository } from '../modules/settings/repository.js';
 import { FeatureModelResolver } from '../modules/settings/feature-models.service.js';
+import { RepoRepository } from '../modules/repos/repository.js';
+import { ConventionsRepository } from '../modules/conventions/repository.js';
+import { ConventionsService } from '../modules/conventions/service.js';
+import type { ConventionsRepositoryPort } from '../modules/conventions/ports.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
@@ -54,6 +59,8 @@ export interface ContainerOverrides {
   /** repo-intel T3 adapters — only the indexer pipeline reads these. */
   depgraph?: DepGraph;
   tokenizer?: Tokenizer;
+  /** Conventions persistence port — tests swap the port, not the service. */
+  conventionsRepo?: ConventionsRepositoryPort;
 }
 
 export class Container {
@@ -77,6 +84,8 @@ export class Container {
   private _reviewRepo?: ReviewRepository;
   private _skillsRepo?: SkillsRepository;
   private _featureModels?: FeatureModelResolver;
+  private _reposRepo?: RepoRepository;
+  private _conventionsService?: ConventionsService;
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
@@ -112,6 +121,25 @@ export class Container {
   /** Settings → Models: per-feature provider/model, workspace override else registry default. */
   get featureModels(): FeatureModelResolver {
     return (this._featureModels ??= new FeatureModelResolver(new SettingsRepository(this.db)));
+  }
+
+  get reposRepo(): RepoRepository {
+    return (this._reposRepo ??= new RepoRepository(this.db));
+  }
+
+  /** L02 conventions extractor — the service receives narrow deps, never the container. */
+  get conventionsService(): ConventionsService {
+    return (this._conventionsService ??= new ConventionsService({
+      conventions: this.overrides.conventionsRepo ?? new ConventionsRepository(this.db),
+      repos: this.reposRepo,
+      repoIntel: this.repoIntel,
+      files: this.git,
+      codeIndex: this.codeIndex,
+      llm: (provider) => this.llm(provider),
+      resolveModel: (workspaceId) => this.featureModels.resolve(workspaceId, 'conventions'),
+      skills: new SkillsService(this.skillsRepo, this.tokenizer),
+      tokenizer: this.tokenizer,
+    }));
   }
 
   get codeIndex(): CodeIndex {
