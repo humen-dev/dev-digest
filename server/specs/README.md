@@ -10,4 +10,5 @@ rate-limit policy, security invariants (grounding, injection guard).
 ## Index
 - [`review-flow.md`](./review-flow.md) — review trigger, per-run lifecycle, determinism guarantees
 - [`cost-attribution.md`](./cost-attribution.md) — run cost persistence + API contracts
+- [`conventions.md`](./conventions.md) — conventions extractor: sample → propose → evidence gate → skill
 - _(add specs here, e.g. `error-envelope.md`)_
