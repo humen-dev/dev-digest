@@ -129,6 +129,56 @@ d('/skills CRUD + versions', () => {
     await app.close();
   });
 
+  it('version_message is recorded on the snapshot a body change creates', async () => {
+    const app = await makeApp();
+    const skillId = (
+      await app.inject({ method: 'POST', url: '/skills', payload: createBody })
+    ).json().id as string;
+
+    await app.inject({
+      method: 'PUT',
+      url: `/skills/${skillId}`,
+      payload: { body: 'Tighter body.', version_message: '  Tightened scope rule  ' },
+    });
+
+    const versions = (
+      await app.inject({ method: 'GET', url: `/skills/${skillId}/versions` })
+    ).json();
+    // Trimmed on the way in; v1 predates any message, so it stays null.
+    expect(versions[0]).toMatchObject({ version: 2, message: 'Tightened scope rule' });
+    expect(versions[1]).toMatchObject({ version: 1, message: null });
+    await app.close();
+  });
+
+  it('a version_message is dropped when nothing bumps, and blank is stored as null', async () => {
+    const app = await makeApp();
+    const skillId = (
+      await app.inject({ method: 'POST', url: '/skills', payload: createBody })
+    ).json().id as string;
+
+    // No body change → no new snapshot, so the note has nowhere to live and must
+    // NOT be back-written onto the existing version.
+    const noBump = await app.inject({
+      method: 'PUT',
+      url: `/skills/${skillId}`,
+      payload: { name: 'Renamed', version_message: 'should be ignored' },
+    });
+    expect(noBump.json().version).toBe(1);
+    let versions = (await app.inject({ method: 'GET', url: `/skills/${skillId}/versions` })).json();
+    expect(versions).toHaveLength(1);
+    expect(versions[0].message).toBeNull();
+
+    // Whitespace-only is normalised away rather than stored as ''.
+    await app.inject({
+      method: 'PUT',
+      url: `/skills/${skillId}`,
+      payload: { body: 'Another body.', version_message: '   ' },
+    });
+    versions = (await app.inject({ method: 'GET', url: `/skills/${skillId}/versions` })).json();
+    expect(versions[0]).toMatchObject({ version: 2, message: null });
+    await app.close();
+  });
+
   it('GET .../versions/:version/diff returns a patch vs. the current body', async () => {
     const app = await makeApp();
     const skillId = (
@@ -171,6 +221,8 @@ d('/skills CRUD + versions', () => {
     ).json();
     // All three snapshots survive — restore never rewrites history.
     expect(versions.map((v: { version: number }) => v.version)).toEqual([3, 2, 1]);
+    // A restore is not an authored edit, so it records no version message.
+    expect(versions[0].message).toBeNull();
     expect(versions[1].body).toBe('A completely different body.');
     expect(versions[2].body).toBe(createBody.body);
     await app.close();

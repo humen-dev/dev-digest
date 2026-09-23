@@ -34,6 +34,7 @@ export function toSkillVersionDto(row: SkillVersionRow): SkillVersion {
     skill_id: row.skillId,
     version: row.version,
     body: row.body,
+    message: row.message,
     created_at: row.createdAt.toISOString(),
   };
 }

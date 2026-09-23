@@ -96,7 +96,9 @@ export class SkillsRepository implements SkillsRepositoryPort {
       .where(and(eq(t.skills.workspaceId, workspaceId), eq(t.skills.id, id)))
       .returning();
 
-    if (bodyChanged && row) await this.insertVersionSnapshot(id, nextVersion, row.body);
+    if (bodyChanged && row) {
+      await this.insertVersionSnapshot(id, nextVersion, row.body, patch.versionMessage ?? null);
+    }
     return row;
   }
 
@@ -150,8 +152,17 @@ export class SkillsRepository implements SkillsRepositoryPort {
     return row;
   }
 
-  private async insertVersionSnapshot(skillId: string, version: number, body: string): Promise<void> {
-    await this.db.insert(t.skillVersions).values({ skillId, version, body }).onConflictDoNothing();
+  /** `message` is the author's optional "what changed" note; null for v1 and for restores. */
+  private async insertVersionSnapshot(
+    skillId: string,
+    version: number,
+    body: string,
+    message: string | null = null,
+  ): Promise<void> {
+    await this.db
+      .insert(t.skillVersions)
+      .values({ skillId, version, body, message })
+      .onConflictDoNothing();
   }
 
   // ---- agent_skills reads (A2 owns the writes) -----------------------------

@@ -22,6 +22,9 @@ const CreateSkillBody = z.object({
   enabled: z.boolean().optional(),
 });
 
+/** Upper bound on the version note — a one-line summary, not a second body. */
+const VERSION_MESSAGE_MAX = 200;
+
 const UpdateSkillBody = z.object({
   name: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
@@ -29,6 +32,15 @@ const UpdateSkillBody = z.object({
   source: SkillSource.optional(),
   body: z.string().min(1).optional(),
   enabled: z.boolean().optional(),
+  /** Blank or whitespace-only is normalised to null at this boundary, not stored. */
+  version_message: z
+    .string()
+    .max(VERSION_MESSAGE_MAX)
+    .nullish()
+    .transform((v) => {
+      const trimmed = v?.trim();
+      return trimmed ? trimmed : null;
+    }),
 });
 
 const TokensBody = z.object({ body: z.string() });
@@ -47,6 +59,7 @@ const IMPORT_PREVIEW_BODY_LIMIT = 4 * 1024 * 1024;
  *   GET    /skills/:id                           → one skill
  *   POST   /skills                                → create (source defaults to 'manual'); writes v1
  *   PUT    /skills/:id                            → update; a `body` change bumps version + snapshots
+ *                                                    (with the optional `version_message` note)
  *   DELETE /skills/:id                            → delete (agent_skills cascade)
  *   GET    /skills/:id/versions                   → history, newest first
  *   GET    /skills/:id/versions/:version/diff     → unified diff vs the current body
@@ -85,7 +98,8 @@ export default async function skillsRoutes(appBase: FastifyInstance) {
     { schema: { params: IdParams, body: UpdateSkillBody } },
     async (req) => {
       const { workspaceId } = await getContext(container, req);
-      const skill = await service.update(workspaceId, req.params.id, req.body);
+      const { version_message: versionMessage, ...patch } = req.body;
+      const skill = await service.update(workspaceId, req.params.id, { ...patch, versionMessage });
       if (!skill) throw new NotFoundError('Skill not found');
       return skill;
     },

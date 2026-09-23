@@ -41,4 +41,10 @@ export interface UpdateSkill {
   source?: SkillSource;
   body?: string;
   enabled?: boolean;
+  /**
+   * Note recorded on the version this update snapshots. Only meaningful when
+   * `body` actually changes — an update that bumps nothing has no version to
+   * attach it to, so it is dropped rather than stored against the old one.
+   */
+  versionMessage?: string | null;
 }

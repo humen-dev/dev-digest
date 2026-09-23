@@ -42,6 +42,7 @@ export interface SkillVersionRow {
   skillId: string;
   version: number;
   body: string;
+  message: string | null;
   createdAt: Date;
 }
 
