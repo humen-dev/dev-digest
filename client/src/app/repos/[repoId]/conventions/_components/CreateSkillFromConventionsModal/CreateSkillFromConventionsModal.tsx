@@ -1,7 +1,7 @@
 /* CreateSkillFromConventionsModal — "Create skill from conventions". Everything
    is prefilled from the server draft and editable before saving: name,
-   description, type, enabled and the markdown body. The new skill is appended
-   to the first agent (criterion 42); further linking is on the agent's Skills tab. */
+   description, type, enabled and the markdown body. It only creates the skill;
+   linking it to an agent is done on the agent's Skills tab. */
 "use client";
 
 import React from "react";
@@ -11,7 +11,6 @@ import { Button, ErrorState, FormField, Icon, Modal, SelectInput, TextInput, Tog
 import type { SkillType } from "@devdigest/shared";
 import { SkillBodyEditor } from "@/components/skill-body-editor";
 import { SKILL_TYPE_OPTIONS } from "@/lib/skill-types";
-import { useAgents } from "@/lib/hooks/agents";
 import { useConventionSkillDraft, useCreateSkillFromConventions } from "@/lib/hooks/conventions";
 import { CREATE_SKILL_MODAL_WIDTH } from "../../constants";
 import { s } from "./styles";
@@ -30,7 +29,6 @@ export function CreateSkillFromConventionsModal({
   const router = useRouter();
   const { data: draft, isLoading, isError, refetch } = useConventionSkillDraft(repoId, true);
   const create = useCreateSkillFromConventions(repoId);
-  const { data: agents } = useAgents();
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [type, setType] = React.useState<SkillType>("convention");
@@ -48,7 +46,6 @@ export function CreateSkillFromConventionsModal({
 
   const submit = async () => {
     if (!draft) return;
-    const agentId = agents?.[0]?.id;
     const skill = await create.mutateAsync({
       name: name.trim(),
       description,
@@ -56,7 +53,6 @@ export function CreateSkillFromConventionsModal({
       enabled,
       body,
       convention_ids: draft.convention_ids,
-      ...(agentId ? { agent_id: agentId } : {}),
     });
     onClose();
     router.push(`/skills/${skill.id}?tab=config`);

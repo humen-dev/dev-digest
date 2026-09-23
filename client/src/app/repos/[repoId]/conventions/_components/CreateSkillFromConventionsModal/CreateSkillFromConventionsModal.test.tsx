@@ -15,10 +15,6 @@ vi.mock("@/lib/hooks/skills", () => ({
   useSkillTokens: () => ({ mutate: vi.fn() }),
 }));
 
-vi.mock("@/lib/hooks/agents", () => ({
-  useAgents: () => ({ data: [{ id: "ag1", name: "Backend Reviewer" }] }),
-}));
-
 vi.mock("@/lib/hooks/conventions", () => ({
   useConventionSkillDraft: () => ({ data: draft, isLoading: !draft, isError: false, refetch: vi.fn() }),
   useCreateSkillFromConventions: () => ({ mutateAsync: createSkill, isPending: false }),
@@ -102,7 +98,6 @@ describe("CreateSkillFromConventionsModal", () => {
         enabled: true,
         body: "# edited body",
         convention_ids: DRAFT.convention_ids,
-        agent_id: "ag1",
       }),
     );
     await waitFor(() => expect(push).toHaveBeenCalledWith("/skills/sk9?tab=config"));
