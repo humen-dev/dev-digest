@@ -176,15 +176,80 @@ export const CommunitySkill = z.object({
 export type CommunitySkill = z.infer<typeof CommunitySkill>;
 
 // ---- Conventions ----
+// House rules a repo already follows, extracted by one model call and verified
+// by code against the sampled files (see server/specs/conventions.md).
+export const ConventionCategory = z.enum([
+  'naming',
+  'structure',
+  'imports',
+  'error_handling',
+  'typing',
+  'testing',
+  'api',
+  'data_access',
+  'style',
+  'other',
+]);
+export type ConventionCategory = z.infer<typeof ConventionCategory>;
+
+/** Triage state. A re-scan replaces only `pending` rows; decided rows persist. */
+export const ConventionStatus = z.enum(['pending', 'accepted', 'rejected']);
+export type ConventionStatus = z.infer<typeof ConventionStatus>;
+
 export const ConventionCandidate = z.object({
   id: z.string(),
+  repo_id: z.string(),
   rule: z.string(),
+  rationale: z.string().nullable(),
+  category: ConventionCategory,
   evidence_path: z.string(),
+  /** 1-based first line of the snippet, as verified by code (not as claimed by the model). */
+  evidence_line: z.number().int(),
+  /** Re-read from the file — never the model's text. */
   evidence_snippet: z.string(),
+  /** Distinct files matching the rule's literal (ripgrep); null = not measured. */
+  occurrences: z.number().int().nullable(),
   confidence: z.number().min(0).max(1),
-  accepted: z.boolean(),
+  status: ConventionStatus,
+  created_at: z.string(),
 });
 export type ConventionCandidate = z.infer<typeof ConventionCandidate>;
+
+export const ConventionScan = z.object({
+  id: z.string(),
+  created_at: z.string(),
+  sampled_files: z.array(z.string()),
+  proposed: z.number().int(),
+  dropped_ungrounded: z.number().int(),
+  dropped_duplicate: z.number().int(),
+  dropped_rare: z.number().int(),
+  kept: z.number().int(),
+  model: z.string(),
+  /** Real provider-reported cost only; null when the provider reports none. */
+  api_cost_usd: z.number().nullable(),
+  head_sha: z.string().nullable(),
+  duration_ms: z.number().int(),
+});
+export type ConventionScan = z.infer<typeof ConventionScan>;
+
+export const ConventionBoard = z.object({
+  candidates: z.array(ConventionCandidate),
+  last_scan: ConventionScan.nullable(),
+});
+export type ConventionBoard = z.infer<typeof ConventionBoard>;
+
+/** Un-persisted skill assembled from accepted conventions; the user edits it before saving. */
+export const ConventionSkillDraft = z.object({
+  name: z.string(),
+  description: z.string(),
+  type: SkillType,
+  enabled: z.boolean(),
+  body: z.string(),
+  body_tokens: z.number().int(),
+  evidence_files: z.array(z.string()),
+  convention_ids: z.array(z.string()),
+});
+export type ConventionSkillDraft = z.infer<typeof ConventionSkillDraft>;
 
 // ---- Agents ----
 // 'openrouter' routes through the OpenAI-compatible API (OpenAIProvider with a
