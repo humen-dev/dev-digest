@@ -176,8 +176,10 @@
     "open": "Open"
   },
   "versionsTab": {
+    "title": "Version history",
     "count": "{count, plural, one {# version} other {# versions}}",
-    "caption": "Every save of the body snapshots a new version. Editing name, description, type or enabled does not.",
+    "caption": "Every save snapshots the body so eval runs stay reproducible against the exact text they scored.",
+    "noMessage": "No version message",
     "current": "Current",
     "diff": "Diff",
     "restore": "Restore",

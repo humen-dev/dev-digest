@@ -5,8 +5,15 @@ import type { Skill, SkillVersion } from "@devdigest/shared";
 import messages from "../../../../../../../../messages/en/skills.json";
 
 const VERSIONS: SkillVersion[] = [
+  // v1 predates the message field, so it exercises the "no message" fallback.
   { skill_id: "sk1", version: 1, body: "old body", created_at: "2026-09-01T00:00:00.000Z" },
-  { skill_id: "sk1", version: 2, body: "new body", created_at: "2026-09-20T00:00:00.000Z" },
+  {
+    skill_id: "sk1",
+    version: 2,
+    body: "new body",
+    message: "Tightened scope rule",
+    created_at: "2026-09-20T00:00:00.000Z",
+  },
 ];
 
 const restoreMutate = vi.fn();
@@ -62,5 +69,16 @@ describe("VersionsTab (smoke)", () => {
     expect(restoreButtons).toHaveLength(1);
     fireEvent.click(restoreButtons[0]!);
     expect(restoreMutate).toHaveBeenCalledWith({ id: "sk1", version: 1 });
+  });
+
+  it("leads each row with the version message, falling back when there is none", () => {
+    renderWithIntl(<VersionsTab skill={SKILL} />);
+    expect(screen.getByText("Tightened scope rule")).toBeInTheDocument();
+    expect(screen.getByText("No version message")).toBeInTheDocument();
+  });
+
+  it("offers no Diff on the current version (its patch vs. current is always empty)", () => {
+    renderWithIntl(<VersionsTab skill={SKILL} />);
+    expect(screen.getAllByRole("button", { name: "Diff" })).toHaveLength(1);
   });
 });
