@@ -17,14 +17,16 @@ const PREVIEW: SkillImportPreview = {
 };
 
 const previewMutateAsync = vi.fn().mockResolvedValue(PREVIEW);
+const urlMutateAsync = vi.fn().mockResolvedValue(PREVIEW);
 const createMutateAsync = vi.fn().mockResolvedValue({ id: "sk-new", name: "flaky-test-patterns" });
 
 vi.mock("../../../../../../lib/hooks/skills", () => ({
   useImportSkillPreview: () => ({ mutateAsync: previewMutateAsync, isPending: false }),
+  useImportUrlPreview: () => ({ mutateAsync: urlMutateAsync, isPending: false }),
   useCreateSkill: () => ({ mutateAsync: createMutateAsync, isPending: false }),
 }));
 
-import { ImportSkillDrawer } from "./ImportSkillDrawer";
+import { ImportTab } from "./ImportTab";
 
 afterEach(() => {
   cleanup();
@@ -46,9 +48,9 @@ function selectFile() {
   fireEvent.change(input, { target: { files: [file] } });
 }
 
-describe("ImportSkillDrawer (smoke)", () => {
+describe("ImportTab (smoke)", () => {
   it("shows ignored_entries in the preview before the skill is saved", async () => {
-    renderWithIntl(<ImportSkillDrawer onClose={vi.fn()} onImported={vi.fn()} />);
+    renderWithIntl(<ImportTab mode="file" onClose={vi.fn()} onImported={vi.fn()} />);
 
     selectFile();
 
@@ -62,7 +64,7 @@ describe("ImportSkillDrawer (smoke)", () => {
 
   it("confirms by creating the skill with source imported_file", async () => {
     const onImported = vi.fn();
-    renderWithIntl(<ImportSkillDrawer onClose={vi.fn()} onImported={onImported} />);
+    renderWithIntl(<ImportTab mode="file" onClose={vi.fn()} onImported={onImported} />);
 
     selectFile();
     await screen.findByText("scripts/install.sh");
@@ -72,6 +74,27 @@ describe("ImportSkillDrawer (smoke)", () => {
     await waitFor(() => expect(createMutateAsync).toHaveBeenCalledTimes(1));
     expect(createMutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({ source: "imported_file", body: PREVIEW.draft.body }),
+    );
+    await waitFor(() => expect(onImported).toHaveBeenCalledWith("sk-new"));
+  });
+
+  it("imports from a URL with source imported_url", async () => {
+    const onImported = vi.fn();
+    renderWithIntl(<ImportTab mode="url" onClose={vi.fn()} onImported={onImported} />);
+
+    fireEvent.change(screen.getByPlaceholderText("https://example.com/skills/security.md"), {
+      target: { value: "https://example.com/skills/flaky.md" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Fetch" }));
+
+    await waitFor(() =>
+      expect(urlMutateAsync).toHaveBeenCalledWith({ url: "https://example.com/skills/flaky.md" }),
+    );
+    await screen.findByText("scripts/install.sh");
+    fireEvent.click(screen.getByRole("button", { name: "Add skill" }));
+
+    await waitFor(() =>
+      expect(createMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ source: "imported_url" })),
     );
     await waitFor(() => expect(onImported).toHaveBeenCalledWith("sk-new"));
   });

@@ -6,10 +6,10 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Button, Dropdown, EmptyState, ErrorState, Skeleton, Icon } from "@devdigest/ui";
-import { useCreateSkill, useSkills, useUpdateSkill } from "../../../../lib/hooks/skills";
+import { Button, EmptyState, ErrorState, Skeleton, Icon } from "@devdigest/ui";
+import { useSkills, useUpdateSkill } from "../../../../lib/hooks/skills";
 import { SkillCard } from "../SkillCard";
-import { ImportSkillDrawer } from "./_components/ImportSkillDrawer";
+import { AddSkillModal } from "../AddSkillModal";
 import { filterSkills } from "./helpers";
 import { s } from "./styles";
 
@@ -25,40 +25,18 @@ export function SkillsListColumn({
   const t = useTranslations("skills");
   const { data: skills, isLoading, isError, refetch } = useSkills();
   const update = useUpdateSkill();
-  const create = useCreateSkill();
   const [search, setSearch] = React.useState("");
-  const [importing, setImporting] = React.useState(false);
+  const [addTab, setAddTab] = React.useState<string | null>(null);
 
   const list = filterSkills(skills ?? [], search);
-
-  const createFromScratch = async () => {
-    const skill = await create.mutateAsync({
-      name: t("page.defaultName"),
-      description: "",
-      type: "custom",
-      body: "",
-      source: "manual",
-    });
-    onSelect(skill.id);
-  };
 
   return (
     <div style={s.col}>
       <div style={s.header}>
         <h1 style={s.h1}>{t("page.heading")}</h1>
-        <Dropdown
-          width={220}
-          align="right"
-          trigger={
-            <Button kind="primary" size="sm" icon="Plus" iconRight="ChevronDown">
-              {t("page.addSkill")}
-            </Button>
-          }
-          items={[
-            { label: t("page.menu.create"), icon: "Edit", onClick: () => void createFromScratch() },
-            { label: t("page.menu.fromFile"), icon: "Upload", onClick: () => setImporting(true) },
-          ]}
-        />
+        <Button kind="primary" size="sm" icon="Plus" onClick={() => setAddTab("create")}>
+          {t("page.addSkill")}
+        </Button>
       </div>
       <div style={s.search}>
         <Icon.Search size={13} style={s.searchIcon} />
@@ -83,7 +61,7 @@ export function SkillsListColumn({
             title={t("page.empty.title")}
             body={t("page.empty.body")}
             cta={t("page.empty.cta")}
-            onCta={() => setImporting(true)}
+            onCta={() => setAddTab("file")}
           />
         )}
         {list.map((sk) => (
@@ -97,11 +75,12 @@ export function SkillsListColumn({
           />
         ))}
       </div>
-      {importing && (
-        <ImportSkillDrawer
-          onClose={() => setImporting(false)}
-          onImported={(id) => {
-            setImporting(false);
+      {addTab && (
+        <AddSkillModal
+          initialTab={addTab}
+          onClose={() => setAddTab(null)}
+          onAdded={(id) => {
+            setAddTab(null);
             onSelect(id);
           }}
         />

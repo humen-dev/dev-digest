@@ -24,13 +24,21 @@
       "body": "Pick a skill on the left to preview its body."
     }
   },
+  "addModal": {
+    "title": "Add skill",
+    "tabs": {
+      "create": "Create",
+      "file": "From file",
+      "url": "Import from URL"
+    }
+  },
   "createModal": {
     "title": "Create a skill",
     "subtitle": "A skill is its body — the text the reviewing agent reads.",
     "name": "Name",
-    "namePlaceholder": "uncovered-branch-gate",
+    "namePlaceholder": "pr-quality-rubric",
     "description": "Description",
-    "descriptionPlaceholder": "When should an agent apply this skill?",
+    "descriptionPlaceholder": "What this skill checks…",
     "descriptionHint": "The description IS the skill's interface — the agent reads it to decide when the skill applies.",
     "type": "Type",
     "body": "Skill body (Markdown)",
@@ -91,9 +99,10 @@
   },
   "url": {
     "label": "Skill URL",
-    "hint": "Fetched server-side, stored as untrusted, and left disabled until vetted.",
+    "hint": "A public .md or .zip link (GitHub file links work). You will see the full body before it is saved.",
     "placeholder": "https://example.com/skills/security.md",
     "fetching": "Fetching…",
+    "fetch": "Fetch",
     "import": "Import from URL",
     "success": "Imported \"{name}\". Disabled until you vet + enable it."
   },

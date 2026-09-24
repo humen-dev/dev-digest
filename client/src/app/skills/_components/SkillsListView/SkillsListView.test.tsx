@@ -54,9 +54,11 @@ vi.mock("../../../../lib/hooks/skills", () => ({
   useCreateSkill: () => ({ mutateAsync: createSkill, isPending: false }),
   useDeleteSkill: () => ({ mutate: vi.fn(), isPending: false }),
   useImportSkillPreview: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useImportUrlPreview: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSkillTokens: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
+import { ToastProvider } from "../../../../lib/toast";
 import { SkillsListView } from "./SkillsListView";
 
 afterEach(() => {
@@ -69,7 +71,9 @@ afterEach(() => {
 function renderWithIntl() {
   return render(
     <NextIntlClientProvider locale="en" messages={{ skills: messages }}>
-      <SkillsListView />
+      <ToastProvider>
+        <SkillsListView />
+      </ToastProvider>
     </NextIntlClientProvider>,
   );
 }
@@ -83,31 +87,28 @@ describe("SkillsListView", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("previews a skill in the side panel on card click, without leaving the list", () => {
+  it("opens the editor straight away on card click", () => {
     renderWithIntl();
     fireEvent.click(screen.getByText("corner-case-checklist"));
-
-    const panel = screen.getByRole("dialog");
-    expect(within(panel).getByText("Check for missing edge-case tests.")).toBeInTheDocument();
-    expect(push).not.toHaveBeenCalled();
-  });
-
-  it("opens the editor from the preview panel", () => {
-    renderWithIntl();
-    fireEvent.click(screen.getByText("corner-case-checklist"));
-    fireEvent.click(within(screen.getByRole("dialog")).getByText("Open editor"));
     expect(push).toHaveBeenCalledWith("/skills/sk2?tab=config");
   });
 
   it("creates from scratch through a modal instead of writing a placeholder skill", () => {
     renderWithIntl();
     fireEvent.click(screen.getByText("Add Skill"));
-    fireEvent.click(screen.getByText("Create from scratch"));
 
     const modal = screen.getByRole("dialog");
-    expect(within(modal).getByText("Create a skill")).toBeInTheDocument();
-    expect(within(modal).getByPlaceholderText("uncovered-branch-gate")).toBeInTheDocument();
+    expect(within(modal).getByText("Add skill")).toBeInTheDocument();
+    expect(within(modal).getByPlaceholderText("pr-quality-rubric")).toBeInTheDocument();
     expect(createSkill).not.toHaveBeenCalled();
+  });
+
+  it("offers the From file and Import from URL tabs in the same modal", () => {
+    renderWithIntl();
+    fireEvent.click(screen.getByText("Add Skill"));
+    const modal = screen.getByRole("dialog");
+    fireEvent.click(within(modal).getByRole("button", { name: "Import from URL" }));
+    expect(within(modal).getByPlaceholderText("https://example.com/skills/security.md")).toBeInTheDocument();
   });
 
   it("filters the grid by the search box", () => {

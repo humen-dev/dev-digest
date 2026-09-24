@@ -1,5 +1,6 @@
 import type { Skill, SkillImportPreview, SkillVersion } from '@devdigest/shared';
 import type { Tokenizer } from '../../adapters/tokenizer/index.js';
+import type { UrlFetcher } from '../../adapters/url-fetcher/index.js';
 import { ValidationError } from '../../platform/errors.js';
 import { extractSkillFromArchive } from './domain/parse-archive.js';
 import { parseSkillMarkdown } from './domain/parse-markdown.js';
@@ -19,6 +20,7 @@ export class SkillsService {
   constructor(
     private repo: SkillsRepositoryPort,
     private tokenizer: Tokenizer,
+    private urlFetcher: UrlFetcher,
   ) {}
 
   async list(workspaceId: string): Promise<Skill[]> {
@@ -113,6 +115,12 @@ export class SkillsService {
     }
     const { draft, warnings } = parseSkillMarkdown(bytes.toString('utf8'), filename);
     return { draft, ignored_entries: [], warnings };
+  }
+
+  /** Download a remote `.md` / `.zip` and preview it exactly like an uploaded file. Writes NOTHING. */
+  async importUrlPreview(url: string): Promise<SkillImportPreview> {
+    const { filename, bytes } = await this.urlFetcher.fetch(url, MAX_IMPORT_BYTES);
+    return this.importPreview(filename, bytes.toString('base64'));
   }
 
   private async toDto(row: Awaited<ReturnType<SkillsRepositoryPort['getById']>>): Promise<Skill> {

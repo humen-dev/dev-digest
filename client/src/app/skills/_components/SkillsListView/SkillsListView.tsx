@@ -1,19 +1,16 @@
-/* /skills — Skills list. SkillCards + create/import. Clicking a card previews
-   the skill in a side panel; the full 4-tab editor at /skills/:id is one click
-   further, so browsing the list never costs a route change. */
+/* /skills — Skills list. SkillCards + create/import. No skill is selected here;
+   clicking a card opens the editor at /skills/:id straight away. */
 "use client";
 
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button, Dropdown, EmptyState, ErrorState, Skeleton, Icon } from "@devdigest/ui";
+import { Button, EmptyState, ErrorState, Skeleton, Icon } from "@devdigest/ui";
 import { AppShell } from "../../../../components/app-shell";
 import { useSkills, useUpdateSkill } from "../../../../lib/hooks/skills";
 import { SkillCard } from "../SkillCard";
-import { ImportSkillDrawer } from "../SkillsListColumn/_components/ImportSkillDrawer";
+import { AddSkillModal } from "../AddSkillModal";
 import { filterSkills } from "../SkillsListColumn/helpers";
-import { CreateSkillModal } from "./_components/CreateSkillModal";
-import { SkillPreviewPanel } from "./_components/SkillPreviewPanel";
 import { s } from "./styles";
 
 export function SkillsListView() {
@@ -22,12 +19,9 @@ export function SkillsListView() {
   const { data: skills, isLoading, isError, refetch } = useSkills();
   const update = useUpdateSkill();
   const [search, setSearch] = React.useState("");
-  const [importing, setImporting] = React.useState(false);
-  const [creating, setCreating] = React.useState(false);
-  const [previewId, setPreviewId] = React.useState<string | null>(null);
+  const [addTab, setAddTab] = React.useState<string | null>(null);
 
   const list = filterSkills(skills ?? [], search);
-  const previewed = list.find((sk) => sk.id === previewId) ?? null;
 
   const open = (id: string) => router.push(`/skills/${id}?tab=config`);
 
@@ -48,19 +42,9 @@ export function SkillsListView() {
               style={s.searchInput}
             />
           </div>
-          <Dropdown
-            width={220}
-            align="right"
-            trigger={
-              <Button kind="primary" size="sm" icon="Plus" iconRight="ChevronDown">
-                {t("page.addSkill")}
-              </Button>
-            }
-            items={[
-              { label: t("page.menu.create"), icon: "Edit", onClick: () => setCreating(true) },
-              { label: t("page.menu.fromFile"), icon: "Upload", onClick: () => setImporting(true) },
-            ]}
-          />
+          <Button kind="primary" size="sm" icon="Plus" onClick={() => setAddTab("create")}>
+            {t("page.addSkill")}
+          </Button>
         </div>
 
         {isLoading && (
@@ -77,7 +61,7 @@ export function SkillsListView() {
             title={t("page.empty.title")}
             body={t("page.empty.body")}
             cta={t("page.empty.cta")}
-            onCta={() => setImporting(true)}
+            onCta={() => setAddTab("file")}
           />
         )}
         {list.length > 0 && (
@@ -86,36 +70,19 @@ export function SkillsListView() {
               <SkillCard
                 key={sk.id}
                 skill={sk}
-                active={sk.id === previewId}
-                onClick={() => setPreviewId(sk.id)}
+                onClick={() => open(sk.id)}
                 onToggle={(enabled) => update.mutate({ id: sk.id, patch: { enabled } })}
-                onDeleted={() => setPreviewId((id) => (id === sk.id ? null : id))}
               />
             ))}
           </div>
         )}
       </div>
-      {previewed && (
-        <SkillPreviewPanel
-          skill={previewed}
-          onClose={() => setPreviewId(null)}
-          onOpenEditor={() => open(previewed.id)}
-        />
-      )}
-      {creating && (
-        <CreateSkillModal
-          onClose={() => setCreating(false)}
-          onCreated={(id) => {
-            setCreating(false);
-            open(id);
-          }}
-        />
-      )}
-      {importing && (
-        <ImportSkillDrawer
-          onClose={() => setImporting(false)}
-          onImported={(id) => {
-            setImporting(false);
+      {addTab && (
+        <AddSkillModal
+          initialTab={addTab}
+          onClose={() => setAddTab(null)}
+          onAdded={(id) => {
+            setAddTab(null);
             open(id);
           }}
         />

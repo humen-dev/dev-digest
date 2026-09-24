@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-/** Co-located styles for ImportSkillDrawer. */
+/** Co-located styles for ImportTab. */
 export const s = {
   fileRow: {
     display: "flex",
@@ -55,5 +55,7 @@ export const s = {
     padding: "10px 12px",
     lineHeight: 1.5,
   } satisfies CSSProperties,
-  footer: { display: "flex", gap: 10, justifyContent: "flex-end" } satisfies CSSProperties,
+  footer: { display: "flex", gap: 10, justifyContent: "flex-end", padding: "12px 24px 20px" } satisfies CSSProperties,
+  content: { padding: "20px 24px 8px", maxHeight: "60vh", overflow: "auto" } satisfies CSSProperties,
+  urlRow: { display: "flex", gap: 8, alignItems: "flex-start" } satisfies CSSProperties,
 } as const;

@@ -50,6 +50,8 @@ const ImportPreviewBody = z.object({
   content_base64: z.string().min(1),
 });
 
+const ImportUrlPreviewBody = z.object({ url: z.string().url() });
+
 /** 4 MB — comfortably above the base64 encoding of `MAX_IMPORT_BYTES` (2 MB raw). */
 const IMPORT_PREVIEW_BODY_LIMIT = 4 * 1024 * 1024;
 
@@ -68,11 +70,12 @@ const IMPORT_PREVIEW_BODY_LIMIT = 4 * 1024 * 1024;
  *   POST   /skills/tokens                          → { body } → { tokens } (unsaved-editor counter)
  *   POST   /skills/import/preview                  → { filename, content_base64 } → SkillImportPreview
  *                                                    (writes NOTHING; bodyLimit 4MB on this route only)
+ *   POST   /skills/import/url-preview              → { url } → SkillImportPreview (server-side fetch, SSRF-guarded)
  */
 export default async function skillsRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
   const { container } = app;
-  const service = new SkillsService(container.skillsRepo, container.tokenizer);
+  const service = new SkillsService(container.skillsRepo, container.tokenizer, container.urlFetcher);
 
   app.get('/skills', async (req) => {
     const { workspaceId } = await getContext(container, req);
@@ -161,4 +164,9 @@ export default async function skillsRoutes(appBase: FastifyInstance) {
       return service.importPreview(req.body.filename, req.body.content_base64);
     },
   );
+
+  app.post('/skills/import/url-preview', { schema: { body: ImportUrlPreviewBody } }, async (req) => {
+    await getContext(container, req);
+    return service.importUrlPreview(req.body.url);
+  });
 }

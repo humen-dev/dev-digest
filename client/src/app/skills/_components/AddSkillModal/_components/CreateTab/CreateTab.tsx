@@ -1,19 +1,18 @@
-/* CreateSkillModal — "Add Skill → Create from scratch". The skill is written
-   only when the form is submitted, so an abandoned modal leaves nothing
-   behind. */
+/* CreateTab — "Add skill → Create". The skill is written only when the form is
+   submitted, so an abandoned modal leaves nothing behind. */
 "use client";
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Button, FormField, Modal, SelectInput, TextInput } from "@devdigest/ui";
+import { Button, FormField, SelectInput, TextInput } from "@devdigest/ui";
 import type { SkillType } from "@devdigest/shared";
 import { SkillBodyEditor } from "@/components/skill-body-editor";
 import { useCreateSkill } from "@/lib/hooks/skills";
 import { SKILL_TYPE_OPTIONS } from "@/lib/skill-types";
-import { CREATE_MODAL_WIDTH, DEFAULT_SKILL_TYPE } from "../../constants";
+import { DEFAULT_SKILL_TYPE } from "../../constants";
 import { s } from "./styles";
 
-export function CreateSkillModal({
+export function CreateTab({
   onClose,
   onCreated,
 }: {
@@ -41,28 +40,12 @@ export function CreateSkillModal({
   const canSubmit = !!name.trim() && !!body.trim() && !create.isPending;
 
   return (
-    <Modal
-      width={CREATE_MODAL_WIDTH}
-      title={t("createModal.title")}
-      subtitle={t("createModal.subtitle")}
-      onClose={onClose}
-      footer={
-        <div style={s.footer}>
-          <span style={s.footerNote}>{t("createModal.footerNote")}</span>
-          <Button kind="ghost" onClick={onClose}>
-            {t("createModal.cancel")}
-          </Button>
-          <Button kind="primary" icon="Plus" disabled={!canSubmit} onClick={() => void submit()}>
-            {create.isPending ? t("createModal.creating") : t("createModal.create")}
-          </Button>
-        </div>
-      }
-    >
+    <>
       <div style={s.body}>
         <FormField label={t("createModal.name")} required>
           <TextInput value={name} onChange={setName} placeholder={t("createModal.namePlaceholder")} mono />
         </FormField>
-        <FormField label={t("createModal.description")} hint={t("createModal.descriptionHint")}>
+        <FormField label={t("createModal.description")}>
           <TextInput
             value={description}
             onChange={setDescription}
@@ -80,6 +63,15 @@ export function CreateSkillModal({
           <SkillBodyEditor name={name} body={body} savedBody="" initialTokens={0} onChange={setBody} />
         </FormField>
       </div>
-    </Modal>
+      <div style={s.footer}>
+        <span style={s.footerNote}>{t("createModal.footerNote")}</span>
+        <Button kind="ghost" onClick={onClose}>
+          {t("createModal.cancel")}
+        </Button>
+        <Button kind="primary" icon="Plus" disabled={!canSubmit} onClick={() => void submit()}>
+          {create.isPending ? t("createModal.creating") : t("createModal.create")}
+        </Button>
+      </div>
+    </>
   );
 }

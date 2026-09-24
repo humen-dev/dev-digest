@@ -125,6 +125,13 @@ export function useSkillTokens() {
   });
 }
 
+/** URL of a remote `.md` / `.zip` → preview (server downloads it; writes nothing). */
+export function useImportUrlPreview() {
+  return useMutation({
+    mutationFn: (input: { url: string }) => api.post<SkillImportPreview>("/skills/import/url-preview", input),
+  });
+}
+
 /** `.md` / `.zip` → preview (writes nothing). Confirming is a plain `useCreateSkill` call. */
 export function useImportSkillPreview() {
   return useMutation({
