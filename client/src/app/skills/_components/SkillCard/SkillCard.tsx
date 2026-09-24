@@ -28,8 +28,9 @@ export function SkillCard({
   const del = useDeleteSkill();
   const [confirming, setConfirming] = React.useState(false);
   const isImported = skill.source === "imported_file";
+  const blocked = !!skill.injection_detected;
   return (
-    <div onClick={onClick} style={s.card(!!active, skill.enabled)}>
+    <div onClick={onClick} style={s.card(!!active, skill.enabled, blocked)}>
       <div style={s.headerRow}>
         <div style={s.iconBox}>
           <Icon.Sparkles size={15} />
@@ -37,7 +38,12 @@ export function SkillCard({
         <span className="mono" style={s.name}>
           {skill.name}
         </span>
-        {onToggle && (
+        {blocked && (
+          <Badge color="var(--crit)" bg="var(--crit-bg)" icon="AlertTriangle">
+            {t("injection.badge")}
+          </Badge>
+        )}
+        {onToggle && !blocked && (
           <div onClick={(e) => e.stopPropagation()}>
             <Toggle on={skill.enabled} onChange={onToggle} size={14} />
           </div>
@@ -56,6 +62,7 @@ export function SkillCard({
         </button>
       </div>
       <div style={s.description}>{skill.description}</div>
+      {blocked && <div style={s.blockedNote}>{t("injection.blocked")}</div>}
       <div style={s.metaRow}>
         <Badge color="var(--text-secondary)">{t(`listItem.type.${skill.type}`)}</Badge>
         <Badge color={isImported ? "var(--warn)" : "var(--text-muted)"} bg={isImported ? "var(--warn-bg)" : undefined}>

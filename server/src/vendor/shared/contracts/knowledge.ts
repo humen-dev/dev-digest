@@ -137,6 +137,8 @@ export const Skill = z.object({
   // Server-computed; not persisted on the row.
   body_tokens: z.number().int(),
   agent_count: z.number().int(),
+  // Server-computed from `body`: a prompt-injection pattern was found. Such a skill is blocked (never enabled).
+  injection_detected: z.boolean().optional(),
 });
 export type Skill = z.infer<typeof Skill>;
 

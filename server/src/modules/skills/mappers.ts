@@ -1,4 +1,5 @@
 import type { Skill, SkillSource, SkillType, SkillVersion } from '@devdigest/shared';
+import { hasInjection } from '../_shared/injection.js';
 import type { SkillRow, SkillVersionRow } from './ports.js';
 
 /**
@@ -26,6 +27,7 @@ export function toSkillDto(row: SkillRow, extras: SkillDtoExtras): Skill {
     evidence_files: (row.evidenceFiles as string[] | null) ?? null,
     body_tokens: extras.bodyTokens,
     agent_count: extras.agentCount,
+    injection_detected: hasInjection(row.body),
   };
 }
 

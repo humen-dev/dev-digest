@@ -2,15 +2,16 @@ import type { CSSProperties } from "react";
 
 /** Co-located styles for SkillCard (mirrors agents/_components/AgentCard/styles.ts). */
 export const s = {
-  card: (active: boolean, enabled: boolean): CSSProperties => ({
+  card: (active: boolean, enabled: boolean, blocked = false): CSSProperties => ({
     padding: 14,
     borderRadius: 8,
     cursor: "pointer",
-    border: "1px solid " + (active ? "var(--border-strong)" : "var(--border)"),
+    border: "1px solid " + (blocked ? "var(--crit)" : active ? "var(--border-strong)" : "var(--border)"),
     background: active ? "var(--bg-hover)" : "var(--bg-elevated)",
     opacity: enabled ? 1 : 0.6,
     marginBottom: 10,
   }),
+  blockedNote: { fontSize: 12, color: "var(--crit)", marginTop: 6 } satisfies CSSProperties,
   headerRow: { display: "flex", alignItems: "center", gap: 10 } satisfies CSSProperties,
   iconBox: {
     width: 26,

@@ -48,6 +48,13 @@ describe("SkillCard (smoke)", () => {
     expect(screen.getByText("Imported")).toBeInTheDocument();
   });
 
+  it("marks an injected skill as blocked and removes its enable toggle", () => {
+    renderWithIntl(<SkillCard skill={{ ...SKILL, enabled: false, injection_detected: true }} onToggle={vi.fn()} />);
+    expect(screen.getByText("Injection detected")).toBeInTheDocument();
+    expect(screen.getByText("blocked — injection detected")).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+  });
+
   it("calls onToggle without triggering onClick", () => {
     const onToggle = vi.fn();
     const onClick = vi.fn();

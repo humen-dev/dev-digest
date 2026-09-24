@@ -47,6 +47,12 @@
     "create": "Create skill",
     "creating": "Creating…"
   },
+  "injection": {
+    "badge": "Injection detected",
+    "bannerTitle": "INJECTION DETECTED — DO NOT ENABLE",
+    "bannerBody": "This skill contains prompt injection patterns. It has been automatically blocked.",
+    "blocked": "blocked — injection detected"
+  },
   "previewPanel": {
     "subtitle": "Preview — the body exactly as the agent receives it.",
     "empty": "This skill has no body yet.",

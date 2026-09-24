@@ -3,6 +3,7 @@ import type { Tokenizer } from '../../adapters/tokenizer/index.js';
 import type { UrlFetcher } from '../../adapters/url-fetcher/index.js';
 import { ValidationError } from '../../platform/errors.js';
 import { extractSkillFromArchive } from './domain/parse-archive.js';
+import { hasInjection } from '../_shared/injection.js';
 import { parseSkillMarkdown } from './domain/parse-markdown.js';
 import { unifiedDiff } from './domain/diff.js';
 import { MAX_IMPORT_BYTES } from './constants.js';
@@ -38,13 +39,13 @@ export class SkillsService {
 
   async create(workspaceId: string, input: Omit<InsertSkill, 'workspaceId'>): Promise<Skill> {
     const row = await this.repo.insert({ ...input, workspaceId });
-    return this.toDto(row);
+    return this.toDto(await this.blockIfInjected(workspaceId, row));
   }
 
   async update(workspaceId: string, id: string, patch: UpdateSkill): Promise<Skill | undefined> {
     const row = await this.repo.update(workspaceId, id, patch);
     if (!row) return undefined;
-    return this.toDto(row);
+    return this.toDto(await this.blockIfInjected(workspaceId, row));
   }
 
   async delete(workspaceId: string, id: string): Promise<boolean> {
@@ -77,7 +78,7 @@ export class SkillsService {
   async restore(workspaceId: string, id: string, version: number): Promise<Skill | undefined> {
     const row = await this.repo.restoreVersion(workspaceId, id, version);
     if (!row) return undefined;
-    return this.toDto(row);
+    return this.toDto(await this.blockIfInjected(workspaceId, row));
   }
 
   /** Agents currently linking this skill (Stats tab). `undefined` → 404. */
@@ -121,6 +122,20 @@ export class SkillsService {
   async importUrlPreview(url: string): Promise<SkillImportPreview> {
     const { filename, bytes } = await this.urlFetcher.fetch(url, MAX_IMPORT_BYTES);
     return this.importPreview(filename, bytes.toString('base64'));
+  }
+
+  /**
+   * A skill whose body carries a prompt-injection pattern is force-disabled — it
+   * can be stored and inspected, but never enabled. Uses a metadata-only update
+   * (no `body`), so it does not bump the version.
+   */
+  private async blockIfInjected<R extends { id: string; body: string; enabled: boolean }>(
+    workspaceId: string,
+    row: R,
+  ): Promise<R> {
+    if (!row.enabled || !hasInjection(row.body)) return row;
+    const blocked = await this.repo.update(workspaceId, row.id, { enabled: false });
+    return (blocked as R | undefined) ?? row;
   }
 
   private async toDto(row: Awaited<ReturnType<SkillsRepositoryPort['getById']>>): Promise<Skill> {

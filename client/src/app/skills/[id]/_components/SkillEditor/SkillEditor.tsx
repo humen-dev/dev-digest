@@ -20,6 +20,13 @@ export function SkillEditor({ skill, tab, onTab }: { skill: Skill; tab: string; 
   const tabs = TABS.map((tb) => ({ key: tb.key, label: t(tb.labelKey), icon: tb.icon }));
   return (
     <div style={s.wrap}>
+      {skill.injection_detected && (
+        <div role="alert" style={s.injectionBanner}>
+          <Icon.AlertTriangle size={16} />
+          <strong>{t("injection.bannerTitle")}</strong>
+          <span>{t("injection.bannerBody")}</span>
+        </div>
+      )}
       <div style={s.header}>
         <Icon.Sparkles size={18} style={{ color: "var(--accent)" }} />
         <h1 style={s.h1}>{skill.name}</h1>
@@ -27,7 +34,12 @@ export function SkillEditor({ skill, tab, onTab }: { skill: Skill; tab: string; 
         <Badge color="var(--text-secondary)" mono>
           {t("config.version", { version: skill.version })}
         </Badge>
-        {!skill.enabled && <Badge color="var(--text-muted)">disabled</Badge>}
+        {skill.injection_detected && (
+          <Badge color="var(--crit)" bg="var(--crit-bg)" icon="AlertTriangle">
+            {t("injection.badge")}
+          </Badge>
+        )}
+        {!skill.enabled && !skill.injection_detected && <Badge color="var(--text-muted)">disabled</Badge>}
       </div>
       <div style={s.tabsBar}>
         <Tabs tabs={tabs} value={tab} onChange={onTab} pad="0 24px" />

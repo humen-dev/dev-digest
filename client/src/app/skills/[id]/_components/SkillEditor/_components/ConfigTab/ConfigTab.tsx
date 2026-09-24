@@ -87,7 +87,7 @@ export function ConfigTab({ skill }: { skill: Skill }) {
         <h2 style={s.h2}>{t("config.title")}</h2>
         <label style={s.enabledLabel}>
           {t("config.enabled")}
-          <Toggle on={enabled} onChange={setEnabled} size={16} />
+          {!skill.injection_detected && <Toggle on={enabled} onChange={setEnabled} size={16} />}
         </label>
       </div>
       <FormField label={t("config.name")} required>

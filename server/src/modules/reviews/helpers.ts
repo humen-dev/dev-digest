@@ -3,6 +3,7 @@
  * their arguments — no DB / network / `this`).
  */
 import type { Finding } from '@devdigest/shared';
+import { hasInjection } from '../_shared/injection.js';
 import type { FindingRow, PullRow, ReviewRow } from './repository.js';
 
 // reduceReviews + sliceDiff live in @devdigest/reviewer-core (pure engine logic
@@ -108,11 +109,11 @@ export interface SkillLinkForPrompt {
  * (Skills feature — L02). `links` is already ordered by `agent_skills.order`
  * (see `AgentsRepository.linkedSkills`); this only filters out disabled
  * skills and formats each survivor as `### Skill: <name> (<type>)\n<body>`.
- * A disabled skill never reaches the prompt. Pure — no tokenizer, no I/O;
+ * A disabled skill — or one whose body trips the injection detector, even if a legacy row is still enabled — never reaches the prompt. Pure — no tokenizer, no I/O;
  * `run-executor.ts` counts tokens over the joined result.
  */
 export function renderSkillBlocks(links: SkillLinkForPrompt[]): string[] {
   return links
-    .filter((l) => l.skill.enabled)
+    .filter((l) => l.skill.enabled && !hasInjection(l.skill.body))
     .map((l) => `### Skill: ${l.skill.name} (${l.skill.type})\n${l.skill.body}`);
 }
