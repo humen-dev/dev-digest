@@ -107,6 +107,7 @@
       "security": "security",
       "custom": "custom"
     },
+    "globallyDisabled": "Disabled in Skills",
     "loadError": "Could not load this agent's skills."
   },
   "mount": {

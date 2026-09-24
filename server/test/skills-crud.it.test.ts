@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { readFileSync } from 'node:fs';
+import { parseSkillMarkdown } from '../src/modules/skills/domain/parse-markdown.js';
 import { startPg, dockerAvailable, type PgFixture } from './helpers/pg.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/platform/config.js';
@@ -285,4 +287,17 @@ d('/skills CRUD + versions', () => {
     expect(stillThere).toBeDefined();
     await app.close();
   });
+  it('seeds a real imported file linked to API Contract Reviewer, without duplicate skills on reseed', async () => {
+    const file = readFileSync(new URL('../../docs/skill-fixtures/breaking-change.md', import.meta.url), 'utf8');
+    const { draft } = parseSkillMarkdown(file, 'breaking-change.md');
+    await seed(pg.handle.db);
+    const rows = await pg.handle.db.select().from(t.skills).where(eq(t.skills.name, draft.name));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ ...draft, source: 'imported_file' });
+    const links = await pg.handle.db.select({ name: t.agents.name }).from(t.agentSkills)
+      .innerJoin(t.agents, eq(t.agents.id, t.agentSkills.agentId))
+      .where(eq(t.agentSkills.skillId, rows[0]!.id));
+    expect(links).toContainEqual({ name: 'API Contract Reviewer' });
+  });
+
 });

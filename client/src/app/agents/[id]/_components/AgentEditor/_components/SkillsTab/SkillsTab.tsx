@@ -13,6 +13,7 @@ import { Badge, ErrorState, IconBtn, Icon, Toggle } from "@devdigest/ui";
 import type { Agent } from "@devdigest/shared";
 import { useAgentSkills, useSetAgentSkills, useSkills } from "../../../../../../../lib/hooks/skills";
 import { s } from "./styles";
+import { reorderEnabledSkills } from "./helpers";
 
 export function SkillsTab({ agent }: { agent: Agent }) {
   const t = useTranslations("agents");
@@ -21,7 +22,7 @@ export function SkillsTab({ agent }: { agent: Agent }) {
   const setSkills = useSetAgentSkills();
 
   const [linkedIds, setLinkedIds] = React.useState<string[]>([]);
-  const [dragIndex, setDragIndex] = React.useState<number | null>(null);
+  const [dragId, setDragId] = React.useState<string | null>(null);
   const [filter, setFilter] = React.useState("");
 
   // Seed local order from the server once links load (and whenever the agent
@@ -31,6 +32,7 @@ export function SkillsTab({ agent }: { agent: Agent }) {
   }, [agent.id, links]);
 
   const skillById = React.useMemo(() => new Map((skills ?? []).map((sk) => [sk.id, sk])), [skills]);
+  const enabledIds = linkedIds.filter((id) => skillById.get(id)?.enabled);
   const query = filter.trim().toLowerCase();
   const matches = (id: string) => !query || (skillById.get(id)?.name.toLowerCase().includes(query) ?? false);
   const unlinked = (skills ?? []).filter((sk) => !linkedIds.includes(sk.id) && matches(sk.id));
@@ -44,24 +46,21 @@ export function SkillsTab({ agent }: { agent: Agent }) {
     commit(linked ? [...linkedIds, skillId] : linkedIds.filter((id) => id !== skillId));
   };
 
-  /* Indexes are positions in the FULL linked order, never in the filtered view,
-     so reordering while a filter is active can't scramble hidden rows. */
-  const move = (index: number, dir: -1 | 1) => {
-    const to = index + dir;
-    if (to < 0 || to >= linkedIds.length) return;
-    const next = [...linkedIds];
-    const [item] = next.splice(index, 1);
-    next.splice(to, 0, item!);
-    commit(next);
+  // Work with stable IDs and the full active order, even when search hides rows.
+  const reorder = (fromId: string, toId: string) => {
+    const next = reorderEnabledSkills(linkedIds, enabledIds, fromId, toId);
+    if (next !== linkedIds) commit(next);
   };
 
-  const onDrop = (index: number) => {
-    if (dragIndex == null || dragIndex === index) return;
-    const next = [...linkedIds];
-    const [item] = next.splice(dragIndex, 1);
-    next.splice(index, 0, item!);
-    setDragIndex(null);
-    commit(next);
+  const move = (id: string, dir: -1 | 1) => {
+    const index = enabledIds.indexOf(id);
+    const target = index < 0 ? undefined : enabledIds[index + dir];
+    if (target) reorder(id, target);
+  };
+
+  const onDrop = (id: string) => {
+    if (dragId) reorder(dragId, id);
+    setDragId(null);
   };
 
   if (isError) return <ErrorState body={t("skills.loadError")} onRetry={() => refetch()} />;
@@ -72,7 +71,7 @@ export function SkillsTab({ agent }: { agent: Agent }) {
       <div style={s.headerRow}>
         <h2 style={s.h2}>{t("skills.title")}</h2>
         <span style={s.count}>
-          {t("skills.enabledCount", { linked: linkedIds.length, total: skills?.length ?? 0 })}
+          {t("skills.enabledCount", { linked: enabledIds.length, total: skills?.length ?? 0 })}
         </span>
       </div>
       <p style={s.hint}>{t("skills.orderHint")}</p>
@@ -92,20 +91,26 @@ export function SkillsTab({ agent }: { agent: Agent }) {
         <div style={s.empty}>{t("skills.empty")}</div>
       ) : (
         <div style={s.list}>
-          {linkedIds.map((id, i) => {
+          {linkedIds.map((id) => {
             const sk = skillById.get(id);
             if (!sk || !matches(id)) return null;
+            const position = enabledIds.indexOf(id);
             return (
               <div
                 key={id}
-                draggable
-                onDragStart={() => setDragIndex(i)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => onDrop(i)}
-                style={s.row(true)}
+                draggable={sk.enabled}
+                onDragStart={(e) => {
+                  if (!sk.enabled) { e.preventDefault(); return; }
+                  setDragId(id);
+                  e.dataTransfer?.setData("text/plain", id);
+                }}
+                onDragEnd={() => setDragId(null)}
+                onDragOver={(e) => { if (sk.enabled && dragId) e.preventDefault(); }}
+                onDrop={() => onDrop(id)}
+                style={s.row(sk.enabled)}
               >
                 <span style={s.dragHandle} aria-hidden="true">
-                  ⠿
+                  {sk.enabled ? "⠿" : ""}
                 </span>
                 <Toggle on size={14} label={sk.name} onChange={(v) => toggleLink(id, v)} />
                 <span className="mono" style={s.name}>
@@ -113,8 +118,13 @@ export function SkillsTab({ agent }: { agent: Agent }) {
                 </span>
                 <Badge color="var(--text-secondary)">{t(`skills.type.${sk.type}`)}</Badge>
                 <span style={s.spacer} />
-                <IconBtn icon="ArrowUp" label={t("skills.moveUp")} onClick={() => move(i, -1)} />
-                <IconBtn icon="ArrowDown" label={t("skills.moveDown")} onClick={() => move(i, 1)} />
+                {sk.enabled ? (
+                  <>
+                    <span style={s.count}>#{position + 1}</span>
+                    <IconBtn icon="ArrowUp" label={t("skills.moveUp")} onClick={() => move(id, -1)} />
+                    <IconBtn icon="ArrowDown" label={t("skills.moveDown")} onClick={() => move(id, 1)} />
+                  </>
+                ) : <Badge color="var(--text-muted)">{t("skills.globallyDisabled")}</Badge>}
               </div>
             );
           })}

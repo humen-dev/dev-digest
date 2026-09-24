@@ -65,33 +65,26 @@ describe('assemblePrompt — ## PR description', () => {
   });
 });
 
-describe('assemblePrompt — ## Skills / rules (Skills feature, L02)', () => {
-  it('renders the section and places it BEFORE ## Diff to review when skills are given', () => {
-    const { messages, assembly } = assemblePrompt({
-      system: 'sys',
-      diff: 'DIFF',
-      skills: [
-        '### Skill: Uncovered Branch Gate (rubric)\nEvery new branch needs a test.',
-        '### Skill: Mock Overuse Gate (convention)\nDo not mock the thing under test.',
-      ],
-    });
-    const user = messages[1]!.content;
-    expect(user).toContain('## Skills / rules');
-    expect(user).toContain('Uncovered Branch Gate');
-    expect(user).toContain('Mock Overuse Gate');
-    expect(user.indexOf('## Skills / rules')).toBeLessThan(user.indexOf('## Diff to review'));
-    expect(assembly.skills).toContain('Uncovered Branch Gate');
+describe('assemblePrompt — ordered system skills', () => {
+  it('puts skills only in the system message, in order, before the injection guard', () => {
+    const skills = ['### Skill: First\nFIRST-RULE', '### Skill: Second\nSECOND-RULE'];
+    for (const order of [skills, [...skills].reverse()]) {
+      const { messages, assembly } = assemblePrompt({ system: 'AGENT', diff: 'DIFF', skills: order });
+      const system = messages.find((m) => m.role === 'system')!.content;
+      const user = messages.find((m) => m.role === 'user')!.content;
+      expect(system.indexOf(order[0]!)).toBeLessThan(system.indexOf(order[1]!));
+      expect(system.indexOf(order[1]!)).toBeLessThan(system.indexOf('SECURITY — read carefully'));
+      expect(user).not.toContain('## Skills / rules');
+      expect(user).not.toContain('FIRST-RULE');
+      expect(user).toContain('<untrusted source="diff">');
+      expect(assembly.system).toBe(system);
+      expect(assembly.skills).toBe(order.join('\n\n'));
+    }
   });
 
-  it('omits the section and leaves assembly.skills === null when skills is undefined', () => {
-    const { messages, assembly } = assemblePrompt({ system: 'sys', diff: 'DIFF' });
-    expect(messages[1]!.content).not.toContain('## Skills / rules');
-    expect(assembly.skills ?? null).toBeNull();
-  });
-
-  it('omits the section and leaves assembly.skills === null when skills is an empty array', () => {
-    const { messages, assembly } = assemblePrompt({ system: 'sys', diff: 'DIFF', skills: [] });
-    expect(messages[1]!.content).not.toContain('## Skills / rules');
-    expect(assembly.skills ?? null).toBeNull();
+  it.each([undefined, []])('omits empty skills from both messages and the trace: %j', (skills) => {
+    const { messages, assembly } = assemblePrompt({ system: 'AGENT', diff: 'DIFF', skills });
+    expect(messages.every((m) => !m.content.includes('## Skills / rules'))).toBe(true);
+    expect(assembly.skills).toBeNull();
   });
 });

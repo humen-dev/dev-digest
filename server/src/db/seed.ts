@@ -3,6 +3,8 @@ import { createDb, type Db } from './client.js';
 import * as t from './schema.js';
 import { eq, and } from 'drizzle-orm';
 import { pathToFileURL } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { parseSkillMarkdown } from '../modules/skills/domain/parse-markdown.js';
 import {
   API_CONTRACT_REVIEWER_PROMPT,
   GENERAL_REVIEWER_PROMPT,
@@ -78,37 +80,6 @@ offending test's \`file:line\` and name which of the two patterns applies.`;
  * directive (what to flag, at what severity) and carries a good/bad pair, so the
  * model has a worked example of the rule rather than a description of it.
  */
-const BREAKING_CHANGE_DETECTOR_SKILL = `## Breaking-change detector
-
-Flag any change to a public route that an existing caller cannot absorb without
-editing its own code. Treat these as breaking, at CRITICAL severity:
-
-- A route path or HTTP method is renamed, moved, or removed.
-- A request gains a **required** field or query parameter, or an existing field
-  becomes required / narrower (a shrunk enum, string → uuid, optional → required).
-- A response loses a field, renames one, or changes a field's type.
-- A status code changes for an unchanged condition (404 → 422, 200 → 204).
-
-Name the caller-visible consequence in the finding: what the old caller sends or
-reads, and what it gets after this diff.
-
-**Bad** — CRITICAL, an old caller's request now 400s and its reader breaks:
-
-\`\`\`diff
--const Query = z.object({ status: z.string().optional() });
-+const Query = z.object({ status: z.enum(['open', 'closed']), since: z.string() });
--  return { refund_id: r.id, amount_cents: r.amountCents };
-+  return { id: r.id, amount_cents: r.amountCents };
-\`\`\`
-
-**Good** — additive and therefore compatible; do not flag:
-
-\`\`\`diff
- const Query = z.object({ status: z.string().optional() });
-+const Query = Query.extend({ cursor: z.string().optional() });
-   return { refund_id: r.id, amount_cents: r.amountCents, currency: r.currency };
-\`\`\``;
-
 const RESPONSE_SCHEMA_SKILL = `## Response-schema discipline
 
 Every route that returns JSON must serialize a declared schema, not an ad-hoc
@@ -689,18 +660,17 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
   // ---- API Contract Reviewer skills ---------------------------------------
   // Four skills in the order the agent should apply them: detect the break,
   // then judge the response shape, then the version, then the deprecation.
+  // Import the real file through the same parser as POST /skills/import/preview.
+  // Its metadata and body come from the file, not a label on an inline seed body.
+  const breakingChange = parseSkillMarkdown(
+    readFileSync(new URL('../../../docs/skill-fixtures/breaking-change.md', import.meta.url), 'utf8'),
+    'breaking-change.md',
+  ).draft;
   await linkSkillsToAgent('API Contract Reviewer', [
     {
-      // Seeded as an imported skill: the rule is a published house standard the
-      // team brought in as a file rather than authored here, so the skills list
-      // shows an "Imported" origin on a skill that is actually linked to an agent.
+      ...breakingChange,
       workspaceId,
-      name: 'breaking-change',
-      description:
-        'Flag any route, request, or response change an existing caller cannot absorb without editing its code.',
-      type: 'rubric',
       source: 'imported_file',
-      body: BREAKING_CHANGE_DETECTOR_SKILL,
       enabled: true,
       version: 1,
     },

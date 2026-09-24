@@ -9,7 +9,7 @@ export const s = {
   hint: { fontSize: 13, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 } satisfies CSSProperties,
   empty: { fontSize: 13, color: "var(--text-muted)", padding: "16px 0" } satisfies CSSProperties,
   list: { display: "flex", flexDirection: "column", gap: 6 } satisfies CSSProperties,
-  /** Only attached rows can be dragged, so only they get the grab cursor. */
+  /** Only linked and globally enabled rows can be dragged. */
   row: (draggable: boolean): CSSProperties => ({
     display: "flex",
     alignItems: "center",

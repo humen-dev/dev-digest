@@ -53,6 +53,7 @@ const AGENT: Agent = {
 afterEach(() => {
   cleanup();
   setSkillsMutate.mockClear();
+  SKILLS.forEach((sk) => { sk.enabled = true; });
 });
 
 function renderWithIntl(ui: React.ReactElement) {
@@ -93,5 +94,34 @@ describe("SkillsTab (smoke)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Move up" }));
     expect(setSkillsMutate).toHaveBeenCalledWith({ agentId: "ag1", skillIds: ["sk-b", "sk-a"] });
+  });
+});
+
+describe("SkillsTab drag and drop", () => {
+  const row = (name: string) => screen.getByRole("switch", { name }).parentElement!;
+
+  it("persists the dropped order of enabled links", () => {
+    renderWithIntl(<SkillsTab agent={AGENT} />);
+    expect(row("skill-c")).not.toHaveAttribute("draggable", "true");
+    fireEvent.dragStart(row("skill-a"));
+    fireEvent.drop(row("skill-b"));
+    expect(setSkillsMutate).toHaveBeenCalledWith({ agentId: "ag1", skillIds: ["sk-b", "sk-a"] });
+  });
+
+  it("keeps a globally disabled link but excludes it from ordering and the active count", () => {
+    SKILLS[1]!.enabled = false;
+    renderWithIntl(<SkillsTab agent={AGENT} />);
+    expect(row("skill-b")).toHaveAttribute("draggable", "false");
+    expect(screen.getByText("Disabled in Skills")).toBeInTheDocument();
+    expect(screen.getByText("1 of 3 enabled")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Move down" })).toHaveLength(1);
+    fireEvent.dragStart(row("skill-a"));
+    fireEvent.drop(row("skill-b"));
+    fireEvent.click(screen.getByRole("button", { name: "Move down" }));
+    expect(setSkillsMutate).not.toHaveBeenCalled();
+    fireEvent.dragEnd(row("skill-a"));
+    fireEvent.dragStart(row("skill-b"));
+    fireEvent.drop(row("skill-a"));
+    expect(setSkillsMutate).not.toHaveBeenCalled();
   });
 });
