@@ -9,7 +9,9 @@ Reusable AI skills that provide specialized knowledge and workflows. Canonical l
 | [fastify-best-practices](fastify-best-practices/SKILL.md) | Backend | Fastify routes, plugins, JSON-schema validation, error handling |
 | [drizzle-orm-patterns](drizzle-orm-patterns/SKILL.md) | Backend | Drizzle schema, queries, relations, transactions, migrations |
 | [postgresql-table-design](postgresql-table-design/SKILL.md) | Backend | Postgres schema design, data types, indexing, constraints |
+| [onion-architecture](onion-architecture/SKILL.md) | Backend | Ring placement, import direction, ports/adapters, DI — enforced by depcruise |
 | [next-best-practices](next-best-practices/SKILL.md) | Frontend | Next.js App Router, RSC boundaries, data fetching, optimization |
+| [frontend-ui-architecture](frontend-ui-architecture/SKILL.md) | Frontend | Where UI code lives, how to split it, layer boundaries |
 | [react-best-practices](react-best-practices/SKILL.md) | Frontend | React anti-patterns, state management, hooks rules |
 | [react-testing-library](react-testing-library/SKILL.md) | Frontend | General-purpose React Testing Library guide with Vitest |
 | [zod](zod/SKILL.md) | Full-stack | Zod schema validation, parsing, error handling, type inference |
@@ -17,6 +19,7 @@ Reusable AI skills that provide specialized knowledge and workflows. Canonical l
 | [security](security/SKILL.md) | Full-stack | OWASP Top 10:2025, auth, injection, uploads, secrets |
 | [mermaid-diagram](mermaid-diagram/SKILL.md) | Shared | Mermaid diagrams in markdown (flowcharts, sequence, ERD, …) |
 | [engineering-insights](engineering-insights/SKILL.md) | Meta | Capture non-obvious per-module learnings into INSIGHTS.md (append-only) |
+| [pr-self-review](pr-self-review/SKILL.md) | Meta | Pre-PR gate: routes these skills onto the local diff, runs the CI checks, blocks `gh pr create` on CRITICAL |
 
 ## What Are Skills?
 

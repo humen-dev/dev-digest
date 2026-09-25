@@ -9,6 +9,7 @@ of styling. Pairs with [`./README.md`](./README.md) and the architecture in
 |---|---|---|
 | `/repos/:repoId/pulls` | PR list | `usePulls` → `GET /repos/:id/pulls` (`PrMeta[]`) |
 | `/repos/:repoId/pulls/:number` | PR detail | `usePrReviews`, `usePrRuns`, `useRunEvents` |
+| `/repos/:repoId/conventions` | Conventions board | `useConventions` → `GET /repos/:id/conventions` (`ConventionBoard`) — see [`conventions.md`](./conventions.md) |
 
 ## PR list (`/repos/:repoId/pulls`)
 - Columns, in order: **Pull request · Author · Size · Score · Findings · Status ·

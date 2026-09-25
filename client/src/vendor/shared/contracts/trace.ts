@@ -48,6 +48,8 @@ export const PromptAssembly = z.object({
   /** PR author's description/body (truncated); null when absent. */
   pr_description: z.string().nullish(),
   user: z.string(),
+  /** Token count of the assembled `skills` block; null when `skills` is absent. */
+  skills_tokens: z.number().int().nullish(),
 });
 export type PromptAssembly = z.infer<typeof PromptAssembly>;
 

@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "comment": "Accepted findings baseline — the review-side twin of server/.dependency-cruiser-known-violations.json. Key format: <rule id>|<repo-relative POSIX path>|<normalized title>. A reason is mandatory. Phase-3 (LLM) findings may NOT be accepted here: fix the routed skill or the code instead. Add entries with: node .claude/skills/pr-self-review/scripts/pr-self-review.mjs accept \"<key>\" --reason \"...\"",
+  "accepted": []
+}

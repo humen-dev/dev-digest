@@ -1,0 +1,17 @@
+{
+  "name": "Agent editor's Skills tab shows the linked skills",
+  "description": "Opens the seeded Test Quality Reviewer agent, switches to its Skills tab, and confirms all three linked skills (uncovered-branch-gate, corner-case-checklist, mock-overuse-gate) render as linked. Exercises GET /agents/:id/skills.",
+  "steps": [
+    { "cmd": ["open", "{BASE}/agents"], "label": "load the agents page" },
+    { "cmd": ["wait", "--url", "/agents"], "label": "agents route reached" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "agents fetch settles" },
+    { "cmd": ["wait", "--text", "Test Quality Reviewer"], "label": "seeded agent card is visible" },
+    { "cmd": ["find", "text", "Test Quality Reviewer", "click"], "label": "open the Test Quality Reviewer agent" },
+    { "cmd": ["find", "text", "Skills", "click"], "label": "switch to the agent's Skills tab" },
+    { "cmd": ["wait", "--url", "tab=skills"], "label": "skills tab is active in the URL" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "agent-skills fetch settles" },
+    { "cmd": ["wait", "--text", "uncovered-branch-gate"], "label": "linked skill 1 renders" },
+    { "cmd": ["wait", "--text", "corner-case-checklist"], "label": "linked skill 2 renders" },
+    { "cmd": ["wait", "--text", "mock-overuse-gate"], "label": "linked skill 3 renders" }
+  ]
+}

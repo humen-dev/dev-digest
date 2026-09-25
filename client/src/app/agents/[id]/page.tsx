@@ -6,13 +6,33 @@
 import React from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button, Dropdown, ErrorState, Skeleton, Icon, Badge } from "@devdigest/ui";
+import type { Agent } from "@devdigest/shared";
 import { AppShell } from "../../../components/app-shell";
 import { AgentCard } from "../_components/AgentCard";
 import { AgentEditor } from "./_components/AgentEditor";
 import { useAgents, useAgent, useUpdateAgent } from "../../../lib/hooks/agents";
+import { useAgentSkills } from "../../../lib/hooks/skills";
 import { ApiError } from "../../../lib/api";
 
-const VALID_TABS = ["config"];
+const VALID_TABS = ["config", "skills"];
+
+/** One row in the agent rail — its own component so it can call `useAgentSkills`
+    per-agent (a hook call inside the parent's .map() would break the rules of
+    hooks; a small per-row component instance is the standard escape hatch). */
+function AgentRailRow({
+  ag,
+  active,
+  onClick,
+  onToggle,
+}: {
+  ag: Agent;
+  active: boolean;
+  onClick: () => void;
+  onToggle: (enabled: boolean) => void;
+}) {
+  const { data: links } = useAgentSkills(ag.id);
+  return <AgentCard ag={ag} active={active} skillCount={links?.length} onClick={onClick} onToggle={onToggle} />;
+}
 
 export default function AgentEditorPage() {
   const params = useParams<{ id: string }>();
@@ -81,7 +101,7 @@ export default function AgentEditorPage() {
           </div>
           <div style={{ flex: 1, overflow: "auto", padding: "0 12px 12px" }}>
             {(agents ?? []).map((a) => (
-              <AgentCard
+              <AgentRailRow
                 key={a.id}
                 ag={a}
                 active={a.id === id}

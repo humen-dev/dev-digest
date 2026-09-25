@@ -1,0 +1,42 @@
+{
+  "name": "Conventions board renders the seeded house rules and opens the create-skill modal",
+  "description": "Read-only: boots into the seeded repo, navigates through the Skills Lab sidebar to /repos/:id/conventions, and confirms the board renders the seeded scan summary plus the three accepted conventions. Then opens the create-skill modal (POST /conventions/skill-draft, assembled server-side) and confirms the default skill name, closing it with Cancel so nothing is written.",
+  "steps": [
+    { "cmd": ["open", "{BASE}/"], "label": "load the app root" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "initial data fetch settles" },
+    { "cmd": ["wait", "--url", "/pulls"], "label": "root redirects to the seeded repo" },
+    { "cmd": ["find", "text", "Conventions", "click"], "label": "Skills Lab → Conventions in the sidebar" },
+    { "cmd": ["wait", "--url", "/conventions"], "label": "conventions route reached" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "board fetch settles" },
+    {
+      "cmd": ["wait", "--text", "Detected from 11 sample files"],
+      "label": "header reports the seeded scan's sample size"
+    },
+    {
+      "cmd": ["wait", "--text", "5 proposed · 1 dropped without evidence · 0 duplicates · 1 single-file · 3 kept"],
+      "label": "scan summary renders the seeded counters"
+    },
+    {
+      "cmd": ["wait", "--text", "Always use async/await instead of .then() chains"],
+      "label": "seeded convention 1 renders"
+    },
+    {
+      "cmd": ["wait", "--text", "All public route handlers return typed Result<T, ApiError>"],
+      "label": "seeded convention 2 renders"
+    },
+    {
+      "cmd": ["wait", "--text", "Redis access goes through src/lib/redis.ts singleton"],
+      "label": "seeded convention 3 renders"
+    },
+    { "cmd": ["wait", "--text", "3 of 3 accepted"], "label": "all seeded rules count as accepted" },
+    { "cmd": ["find", "text", "Create skill", "click"], "label": "open the create-skill modal" },
+    { "cmd": ["wait", "--text", "Create skill from conventions"], "label": "modal title renders" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "skill draft fetch settles" },
+    {
+      "cmd": ["wait", "--text", "payments-api-conventions"],
+      "label": "draft is prefilled with the default skill name"
+    },
+    { "cmd": ["find", "text", "Cancel", "click"], "label": "close the modal without creating anything" },
+    { "cmd": ["wait", "--text", "3 of 3 accepted"], "label": "back on the board, nothing changed" }
+  ]
+}

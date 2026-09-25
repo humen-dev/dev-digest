@@ -121,6 +121,11 @@ export interface FileRankRow {
   percentile: number;
 }
 
+export interface RankedPath {
+  path: string;
+  rank: number;
+}
+
 export interface RepoMapResult {
   text: string;
   tokens: number;
@@ -161,6 +166,11 @@ export interface RepoIntel {
   getUnresolvedReferences(repoId: string, files: string[]): Promise<RefRow[]>;
   /** Top-N file paths by rank, filtered of tests/configs. */
   getConventionSamples(repoId: string, n: number): Promise<string[]>;
+  /**
+   * Raw ranked paths (rank DESC), UNFILTERED — tests and configs included. For
+   * callers that apply their own sampling policy (e.g. conventions diversity).
+   */
+  getRankedPaths(repoId: string, limit: number): Promise<RankedPath[]>;
 
   // --- T3: onboarding reading-path + critical paths (graph required) ------
   getTopFilesByRank(

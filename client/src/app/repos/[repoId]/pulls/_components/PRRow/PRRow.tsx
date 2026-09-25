@@ -8,7 +8,8 @@ import { Icon, Avatar, Badge, CircularScore } from "@devdigest/ui";
 import type { PrMeta } from "@/lib/types";
 import { formatCost } from "@/lib/format-cost";
 import { SIZE_COLOR, STATUS_META } from "../../constants";
-import { relativeTime, sizeOf } from "../../helpers";
+import { relativeTime } from "@/lib/relative-time";
+import { sizeOf } from "../../helpers";
 import { s } from "../../styles";
 import { FindingsCell } from "../FindingsCell";
 

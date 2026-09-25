@@ -64,3 +64,27 @@ describe('assemblePrompt — ## PR description', () => {
     expect((assembly.pr_description as string).length).toBe(4000);
   });
 });
+
+describe('assemblePrompt — ordered system skills', () => {
+  it('puts skills only in the system message, in order, before the injection guard', () => {
+    const skills = ['### Skill: First\nFIRST-RULE', '### Skill: Second\nSECOND-RULE'];
+    for (const order of [skills, [...skills].reverse()]) {
+      const { messages, assembly } = assemblePrompt({ system: 'AGENT', diff: 'DIFF', skills: order });
+      const system = messages.find((m) => m.role === 'system')!.content;
+      const user = messages.find((m) => m.role === 'user')!.content;
+      expect(system.indexOf(order[0]!)).toBeLessThan(system.indexOf(order[1]!));
+      expect(system.indexOf(order[1]!)).toBeLessThan(system.indexOf('SECURITY — read carefully'));
+      expect(user).not.toContain('## Skills / rules');
+      expect(user).not.toContain('FIRST-RULE');
+      expect(user).toContain('<untrusted source="diff">');
+      expect(assembly.system).toBe(system);
+      expect(assembly.skills).toBe(order.join('\n\n'));
+    }
+  });
+
+  it.each([undefined, []])('omits empty skills from both messages and the trace: %j', (skills) => {
+    const { messages, assembly } = assemblePrompt({ system: 'AGENT', diff: 'DIFF', skills });
+    expect(messages.every((m) => !m.content.includes('## Skills / rules'))).toBe(true);
+    expect(assembly.skills).toBeNull();
+  });
+});

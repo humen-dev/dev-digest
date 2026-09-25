@@ -36,6 +36,7 @@ import type {
   FileRankRow,
   IndexResult,
   IndexState,
+  RankedPath,
   RefRow,
   RepoIntel,
   RepoMapResult,
@@ -629,6 +630,13 @@ export class RepoIntelService implements RepoIntel {
   /** Top-N files by rank, minus tests/configs/migrations — conventions sample. */
   async getConventionSamples(repoId: string, n: number): Promise<string[]> {
     return this.getTopFilesByRank(repoId, n);
+  }
+
+  /** Raw ranked paths (rank DESC, unfiltered); `[]` when repo-intel is disabled. */
+  async getRankedPaths(repoId: string, limit: number): Promise<RankedPath[]> {
+    if (!this.container.config.repoIntelEnabled) return [];
+    if (limit <= 0) return [];
+    return this.repo.getRankedPaths(repoId, limit);
   }
 
   /**

@@ -6,7 +6,7 @@ import * as schema from '../../db/schema.js';
 import type { AgentRow } from '../../db/rows.js';
 import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './repository.js';
 import { REVIEW_STRATEGY } from './constants.js';
-import { taskLine } from './helpers.js';
+import { renderSkillBlocks, taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
@@ -183,6 +183,11 @@ export class ReviewRunExecutor {
 
       const task = taskLine(pull) + rankNote;
 
+      // Skills feature (L02) — best-effort, omit-when-empty, same as
+      // callers/repoMap above. NOT gated by the repo-intel toggle: skills are
+      // an independent feature, always attempted.
+      const skillBlocks = await this.buildSkillBlocks(agent.id, runLog);
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -200,6 +205,9 @@ export class ReviewRunExecutor {
         ...(callersDigest ? { callers: callersDigest } : {}),
         // T3 — repo skeleton, same omit-when-empty contract.
         ...(repoMap ? { repoMap } : {}),
+        // Skills feature (L02) — enabled, ordered skill bodies. Omitted when
+        // no skill is linked/enabled, matching the callers/repoMap contract.
+        ...(skillBlocks.blocks.length ? { skills: skillBlocks.blocks } : {}),
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
@@ -271,7 +279,14 @@ export class ReviewRunExecutor {
           grounding,
           cost_usd: outcome.apiCostUsd,
         },
-        prompt_assembly: outcome.assembly,
+        prompt_assembly: {
+          ...outcome.assembly,
+          // null when no skill was attached (mirrors the other digest fields'
+          // null-when-absent contract), not 0 — so the trace UI can tell
+          // "no skills" apart from "a zero-token skill block" (impossible in
+          // practice, but keeps the contract honest).
+          skills_tokens: skillBlocks.blocks.length > 0 ? skillBlocks.tokens : null,
+        },
         tool_calls: outcome.chunks.map((c) => ({
           tool: 'review_file',
           args: c.label,
@@ -377,6 +392,34 @@ export class ReviewRunExecutor {
       runLog.info(`repo map: repoIntel failed — ${(err as Error).message}`);
       return undefined;
     }
+  }
+
+  /**
+   * Skills feature (L02) — render the agent's linked, enabled skills into
+   * `## Skills / rules` prompt blocks. Best-effort, omit-when-empty (same
+   * convention as `buildCallersDigest` / `buildRepoMapDigest`): a lookup
+   * failure never breaks the run, it just skips the section.
+   *
+   * Source: `agentsRepo.linkedSkills` (already ordered by `agent_skills.order`).
+   * A disabled skill is filtered out here and never reaches the prompt.
+   */
+  private async buildSkillBlocks(
+    agentId: string,
+    runLog: RunLogger,
+  ): Promise<{ blocks: string[]; tokens: number }> {
+    let links;
+    try {
+      links = await this.agents.linkedSkills(agentId);
+    } catch (err) {
+      runLog.info(`skills: lookup failed — ${(err as Error).message}`);
+      return { blocks: [], tokens: 0 };
+    }
+    const blocks = renderSkillBlocks(links);
+    if (blocks.length === 0) return { blocks: [], tokens: 0 };
+
+    const tokens = this.container.tokenizer.count(blocks.join('\n\n'));
+    runLog.info(`skills: ${blocks.length} enabled skill(s) attached (~${tokens} tokens)`);
+    return { blocks, tokens };
   }
 
   /**

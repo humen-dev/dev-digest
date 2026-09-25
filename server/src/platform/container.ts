@@ -25,10 +25,19 @@ import { PriceBook } from './price-book.js';
 import { ConfigError } from './errors.js';
 import { AgentsRepository } from '../modules/agents/repository.js';
 import { ReviewRepository } from '../modules/reviews/repository.js';
+import { SkillsRepository } from '../modules/skills/repository.js';
+import { SkillsService } from '../modules/skills/service.js';
+import { SettingsRepository } from '../modules/settings/repository.js';
+import { FeatureModelResolver } from '../modules/settings/feature-models.service.js';
+import { RepoRepository } from '../modules/repos/repository.js';
+import { ConventionsRepository } from '../modules/conventions/repository.js';
+import { ConventionsService } from '../modules/conventions/service.js';
+import type { ConventionsRepositoryPort } from '../modules/conventions/ports.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
 import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer/index.js';
+import { type UrlFetcher, HttpUrlFetcher } from '../adapters/url-fetcher/index.js';
 
 /**
  * DI container. One per app instance. Holds config, db, the JobRunner,
@@ -51,6 +60,10 @@ export interface ContainerOverrides {
   /** repo-intel T3 adapters — only the indexer pipeline reads these. */
   depgraph?: DepGraph;
   tokenizer?: Tokenizer;
+  /** Remote skill-file downloader (Import from URL) — tests inject a stub. */
+  urlFetcher?: UrlFetcher;
+  /** Conventions persistence port — tests swap the port, not the service. */
+  conventionsRepo?: ConventionsRepositoryPort;
 }
 
 export class Container {
@@ -72,9 +85,14 @@ export class Container {
   // `container.agentsRepo` instead of reaching into another module's folder.
   private _agentsRepo?: AgentsRepository;
   private _reviewRepo?: ReviewRepository;
+  private _skillsRepo?: SkillsRepository;
+  private _featureModels?: FeatureModelResolver;
+  private _reposRepo?: RepoRepository;
+  private _conventionsService?: ConventionsService;
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
+  private _urlFetcher?: UrlFetcher;
   private _priceBook?: PriceBook;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
@@ -100,6 +118,34 @@ export class Container {
     return (this._reviewRepo ??= new ReviewRepository(this.db));
   }
 
+  get skillsRepo(): SkillsRepository {
+    return (this._skillsRepo ??= new SkillsRepository(this.db));
+  }
+
+  /** Settings → Models: per-feature provider/model, workspace override else registry default. */
+  get featureModels(): FeatureModelResolver {
+    return (this._featureModels ??= new FeatureModelResolver(new SettingsRepository(this.db)));
+  }
+
+  get reposRepo(): RepoRepository {
+    return (this._reposRepo ??= new RepoRepository(this.db));
+  }
+
+  /** L02 conventions extractor — the service receives narrow deps, never the container. */
+  get conventionsService(): ConventionsService {
+    return (this._conventionsService ??= new ConventionsService({
+      conventions: this.overrides.conventionsRepo ?? new ConventionsRepository(this.db),
+      repos: this.reposRepo,
+      repoIntel: this.repoIntel,
+      files: this.git,
+      codeIndex: this.codeIndex,
+      llm: (provider) => this.llm(provider),
+      resolveModel: (workspaceId) => this.featureModels.resolve(workspaceId, 'conventions'),
+      skills: new SkillsService(this.skillsRepo, this.tokenizer, this.urlFetcher),
+      tokenizer: this.tokenizer,
+    }));
+  }
+
   get codeIndex(): CodeIndex {
     if (this.overrides.codeIndex) return this.overrides.codeIndex;
     this._codeIndex ??= new RipgrepCodeIndex(this.git);
@@ -122,6 +168,13 @@ export class Container {
     if (this.overrides.depgraph) return this.overrides.depgraph;
     this._depgraph ??= new DepCruiseGraph();
     return this._depgraph;
+  }
+
+  /** Downloader for the skills "Import from URL" flow. */
+  get urlFetcher(): UrlFetcher {
+    if (this.overrides.urlFetcher) return this.overrides.urlFetcher;
+    this._urlFetcher ??= new HttpUrlFetcher();
+    return this._urlFetcher;
   }
 
   /** Token counter (js-tiktoken) for the repo-map budget search. */

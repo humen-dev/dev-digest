@@ -1,7 +1,7 @@
 # server — architecture (`@devdigest/api`)
 
 How a request becomes a persisted review. Read alongside the map in
-[`../CLAUDE.md`](../CLAUDE.md); this file is the deep dive Claude reads on demand.
+[`../AGENTS.md`](../AGENTS.md); this file is the deep dive Claude reads on demand.
 
 ## Boot & composition
 - `src/app.ts` `buildApp({ config, db, overrides })` builds the Fastify instance

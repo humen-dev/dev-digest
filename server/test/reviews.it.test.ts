@@ -7,7 +7,8 @@ import { seed } from '../src/db/seed.js';
 import { MockLLMProvider, MockEmbedder, MockGitClient } from '../src/adapters/mocks.js';
 import * as t from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
-import type { Review } from '@devdigest/shared';
+import type { Review, ChatMessage, RunTrace } from '@devdigest/shared';
+import { readFileSync } from 'node:fs';
 
 const hasDocker = await dockerAvailable();
 const d = hasDocker ? describe : describe.skip;
@@ -303,4 +304,68 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     expect(body.runs.length).toBeGreaterThanOrEqual(2);
     await app.close();
   });
+  it('imports a file, reorders linked skills, and persists the exact ordered system prompt sent to the LLM', async () => {
+    const llm = new MockLLMProvider('openai', { structured: REVIEW_FIXTURE });
+    const app = await buildApp({
+      config: config(), db: pg.handle.db,
+      overrides: { git: new MockGitClient({ diff: DIFF }), llm: { openai: llm } },
+    });
+    try {
+      const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+      const agentResponse = await app.inject({ method: 'POST', url: '/agents', payload: {
+        name: 'Ordered import reviewer', provider: 'openai', model: 'gpt-4.1',
+        system_prompt: 'Review with the linked rules.', strategy: 'single-pass', repo_intel: false,
+      } });
+      expect(agentResponse.statusCode).toBe(201);
+      const agent = agentResponse.json();
+      const preview = await app.inject({ method: 'POST', url: '/skills/import/preview', payload: {
+        filename: 'flaky-test-patterns.md',
+        content_base64: readFileSync(new URL('../../docs/skill-fixtures/flaky-test-patterns.md', import.meta.url)).toString('base64'),
+      } });
+      expect(preview.statusCode).toBe(200);
+      const importedResponse = await app.inject({ method: 'POST', url: '/skills', payload: {
+        ...preview.json().draft, source: 'imported_file',
+      } });
+      expect(importedResponse.statusCode).toBe(201);
+      const imported = importedResponse.json();
+      const secondResponse = await app.inject({ method: 'POST', url: '/skills', payload: {
+        name: 'Second order probe', description: 'Order assertion', type: 'custom', body: 'SECOND-ORDER-PROBE',
+      } });
+      expect(secondResponse.statusCode).toBe(201);
+      const second = secondResponse.json();
+      const [stored] = await pg.handle.db.select().from(t.skills).where(eq(t.skills.id, imported.id));
+      expect(stored).toMatchObject({ source: 'imported_file', body: preview.json().draft.body });
+
+      let completed = 0;
+      const run = async (ids: string[]) => {
+        const linked = await app.inject({ method: 'POST', url: '/agents/' + agent.id + '/skills', payload: { skill_ids: ids } });
+        expect(linked.statusCode).toBe(200);
+        const response = await app.inject({ method: 'POST', url: '/pulls/' + pr.id + '/review', payload: { agentId: agent.id } });
+        expect(response.statusCode).toBe(200);
+        const runId = response.json().runs[0].run_id;
+        const rows = await waitForPrRuns(pg.handle.db, pr.id, { expected: ++completed });
+        expect(rows.find((r) => r.id === runId)?.status).toBe('done');
+        const traceResponse = await app.inject({ method: 'GET', url: '/runs/' + runId + '/trace' });
+        expect(traceResponse.statusCode).toBe(200);
+        const trace = traceResponse.json<RunTrace>();
+        const request = llm.calls.filter((c) => c.method === 'completeStructured').at(-1)!.req as { messages: ChatMessage[] };
+        expect(trace.prompt_assembly.system).toBe(request.messages.find((m) => m.role === 'system')!.content);
+        expect(request.messages.find((m) => m.role === 'user')!.content).not.toContain(imported.body);
+        expect(trace.prompt_assembly.skills_tokens).toBe(app.container.tokenizer.count(trace.prompt_assembly.skills!));
+        return trace.prompt_assembly;
+      };
+      const first = await run([imported.id, second.id]);
+      expect(first.system.indexOf(imported.body)).toBeLessThan(first.system.indexOf(second.body));
+      expect(first.skills!.indexOf(imported.body)).toBeLessThan(first.skills!.indexOf(second.body));
+      const reversed = await run([second.id, imported.id]);
+      expect(reversed.system.indexOf(second.body)).toBeLessThan(reversed.system.indexOf(imported.body));
+      expect(reversed.skills!.indexOf(second.body)).toBeLessThan(reversed.skills!.indexOf(imported.body));
+      const disabled = await app.inject({ method: 'PUT', url: '/skills/' + imported.id, payload: { enabled: false } });
+      expect(disabled.statusCode).toBe(200);
+      const withoutDisabled = await run([second.id, imported.id]);
+      expect(withoutDisabled.system).not.toContain(imported.body);
+      expect(withoutDisabled.skills).not.toContain(imported.name);
+    } finally { await app.close(); }
+  });
+
 });

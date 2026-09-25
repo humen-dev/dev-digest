@@ -3,23 +3,61 @@
     "crumbLab": "Skills Lab",
     "crumbSkills": "Skills",
     "heading": "Skills",
+    "subtitle": "Reusable review rules. Each = a body the agent reads, plus the agents it is linked to.",
     "addSkill": "Add Skill",
     "searchPlaceholder": "Search skills…",
     "loadError": "Could not load skills.",
     "menu": {
+      "create": "Create from scratch",
       "fromFile": "Import from file",
       "fromUrl": "Import from URL",
       "community": "Search community skills…"
     },
+    "defaultName": "New Skill",
     "empty": {
       "title": "No skills yet",
-      "body": "Import a skill from a file, a URL, or the community catalog.",
+      "body": "Create a skill from scratch or import one from a file.",
       "cta": "Import from file"
     },
     "selectPrompt": {
       "title": "Select a skill",
       "body": "Pick a skill on the left to preview its body."
     }
+  },
+  "addModal": {
+    "title": "Add skill",
+    "tabs": {
+      "create": "Create",
+      "file": "From file",
+      "url": "Import from URL"
+    }
+  },
+  "createModal": {
+    "title": "Create a skill",
+    "subtitle": "A skill is its body — the text the reviewing agent reads.",
+    "name": "Name",
+    "namePlaceholder": "pr-quality-rubric",
+    "description": "Description",
+    "descriptionPlaceholder": "What this skill checks…",
+    "descriptionHint": "The description IS the skill's interface — the agent reads it to decide when the skill applies.",
+    "type": "Type",
+    "body": "Skill body (Markdown)",
+    "footerNote": "Saved as v1 · added to Skills Lab",
+    "cancel": "Cancel",
+    "create": "Create skill",
+    "creating": "Creating…"
+  },
+  "injection": {
+    "badge": "Injection detected",
+    "bannerTitle": "INJECTION DETECTED — DO NOT ENABLE",
+    "bannerBody": "This skill contains prompt injection patterns. It has been automatically blocked.",
+    "blocked": "blocked — injection detected"
+  },
+  "previewPanel": {
+    "subtitle": "Preview — the body exactly as the agent receives it.",
+    "empty": "This skill has no body yet.",
+    "openEditor": "Open editor",
+    "close": "Close"
   },
   "detail": {
     "crumbSkill": "Skill",
@@ -32,13 +70,27 @@
   },
   "drawer": {
     "title": "Add a skill",
-    "subtitle": "Import from a file, a URL, or search vetted community skills",
+    "subtitle": "Import a .md or .zip file — you'll see the full body before it's saved.",
     "tabs": {
       "file": "From file",
       "url": "From URL",
       "community": "Community"
     },
-    "importFailed": "Import failed"
+    "importFailed": "Import failed",
+    "chooseFile": "Choose a .md or .zip file…",
+    "chosenFile": "Selected: {name}",
+    "previewing": "Reading file…",
+    "previewTitle": "Preview",
+    "nameLabel": "Name",
+    "descriptionLabel": "Description",
+    "typeLabel": "Type",
+    "ignoredEntries": "Not processed (ignored)",
+    "warnings": "Warnings",
+    "untrustedNotice": "This body is inserted into the trusted part of the agent's prompt without being wrapped as untrusted data. Read it fully before confirming.",
+    "cancel": "Cancel",
+    "confirm": "Add skill",
+    "confirming": "Adding…",
+    "importedToast": "Imported \"{name}\" as an untrusted-origin skill."
   },
   "file": {
     "nameLabel": "Skill name",
@@ -53,9 +105,10 @@
   },
   "url": {
     "label": "Skill URL",
-    "hint": "Fetched server-side, stored as untrusted, and left disabled until vetted.",
+    "hint": "A public .md or .zip link (GitHub file links work). You will see the full body before it is saved.",
     "placeholder": "https://example.com/skills/security.md",
     "fetching": "Fetching…",
+    "fetch": "Fetch",
     "import": "Import from URL",
     "success": "Imported \"{name}\". Disabled until you vet + enable it."
   },
@@ -74,6 +127,11 @@
   "listItem": {
     "needsVetting": "needs vetting",
     "vettingTitle": "Untrusted source — vet before enabling",
+    "delete": "Delete skill",
+    "deleteConfirm": "Delete skill \"{name}\"? It is removed from every agent it is linked to. This cannot be undone.",
+    "confirmDelete": "Delete",
+    "cancel": "Cancel",
+    "version": "v{version}",
     "type": {
       "rubric": "rubric",
       "convention": "convention",
@@ -84,8 +142,10 @@
       "manual": "Manual",
       "extracted": "Extracted",
       "community": "Community",
-      "imported_url": "Imported"
-    }
+      "imported_url": "Imported",
+      "imported_file": "Imported"
+    },
+    "agentCount": "{count, plural, one {# agent} other {# agents}}"
   },
   "preview": {
     "untrustedBadge": "untrusted source",
@@ -97,5 +157,74 @@
     "bodyLabel": "Skill body (Markdown)",
     "bodyHint": "Saving a changed body creates a new immutable version.",
     "version": "v{version}"
+  },
+  "tabs": {
+    "config": "Config",
+    "preview": "Preview",
+    "stats": "Stats",
+    "versions": "Versions"
+  },
+  "config": {
+    "title": "Configuration",
+    "enabled": "Enabled",
+    "name": "Name",
+    "description": "Description",
+    "descriptionHint": "The description IS the skill's interface — the agent reads it to decide when this skill applies to a review.",
+    "type": "Type",
+    "typeOptions": {
+      "rubric": "Rubric",
+      "convention": "Convention",
+      "security": "Security",
+      "custom": "Custom"
+    },
+    "version": "v{version}",
+    "bodyHint": "The only text sent to the model. Editing the body is the entire skill — everything else is metadata.",
+    "versionMessage": "Version message (optional)",
+    "versionMessagePlaceholder": "Tightened scope rule…",
+    "versionMessageHint": "What changed in this version?",
+    "save": "Save skill",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "saved": "Saved (v{version})",
+    "savedToast": "Skill saved (v{version})",
+    "snapshotAs": "Saving snapshots the body as",
+    "danger": {
+      "title": "Delete skill",
+      "body": "Removes it from all agents. This can't be undone.",
+      "delete": "Delete",
+      "deleting": "Deleting…"
+    }
+  },
+  "bodyEditor": {
+    "unsaved": "unsaved",
+    "tokens": "{count, plural, one {# token} other {# tokens}}",
+    "countingTokens": "counting…"
+  },
+  "previewTab": {
+    "caption": "Rendered as the reviewing agent receives it.",
+    "empty": "Nothing to preview yet — add a body in Config.",
+    "untrustedNotice": "This skill was imported from a file and is rendered as-is — vet its body before enabling it for an agent."
+  },
+  "stats": {
+    "usedBy": "USED BY",
+    "versions": "VERSIONS",
+    "bodyTokens": "BODY TOKENS",
+    "source": "SOURCE",
+    "agentsUsing": "Agents using this skill",
+    "noAgents": "No agents use this skill yet.",
+    "open": "Open"
+  },
+  "versionsTab": {
+    "title": "Version history",
+    "count": "{count, plural, one {# version} other {# versions}}",
+    "caption": "Every save snapshots the body so eval runs stay reproducible against the exact text they scored.",
+    "noMessage": "No version message",
+    "current": "Current",
+    "diff": "Diff",
+    "restore": "Restore",
+    "restoring": "Restoring…",
+    "restoreConfirm": "Restore v{version}? This creates a new version with v{version}'s body — the history is kept.",
+    "diffModalTitle": "v{version} → current",
+    "diffEmpty": "No differences."
   }
 }

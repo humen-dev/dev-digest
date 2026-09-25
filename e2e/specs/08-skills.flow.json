@@ -1,0 +1,22 @@
+{
+  "name": "Skills list renders the seeded skills as a grid and opens a skill's Config tab",
+  "description": "Loads /skills, confirms it stays on the index (no redirect to the first skill) and that all three seeded Test Quality Reviewer skills are listed in the grid, then previews corner-case-checklist in the side panel and opens it from there — confirming the detail route plus its Config tab (name/description/type) renders, including the description-is-the-interface hint that only exists on this tab.",
+  "steps": [
+    { "cmd": ["open", "{BASE}/skills"], "label": "load the skills index" },
+    { "cmd": ["wait", "--url", "/skills"], "label": "skills route reached" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "skills fetch settles" },
+    {
+      "cmd": ["wait", "--text", "Reusable review rules. Each = a body the agent reads, plus the agents it is linked to."],
+      "label": "the list view (not a skill detail) is rendered"
+    },
+    { "cmd": ["wait", "--text", "uncovered-branch-gate"], "label": "seeded skill 1 is listed in the grid" },
+    { "cmd": ["wait", "--text", "corner-case-checklist"], "label": "seeded skill 2 is listed in the grid" },
+    { "cmd": ["wait", "--text", "mock-overuse-gate"], "label": "seeded skill 3 is listed in the grid" },
+    { "cmd": ["find", "text", "corner-case-checklist", "click"], "label": "preview corner-case-checklist" },
+    { "cmd": ["wait", "--text", "Preview — the body exactly as the agent receives it."], "label": "the side panel opened instead of navigating" },
+    { "cmd": ["find", "text", "Open editor", "click"], "label": "open the skill from the preview panel" },
+    { "cmd": ["wait", "--url", "/skills/"], "label": "navigated to the skill detail route" },
+    { "cmd": ["wait", "--text", "corner-case-checklist"], "label": "editor header shows the selected skill" },
+    { "cmd": ["wait", "--text", "The description IS the skill's interface — the agent reads it to decide when this skill applies to a review."], "label": "Config tab's description hint renders" }
+  ]
+}

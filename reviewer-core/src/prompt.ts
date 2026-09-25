@@ -83,10 +83,11 @@ export interface AssembledPrompt {
  * appended to the system message.
  */
 export function assemblePrompt(parts: PromptParts): AssembledPrompt {
-  const system = `${parts.system}\n\n${INJECTION_GUARD}`;
-
   const skillsBlock =
     parts.skills && parts.skills.length > 0 ? parts.skills.join('\n\n') : undefined;
+  // User-selected skills are instructions, in their persisted agent order.
+  // Keep the injection guard last; diff and PR content remain untrusted user data.
+  const system = [parts.system, ...(skillsBlock ? [`## Skills / rules\n${skillsBlock}`] : []), INJECTION_GUARD].join('\n\n');
   const memoryBlock =
     parts.memory && parts.memory.length > 0
       ? parts.memory.map((m) => `- ${m}`).join('\n')
@@ -106,7 +107,6 @@ export function assemblePrompt(parts: PromptParts): AssembledPrompt {
   if (prDescription) {
     userSections.push(`## PR description\n${wrapUntrusted('pr-description', prDescription)}`);
   }
-  if (skillsBlock) userSections.push(`## Skills / rules\n${skillsBlock}`);
   if (memoryBlock) userSections.push(`## Relevant memory\n${memoryBlock}`);
   if (parts.repoMap && parts.repoMap.trim().length > 0) {
     userSections.push(`## Repo skeleton\n${wrapUntrusted('repo-map', parts.repoMap)}`);
