@@ -51,7 +51,7 @@ export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
         setShowComments(true); // a just-posted comment shouldn't stay hidden
         return res;
       } catch (err) {
-        notify.error(err instanceof Error ? err.message : "Couldn't post the comment to GitHub.");
+        notify.error(err instanceof Error ? err.message : t("smartDiff.commentPostError"));
         throw err;
       }
     },

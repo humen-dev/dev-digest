@@ -84,7 +84,8 @@
     "filesWithFindings": "{count, plural, one {# file} other {# files}} with findings",
     "loadError": "Couldn’t group files by role — showing the original order.",
     "showComments": "Show comments ({count})",
-    "hideComments": "Hide comments ({count})"
+    "hideComments": "Hide comments ({count})",
+    "commentPostError": "Couldn't post the comment to GitHub."
   },
   "list": {
     "breadcrumb": "Pull Requests",

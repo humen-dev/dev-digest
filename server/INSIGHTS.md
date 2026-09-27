@@ -9,7 +9,7 @@ avoid. Linked (not preloaded) from [`CLAUDE.md`](./CLAUDE.md) — read on demand
 > Date each entry so stale ones are easy to prune.
 
 ## What Works
-_(none yet)_
+- 2026-09-27 — Seed fixtures are insert-once: the demo PR block in `server/src/db/seed.ts:277` is guarded by `if (!pr)`, so re-running `pnpm db:seed` on an already-seeded dev DB does NOT pick up changed `pr_files` rows or patches. To verify a seed change, start a throwaway Postgres container on a spare port, point `DATABASE_URL` at it, run `pnpm db:migrate && pnpm db:seed`, hit the API, then `docker rm -f` it — never touch `devdigest-postgres` and never `docker compose down -v` (wipes `devdigest_pgdata`). The Smart Diff seed (PR #482 with all five roles) was verified this way.
 
 ## What Doesn't Work
 - 2026-09-27 — NEVER flip an agent run to a terminal status before its trace is persisted: clients (and `reviews.it.test.ts`) poll the run status and fetch `GET /runs/:id/trace` as soon as they see `done`/`failed`, so status-then-trace yields an intermittent 404. It was latent until the intent pre-work step widened the gap, after which the "imports a file…" IT failed on nearly every run. ALWAYS `saveRunTrace` first, then `completeAgentRun` — in the success path, the failure/cancel catch and `failAll` (`server/src/modules/reviews/run-executor.ts:81-84`, `:320-323`, `:349-352`). If that test flakes with `expected 404 to be 200`, check this order before blaming timing.
