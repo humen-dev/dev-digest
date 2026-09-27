@@ -20,6 +20,7 @@ _(none yet)_
 _(none yet)_
 
 ## Tool & Library Notes
+- 2026-09-27 — A `find … click` on an element **below the fold** of CI's 1280×577 viewport reports ✓ but does nothing: flow 13's collapsed Boilerplate group header never expanded, and the failure screenshot was still scrolled to the top (runs 36344014397, 36344301503). Adding `["scrollintoview", "<css>"]` right before the click fixed it (run 36344701455, 12/12). Scroll first for anything that is not in the first screen, and scroll back before clicking controls at the top again — see `e2e/specs/13-smart-diff.flow.json:21-25`, which targets the header by its ARIA attribute (`[aria-controls="role-group-boilerplate"]`).
 - 2026-09-27 — `agent-browser find text "<X>" click` is a **case-insensitive substring** match that clicks the **first** hit in DOM order, and the step still reports ✓ even when that hit is the wrong element. The sidebar renders before page content, so `find text "Skills" click` on an agent page clicked the sidebar "Skills" link (flow 10 landed on `/skills`), and tab/button clicks in flows 09/11 never toggled the UI — all 4 failed in CI on `main` for days. For any button or tab use `find role button click --name "<label>" --exact` (flow `05-pr-diff` / `10-agent-skills-tab.flow.json`); keep `find text` for unique row/card titles, ideally with `--exact`.
 
 ## Recurring Errors & Fixes
