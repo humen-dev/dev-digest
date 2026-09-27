@@ -61,6 +61,23 @@ const REVIEW_FIXTURE: Review = {
   ],
 };
 
+/**
+ * IntentClassification fixture for the `openrouter` mock injected below. The
+ * intent layer runs once per PR before every queued agent (`run-executor.ts`)
+ * and resolves the `review_intent` feature model, which defaults to
+ * `openrouter` — without this mock `container.llm('openrouter')` would try to
+ * read a real key from `~/.devdigest/secrets.json` and, if present, make a
+ * real network call during this test (intent-layer plan, U6 risk table).
+ */
+const INTENT_FIXTURE = {
+  intent: 'Add rate limiting to protect public API endpoints from abuse.',
+  in_scope: ['Rate-limit middleware'],
+  out_of_scope: [],
+  out_of_scope_files: [],
+  missing_context: [],
+  confidence: 'medium',
+};
+
 let repoSeq = 0;
 async function setupRepoAndPr(db: PgFixture['handle']['db'], workspaceId: string) {
   const name = `payments-api-${repoSeq++}`;
@@ -120,6 +137,12 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
         git: new MockGitClient({ diff: DIFF }),
         llm: {
           [provider]: new MockLLMProvider(provider, { structured }),
+          // Intent step (run-executor pre-work) resolves 'openrouter' by
+          // default — mock it here so it never reaches a real key/network.
+          openrouter: new MockLLMProvider('openai', {
+            structuredBySchema: { IntentClassification: INTENT_FIXTURE },
+            structured,
+          }),
         },
       },
     });
@@ -308,7 +331,17 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     const llm = new MockLLMProvider('openai', { structured: REVIEW_FIXTURE });
     const app = await buildApp({
       config: config(), db: pg.handle.db,
-      overrides: { git: new MockGitClient({ diff: DIFF }), llm: { openai: llm } },
+      overrides: {
+        git: new MockGitClient({ diff: DIFF }),
+        llm: {
+          openai: llm,
+          // Same reason as appWith above: the intent pre-work resolves
+          // 'openrouter' by default — mock it so it never reaches a real key.
+          openrouter: new MockLLMProvider('openai', {
+            structuredBySchema: { IntentClassification: INTENT_FIXTURE },
+          }),
+        },
+      },
     });
     try {
       const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);

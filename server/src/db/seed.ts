@@ -353,6 +353,62 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     ]);
   }
 
+  // ---- seeded intent for PR #482 (so the Intent card has content in the demo/e2e) ----
+  await db
+    .insert(t.prIntent)
+    .values({
+      prId: pr!.id,
+      intent:
+        'Protect public API endpoints from abuse by unauthenticated clients with a token-bucket rate limiter.',
+      inScope: [
+        'Token-bucket rate-limit middleware',
+        'Apply the limiter to public webhook endpoints',
+        'Rate-limit settings in src/config.ts',
+      ],
+      outOfScope: ['Limits for authenticated/internal APIs', 'User-listing behaviour'],
+      headSha: 'a1b2c3d4e5f6',
+      confidence: 'medium',
+      missingContext: [],
+      outOfScopeFiles: ['src/api/users.ts'],
+      sources: [
+        {
+          kind: 'pr_title',
+          ref: 'title',
+          title: null,
+          status: 'resolved',
+          reason: null,
+          chars: 'Add rate limiting to public API endpoints'.length,
+          truncated: false,
+        },
+        {
+          kind: 'pr_body',
+          ref: 'body',
+          title: null,
+          status: 'resolved',
+          reason: null,
+          chars: 'Add rate limiting to public API endpoints to prevent abuse from unauthenticated clients.'
+            .length,
+          truncated: false,
+        },
+        {
+          kind: 'file_list',
+          ref: 'files',
+          title: null,
+          status: 'resolved',
+          reason: null,
+          chars: 200,
+          truncated: false,
+        },
+      ] satisfies t.IntentSourceJson[],
+      provider: null,
+      model: 'seed',
+      promptTokensEst: null,
+      tokensIn: null,
+      tokensOut: null,
+      apiCostUsd: null,
+    })
+    .onConflictDoNothing();
+
   // ---- PR #483 (control-experiment fixture for the Test Quality Reviewer) --
   // Adds `refundFee()` with two branches (expedited / not) but a test that
   // covers ONLY the happy (non-expedited) path — no branch/edge-case test.
