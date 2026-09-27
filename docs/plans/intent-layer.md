@@ -107,6 +107,7 @@ sequenceDiagram
 18. **Diff access from `intent`:** on the review path the executor passes its already-loaded `UnifiedDiff` (`ctx.diff`); on `POST /pulls/:id/intent` the service calls an `IntentDeps.loadDiff(workspaceId, prId)` port implemented inline in `container.ts` over the existing `loadDiff` (server INSIGHTS 2026-09-23 pattern) — `intent` never imports `reviews` internals.
 
 ### Resolved decisions (user, 2026-09-27)
+0. **A-1 signed off (architecture review, 2026-09-27):** the deterministic scope filter runs on grounded findings in `reviewer-core/src/review/run.ts` (after `groundFindings`, before scoring) — accepted as a deliberate change to the security-critical review path.
 1. Sources = the six signals in Decision 10 (title, body, linked issue, files + hunk headers, plan/spec files, allowlisted external links); non-allowlisted links → `unresolved/not_allowlisted`.
 2. Stale/missing intent at review time → auto re-classify; failure → review without intent.
 3. "Serious" out-of-scope = CRITICAL or `category=security`.
