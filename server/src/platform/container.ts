@@ -22,9 +22,10 @@ import { OpenAIEmbedder } from '../adapters/embedder/openai.js';
 import { OpenRouterProvider } from '@devdigest/reviewer-core';
 import { estimateCost } from '../adapters/llm/pricing.js';
 import { PriceBook } from './price-book.js';
-import { ConfigError } from './errors.js';
+import { ConfigError, NotFoundError } from './errors.js';
 import { AgentsRepository } from '../modules/agents/repository.js';
 import { ReviewRepository } from '../modules/reviews/repository.js';
+import { parseUnifiedDiff } from '../adapters/git/diff-parser.js';
 import { SkillsRepository } from '../modules/skills/repository.js';
 import { SkillsService } from '../modules/skills/service.js';
 import { SettingsRepository } from '../modules/settings/repository.js';
@@ -33,6 +34,9 @@ import { RepoRepository } from '../modules/repos/repository.js';
 import { ConventionsRepository } from '../modules/conventions/repository.js';
 import { ConventionsService } from '../modules/conventions/service.js';
 import type { ConventionsRepositoryPort } from '../modules/conventions/ports.js';
+import { IntentRepository } from '../modules/intent/repository.js';
+import { IntentService } from '../modules/intent/service.js';
+import type { IntentRepositoryPort } from '../modules/intent/ports.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
@@ -64,6 +68,8 @@ export interface ContainerOverrides {
   urlFetcher?: UrlFetcher;
   /** Conventions persistence port — tests swap the port, not the service. */
   conventionsRepo?: ConventionsRepositoryPort;
+  /** Intent persistence port — tests swap the port, not the service. */
+  intentRepo?: IntentRepositoryPort;
 }
 
 export class Container {
@@ -89,6 +95,7 @@ export class Container {
   private _featureModels?: FeatureModelResolver;
   private _reposRepo?: RepoRepository;
   private _conventionsService?: ConventionsService;
+  private _intentService?: IntentService;
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
@@ -142,6 +149,47 @@ export class Container {
       llm: (provider) => this.llm(provider),
       resolveModel: (workspaceId) => this.featureModels.resolve(workspaceId, 'conventions'),
       skills: new SkillsService(this.skillsRepo, this.tokenizer, this.urlFetcher),
+      tokenizer: this.tokenizer,
+    }));
+  }
+
+  /**
+   * Intent layer — PR intent + scope classification (server/specs/intent-layer.md).
+   * `loadDiff` re-implements `reviews`' `loadDiff` (server/src/modules/reviews/diff-loader.ts)
+   * INLINE rather than importing it: that file type-imports `Container` itself, so importing
+   * ANY of its exports from here closes a `container.ts -> diff-loader.ts -> container.ts`
+   * cycle (depcruise `no-circular`, confirmed by running the check) — `intent` must not import
+   * `reviews` internals either way. Same two-step behavior: real `git diff`, else reconstruct
+   * from `pr_files.patch`.
+   */
+  get intentService(): IntentService {
+    return (this._intentService ??= new IntentService({
+      intents: this.overrides.intentRepo ?? new IntentRepository(this.db),
+      github: () => this.github(),
+      loadDiff: async (workspaceId, prId) => {
+        const pull = await this.reviewRepo.getPull(workspaceId, prId);
+        if (!pull) throw new NotFoundError('Pull request not found');
+        const repoRow = await this.reviewRepo.getRepo(pull.repoId);
+        if (!repoRow) throw new NotFoundError('Repo not found');
+        try {
+          const diff = await this.git.diff({ owner: repoRow.owner, name: repoRow.name }, pull.base, pull.headSha);
+          if (diff.files.length > 0) return diff;
+        } catch {
+          /* fall through to pr_files reconstruction */
+        }
+        const files = await this.reviewRepo.getPrFiles(pull.id);
+        const parts: string[] = [];
+        for (const f of files) {
+          if (!f.patch) continue;
+          parts.push(`diff --git a/${f.path} b/${f.path}`, `--- a/${f.path}`, `+++ b/${f.path}`, f.patch);
+        }
+        return parseUnifiedDiff(parts.join('\n'));
+      },
+      files: this.git,
+      urls: this.urlFetcher,
+      linkAllowlist: this.config.intentLinkAllowlist,
+      llm: (provider) => this.llm(provider),
+      resolveModel: (workspaceId) => this.featureModels.resolve(workspaceId, 'review_intent'),
       tokenizer: this.tokenizer,
     }));
   }
