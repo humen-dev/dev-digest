@@ -15,5 +15,56 @@
     "blame": "blame",
     "noHistory": "No history available for this line.",
     "noCommits": "No commits found for this line."
+  },
+  "intentCard": {
+    "title": "Intent",
+    "inScope": "In scope",
+    "outOfScope": "Out of scope",
+    "sources": "Sources",
+    "detect": "Detect intent",
+    "redetect": "Re-detect intent",
+    "detecting": "Detecting…",
+    "viewDetails": "View details",
+    "confidence": {
+      "high": "High confidence",
+      "medium": "Medium confidence",
+      "low": "Low confidence"
+    },
+    "lowConfidence": "Low confidence — some sources could not be resolved.",
+    "missingContext": "Missing context",
+    "stale": {
+      "title": "Outdated",
+      "body": "The PR changed since this was computed ({oldSha} → {newSha})."
+    },
+    "empty": {
+      "title": "No intent detected yet",
+      "body": "Detect the PR's intent and scope before reviewing it."
+    },
+    "error": {
+      "load": "Couldn't load intent.",
+      "detect": "Couldn't detect intent.",
+      "modelNotConfigured": "No model is configured for PR intent detection.",
+      "settingsLink": "Open Settings → Models"
+    },
+    "kind": {
+      "pr_title": "PR title",
+      "pr_body": "PR description",
+      "file_list": "Changed files",
+      "github_issue": "Linked issue",
+      "repo_doc": "Plan / spec file",
+      "external_link": "External link"
+    },
+    "reason": {
+      "not_found": "not found",
+      "forbidden": "access forbidden",
+      "no_credentials": "no GitHub credentials configured",
+      "fetch_failed": "fetch failed",
+      "timeout": "timed out",
+      "not_allowlisted": "host not allowlisted",
+      "unsupported_content": "unsupported content type",
+      "repo_not_cloned": "repository not cloned locally",
+      "invalid_ref": "invalid reference",
+      "limit_exceeded": "limit exceeded"
+    }
   }
 }

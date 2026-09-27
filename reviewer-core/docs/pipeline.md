@@ -19,12 +19,27 @@ Read alongside the map in [`../AGENTS.md`](../AGENTS.md).
    `start_line..end_line` does not intersect a real diff hunk is **dropped**. The
    score is then **recomputed from the survivors**, never trusted from the model.
    `groundingSummary(...)` reports what was kept/dropped.
-5. **Reduce to a review** — `output/to-review.ts` produces the verdict/score and
+5. **Scope filter (intent layer)** — `intent/scope-filter.ts` `applyScopeFilter(...)`:
+   when `ReviewInput.intent` is present (confidence not `low`, and it declares
+   `out_of_scope_files`), a grounded finding whose `file` is in that list is either
+   dropped (non-serious) or merged into one aggregate signal (serious: `CRITICAL`
+   severity or `category: 'security'` — never dropped, never has its severity
+   lowered). No intent, low confidence, or no declared out-of-scope files ⇒ no-op
+   (`ReviewOutcome.scope.applied === false`). The score is recomputed again from
+   the post-filter findings. See the guarantees in
+   [`../specs/grounding-contract.md`](../specs/grounding-contract.md#scope-filter-intent-layer).
+   Intent itself, when present, is rendered by `intent/render-for-review.ts` into a
+   `## PR intent` prompt section (trusted usage header + `wrapUntrusted('derived-intent',
+   …)`), inserted right after `## PR description` by `assemblePrompt`.
+6. **Reduce to a review** — `output/to-review.ts` produces the verdict/score and
    deterministic counts: `SEV_RANK`, `severityCounts`, and `countBlockers(findings,
    failOn)` (findings whose severity rank ≥ the `ciFailOn` gate).
 
 `review/run.ts` orchestrates the above (single-pass by default; map-reduce over diff
-chunks for large PRs, summing `apiCostUsd`). `index.ts` is the public surface.
+chunks for large PRs, summing `apiCostUsd`). `index.ts` is the public surface (the
+intent classifier itself — `classifyIntent` and friends — is a separate concern,
+exported by `index.ts` under `intent/*`; only prompt-injection + the post-filter
+described above live in the core review path).
 
 ## Contracts
 `Review`, `Finding`, `Verdict`, `Severity`, … come from `@devdigest/shared`

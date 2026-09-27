@@ -5,6 +5,7 @@ import { Icon, Badge, Button, SectionLabel, EmptyState } from "@devdigest/ui";
 import { RunStatus } from "../RunStatus";
 import { RunHistory } from "../RunHistory/RunHistory";
 import { ReviewRunAccordion } from "../ReviewRunAccordion";
+import { IntentCard } from "../IntentCard";
 import { s } from "./styles";
 import type { FindingRecord, ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
 import type { UseMutationResult } from "@tanstack/react-query";
@@ -24,6 +25,8 @@ interface FindingsTabProps {
   onOpenTrace: (id: string) => void;
   onDelete: (id: string) => void;
   onRunDone: () => void;
+  /** Jump to the Overview tab's full Intent card. */
+  onViewIntent: () => void;
 }
 
 export function FindingsTab({
@@ -40,6 +43,7 @@ export function FindingsTab({
   onOpenTrace,
   onDelete,
   onRunDone,
+  onViewIntent,
 }: FindingsTabProps) {
   const handleCancelAll = useCallback(() => {
     liveRunIds.forEach((id) => cancelMutation.mutate(id));
@@ -81,6 +85,10 @@ export function FindingsTab({
 
   return (
     <section>
+      <div style={{ marginBottom: 18 }}>
+        <IntentCard prId={prId} variant="compact" onViewDetails={onViewIntent} />
+      </div>
+
       {liveRunIds.length > 0 && (
         <div style={s.liveRunSection}>
           <SectionLabel
