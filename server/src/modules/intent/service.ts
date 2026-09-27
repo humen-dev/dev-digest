@@ -32,7 +32,7 @@ import type {
   ProgressSink,
   PullContext,
 } from './ports.js';
-import type { ExtractedDocRef, ExtractedIssueRef, ExtractedLinkRef } from './types.js';
+import type { ExtractedDocRef, ExtractedIssueRef, ExtractedLinkRef, ReferenceOverflow } from './types.js';
 
 /**
  * Intent service — orchestrates source gathering (title/body/issue/files/docs/links),
@@ -65,6 +65,19 @@ interface DocResolution {
 
 function unresolvedSource(kind: IntentSourceKind, ref: string, reason: IntentUnresolvedReason): IntentSourceJson {
   return { kind, ref, title: null, status: 'unresolved', reason, chars: 0, truncated: false };
+}
+
+/** Refs dropped past the extraction caps — surfaced as `limit_exceeded` instead of silently lost. */
+function overflowSources(overflow: ReferenceOverflow): { unresolved: IntentUnresolvedRef[]; sources: IntentSourceJson[] } {
+  const entries: { kind: IntentSourceKind; ref: string }[] = [
+    ...overflow.issues.map((ref) => ({ kind: 'github_issue' as const, ref })),
+    ...overflow.docs.map((ref) => ({ kind: 'repo_doc' as const, ref })),
+    ...overflow.links.map((url) => ({ kind: 'external_link' as const, ref: redactUrl(url) })),
+  ];
+  return {
+    unresolved: entries.map((e) => ({ kind: e.kind, ref: e.ref, reason: 'limit_exceeded' as const })),
+    sources: entries.map((e) => unresolvedSource(e.kind, e.ref, 'limit_exceeded')),
+  };
 }
 
 function classifyIssueError(err: unknown): IntentUnresolvedReason {
@@ -159,7 +172,6 @@ export class IntentService implements IntentForReviewPort {
     ctx: { diff?: UnifiedDiff; logger?: OpsLogger; progress?: ProgressSink },
   ): Promise<IntentRow> {
     const started = this.now();
-    ctx.progress?.info('Deriving PR intent…');
 
     const diff = ctx.diff ?? (await this.deps.loadDiff(pull.workspaceId, pull.id));
     const files = changedFilesFromDiff(diff);
@@ -172,8 +184,15 @@ export class IntentService implements IntentForReviewPort {
       this.resolveLinks(refs.links),
     ]);
 
+    const overflow = overflowSources(refs.overflow);
+
     const documents = [...docResult.documents, ...linkResult.documents];
-    const unresolved = [...issueResult.unresolved, ...docResult.unresolved, ...linkResult.unresolved];
+    const unresolved = [
+      ...issueResult.unresolved,
+      ...docResult.unresolved,
+      ...linkResult.unresolved,
+      ...overflow.unresolved,
+    ];
 
     const input: IntentClassifierInput = {
       pr: { number: pull.number, title: pull.title, body: pull.body },
@@ -258,7 +277,12 @@ export class IntentService implements IntentForReviewPort {
         chars: fileListSection?.chars ?? 0,
         truncated: fileListSection?.truncated ?? false,
       });
-      sources.push(...docResult.unresolvedSources, ...linkResult.unresolvedSources, ...resolvedDocSources);
+      sources.push(
+        ...docResult.unresolvedSources,
+        ...linkResult.unresolvedSources,
+        ...overflow.sources,
+        ...resolvedDocSources,
+      );
 
       const promptTokensEst = this.deps.tokenizer.count(result.messages.map((m) => m.content).join('\n'));
 
@@ -299,7 +323,6 @@ export class IntentService implements IntentForReviewPort {
         },
         'intent classified',
       );
-      ctx.progress?.info(`Intent classified (${result.intent.confidence} confidence)`);
 
       return saved;
     } catch (err) {

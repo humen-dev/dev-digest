@@ -23,10 +23,14 @@ export interface ExtractedLinkRef {
 }
 
 /** Count of unique refs found beyond each list's cap — not raw occurrences. */
+/** Refs dropped past each cap — reported as `limit_exceeded`, never silently lost. */
 export interface ReferenceOverflow {
-  issues: number;
-  docs: number;
-  links: number;
+  /** '#N' refs. */
+  issues: string[];
+  /** Repo-relative doc paths. */
+  docs: string[];
+  /** Original (unredacted) URLs — redact before persisting or logging. */
+  links: string[];
 }
 
 /** Result of `extractReferences` — deduped, capped candidates pulled from a PR body + changed files. */

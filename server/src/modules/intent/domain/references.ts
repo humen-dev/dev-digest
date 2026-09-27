@@ -107,7 +107,7 @@ function extractBareDocPaths(text: string): string[] {
  *   extension (checked second, even without a body mention).
  * - `links`: every other https URL in the body.
  * Each list is capped (`MAX_ISSUE_REFS`/`MAX_DOC_REFS`/`MAX_LINK_REFS`); `overflow`
- * counts unique refs dropped past the cap.
+ * lists the unique refs dropped past the cap so the caller can report them.
  */
 export function extractReferences(
   body: string | null,
@@ -125,7 +125,7 @@ export function extractReferences(
   const issues: ExtractedIssueRef[] = issueNumbers
     .slice(0, MAX_ISSUE_REFS)
     .map((number) => ({ ref: `#${number}`, number }));
-  const overflowIssues = Math.max(0, issueNumbers.length - MAX_ISSUE_REFS);
+  const overflowIssues = issueNumbers.slice(MAX_ISSUE_REFS).map((number) => `#${number}`);
 
   // ---- URLs: same-repo blob -> doc candidate; everything else -> link --------
   const rawUrls: string[] = [];
@@ -155,12 +155,12 @@ export function extractReferences(
   const docs: ExtractedDocRef[] = allDocPaths
     .slice(0, MAX_DOC_REFS)
     .map((path) => ({ path, role: docRole(path) }));
-  const overflowDocs = Math.max(0, allDocPaths.length - MAX_DOC_REFS);
+  const overflowDocs = allDocPaths.slice(MAX_DOC_REFS);
 
   const links: ExtractedLinkRef[] = linkCandidates
     .slice(0, MAX_LINK_REFS)
     .map((url) => ({ url, role: linkRole(url) }));
-  const overflowLinks = Math.max(0, linkCandidates.length - MAX_LINK_REFS);
+  const overflowLinks = linkCandidates.slice(MAX_LINK_REFS);
 
   return {
     issues,

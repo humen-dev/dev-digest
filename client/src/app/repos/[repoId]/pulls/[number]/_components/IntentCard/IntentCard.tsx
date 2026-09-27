@@ -68,6 +68,9 @@ export function IntentCard({ prId, variant, onViewDetails }: IntentCardProps) {
           ctaLoading={detect.isPending}
           onCta={() => detect.mutate()}
         />
+        <p aria-live="polite" style={s.srOnly}>
+          {detect.isPending ? t("intentCard.detecting") : ""}
+        </p>
         {detect.isError && <DetectError code={modelErrorCode} message={detect.error?.message} />}
       </Card>
     );

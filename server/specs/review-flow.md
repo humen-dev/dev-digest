@@ -39,10 +39,12 @@ engine contract in
   review), `cost_usd` (sum of priced runs), and `findings` (across all review runs).
 
 ## Invariants
-- **Exactly two endpoints perform a model call:** `POST /pulls/:id/review` (this
-  spec) and `POST /pulls/:id/intent` (see `intent-layer.md`) — the intent route is
-  a second, deliberate trigger, not an exception to this rule. Every other
-  endpoint, including both intent reads and review reads, never calls a model.
+- **Only two PR-scoped endpoints perform a model call:** `POST /pulls/:id/review`
+  (this spec) and `POST /pulls/:id/intent` (see `intent-layer.md`) — the intent
+  route is a second, deliberate trigger. Every other `/pulls/*` endpoint,
+  including intent reads and review reads, never calls a model. Model calls
+  outside the PR flow (e.g. `POST /repos/:id/conventions/extract`) are governed
+  by their own specs.
 - Findings persistence and gate logic are security-critical — a finding without a
   real diff citation must not reach the DB.
 - **Review pre-work includes intent.** Before the diff is handed to

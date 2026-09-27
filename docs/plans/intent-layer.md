@@ -470,7 +470,7 @@ export interface PromptParts { /* existing */ intent?: string }   // assembly.in
 | Kind | ui |
 | Wave | 1 |
 | Depends on | U0 |
-| Owns | `client/src/lib/hooks/intent.ts`; `client/src/app/repos/[repoId]/pulls/[number]/_components/IntentCard/{IntentCard.tsx,index.ts,constants.ts,helpers.ts,helpers.test.ts,styles.ts,IntentCard.test.tsx}`; `.../IntentCard/_components/{IntentScopeLists,IntentSources,IntentNotices}/{<Name>.tsx,index.ts}`; `.../_components/OverviewTab/{OverviewTab.tsx,styles.ts}`; `.../_components/FindingsTab/FindingsTab.tsx`; `.../[number]/page.tsx`; `client/messages/en/brief.json` |
+| Owns | `client/src/lib/hooks/intent.ts`; `client/src/app/repos/[repoId]/pulls/[number]/_components/IntentCard/{IntentCard.tsx,index.ts,constants.ts,helpers.ts,helpers.test.ts,styles.ts,IntentCard.test.tsx}`; `.../IntentCard/_components/{IntentScopeLists,IntentSources,IntentNotices}/{<Name>.tsx,index.ts,styles.ts}`; `.../_components/OverviewTab/OverviewTab.tsx` (amended 2026-09-27: `OverviewTab/styles.ts` not needed; sub-component `styles.ts` allowed); `.../_components/FindingsTab/FindingsTab.tsx`; `.../[number]/page.tsx`; `client/messages/en/brief.json` |
 | Must not touch | `client/src/lib/api.ts`, `client/src/lib/hooks/index.ts`, `client/src/vendor/**`, `client/src/lib/feature-models.ts`, Settings components |
 | Consumes | §3.1, §3.6, §3.9 |
 | Produces | §3.9 strings, `usePrIntent`, `useDetectIntent` |
