@@ -47,6 +47,8 @@ export const PromptAssembly = z.object({
   repo_map: z.string().nullish(),
   /** PR author's description/body (truncated); null when absent. */
   pr_description: z.string().nullish(),
+  /** Rendered "## PR intent" block (untrusted-wrapped); null when absent. */
+  intent: z.string().nullish(),
   user: z.string(),
   /** Token count of the assembled `skills` block; null when `skills` is absent. */
   skills_tokens: z.number().int().nullish(),
@@ -71,6 +73,21 @@ export const RunStats = z.object({
 });
 export type RunStats = z.infer<typeof RunStats>;
 
+/** Intent-layer outcome for one run (no content — codes and counts only). */
+export const RunIntentInfo = z.object({
+  status: z.enum(['reused', 'classified', 'unavailable']),
+  confidence: z.enum(['high', 'medium', 'low']).nullable(),
+  head_sha: z.string().nullable(),
+  /** Error code when unavailable; never prompt or source content. */
+  reason: z.string().nullable(),
+  filter_applied: z.boolean(),
+  /** Non-serious out-of-scope findings dropped. */
+  filtered_out: z.number().int(),
+  /** Serious out-of-scope findings merged into the one signal. */
+  aggregated: z.number().int(),
+});
+export type RunIntentInfo = z.infer<typeof RunIntentInfo>;
+
 /** The single-document trace stored in `run_traces.trace`. */
 export const RunTrace = z.object({
   config: z.object({
@@ -88,6 +105,7 @@ export const RunTrace = z.object({
   memory_pulled: z.array(MemoryPulled),
   specs_read: z.array(z.string()),
   log: z.array(RunLogLine),
+  intent: RunIntentInfo.nullish(),
 });
 export type RunTrace = z.infer<typeof RunTrace>;
 
