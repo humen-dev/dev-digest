@@ -33,7 +33,9 @@ Docker (Postgres only). TypeScript 5.7 throughout.
   `docs/plans/<slug>.md` (template `_TEMPLATE.md`) → user approves → main session
   does Wave 0 → one `implementer` per unit **in parallel in the same checkout**
   (pass plan path + unit id; disjoint file ownership) → main session commits each
-  wave → `/pr-self-review`. Implementers never touch git state, deps or `INSIGHTS.md`.
+  wave → `plan-verifier` (**mandatory** after every wave commit) → optional
+  `test-writer` / `architecture-reviewer` / `doc-writer` → `/pr-self-review`.
+  Implementers never touch git state, deps or `INSIGHTS.md`.
 - **Checks:** every package exposes `test` + `typecheck`; **`tsc --noEmit` is the
   lint gate** — there is no separate ESLint step, so a clean typecheck is required.
 
