@@ -18,8 +18,10 @@
       "cmd": ["wait", "--text", "Hardcoded Stripe secret key in commit"],
       "label": "the finding card renders inline under src/config.ts:12"
     },
+    { "cmd": ["scrollintoview", "[aria-controls=\"role-group-boilerplate\"]"], "label": "scroll the Boilerplate group header into view (clicks off-viewport are lost)" },
     { "cmd": ["find", "role", "button", "click", "--name", "Boilerplate"], "label": "expand the collapsed Boilerplate group" },
     { "cmd": ["wait", "--text", "pnpm-lock.yaml"], "label": "the boilerplate file is revealed" },
+    { "cmd": ["scrollintoview", "[role=\"radiogroup\"]"], "label": "scroll the order toggle back into view" },
     { "cmd": ["find", "role", "radio", "click", "--name", "Original order"], "label": "switch to Original order" },
     { "cmd": ["wait", "--text", "README.md"], "label": "flat GitHub-order view shows README.md, hidden until now in the collapsed Docs group" }
   ]
