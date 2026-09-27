@@ -12,4 +12,5 @@ rate-limit policy, security invariants (grounding, injection guard).
 - [`cost-attribution.md`](./cost-attribution.md) — run cost persistence + API contracts
 - [`conventions.md`](./conventions.md) — conventions extractor: sample → propose → evidence gate → skill
 - [`intent-layer.md`](./intent-layer.md) — PR intent + scope classifier: sources → classify → persist → scope filter
+- [`smart-diff.md`](./smart-diff.md) — file-role classifier (L08 entry point) + `GET /pulls/:id/smart-diff`
 - _(add specs here, e.g. `error-envelope.md`)_

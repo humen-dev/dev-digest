@@ -9,4 +9,5 @@ component-system rationale, migration notes, ADRs.
 
 ## Index
 - [`ui-architecture.md`](./ui-architecture.md) — App Router, Client/Server boundaries, data flow, patterns
+- [`files-changed-smart-diff.md`](./files-changed-smart-diff.md) — Files changed tab: role groups, order toggle, findings overlay
 - _(add docs here, e.g. `state-management.md`)_
