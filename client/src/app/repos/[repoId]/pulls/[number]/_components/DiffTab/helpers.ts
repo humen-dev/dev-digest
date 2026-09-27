@@ -5,8 +5,14 @@
    (agent-less reviews share one bucket, keyed by `null`), union across
    agents, dismissed findings dropped. Accepted findings stay (rendered muted
    by FindingCard). */
-import type { FindingRecord, PrFile, ReviewRecord, SmartDiffResponse } from "@devdigest/shared";
-import { SmartDiffRole } from "@devdigest/shared";
+import type {
+  FindingRecord,
+  PrFile,
+  ReviewRecord,
+  SmartDiffResponse,
+  SmartDiffRole,
+} from "@devdigest/shared";
+import { SMART_DIFF_ROLE_ORDER } from "./constants";
 
 /** `reviews` must be newest-first (usePrReviews' natural order). */
 export function currentFindings(reviews: ReviewRecord[]): FindingRecord[] {
@@ -49,7 +55,7 @@ export function buildRoleGroups(files: PrFile[], smartDiff: SmartDiffResponse): 
     else byRole.set(role, [file]);
   }
 
-  return SmartDiffRole.options
+  return SMART_DIFF_ROLE_ORDER
     .filter((role) => (byRole.get(role)?.length ?? 0) > 0)
     .map((role) => ({ role, files: byRole.get(role)! }));
 }
