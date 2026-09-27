@@ -20,7 +20,7 @@ _(none yet)_
 _(none yet)_
 
 ## Tool & Library Notes
-_(none yet)_
+- 2026-09-27 — `agent-browser find text "<X>" click` is a **case-insensitive substring** match that clicks the **first** hit in DOM order, and the step still reports ✓ even when that hit is the wrong element. The sidebar renders before page content, so `find text "Skills" click` on an agent page clicked the sidebar "Skills" link (flow 10 landed on `/skills`), and tab/button clicks in flows 09/11 never toggled the UI — all 4 failed in CI on `main` for days. For any button or tab use `find role button click --name "<label>" --exact` (flow `05-pr-diff` / `10-agent-skills-tab.flow.json`); keep `find text` for unique row/card titles, ideally with `--exact`.
 
 ## Recurring Errors & Fixes
 _(none yet)_
