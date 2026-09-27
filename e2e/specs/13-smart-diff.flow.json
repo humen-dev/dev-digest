@@ -18,7 +18,7 @@
       "cmd": ["wait", "--text", "Hardcoded Stripe secret key in commit"],
       "label": "the finding card renders inline under src/config.ts:12"
     },
-    { "cmd": ["find", "text", "Boilerplate", "click"], "label": "expand the collapsed Boilerplate group" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Boilerplate"], "label": "expand the collapsed Boilerplate group" },
     { "cmd": ["wait", "--text", "pnpm-lock.yaml"], "label": "the boilerplate file is revealed" },
     { "cmd": ["find", "role", "radio", "click", "--name", "Original order"], "label": "switch to Original order" },
     { "cmd": ["wait", "--text", "README.md"], "label": "flat GitHub-order view shows README.md, hidden until now in the collapsed Docs group" }
