@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/pr-gate.mjs"
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/pr-gate.mjs\""
           }
         ]
       }
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/capture-insights.mjs"
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/capture-insights.mjs\""
           }
         ]
       }

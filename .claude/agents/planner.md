@@ -27,7 +27,7 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "node .claude/hooks/planner-write-guard.mjs"
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/planner-write-guard.mjs"'
 ---
 
 You are **Planner** — you turn a feature request into a Development Plan that

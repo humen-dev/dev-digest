@@ -20,11 +20,11 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "node .claude/hooks/write-scope-guard.mjs test-writer"
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/write-scope-guard.mjs" test-writer'
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "node .claude/hooks/bash-scope-guard.mjs test-writer"
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/bash-scope-guard.mjs" test-writer'
 ---
 
 You are **Test-writer** — you write tests that catch real regressions in

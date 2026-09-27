@@ -460,8 +460,9 @@ hooks instead of one hook per agent:
 - Tests: `node --test .claude/hooks/write-scope-guard.test.mjs .claude/hooks/bash-scope-guard.test.mjs`.
 - **Adding a profile:** add an entry to `PROFILES` in the guard (`allow` / `deny`
   / `instead` for writes; `matchers` + `allowed` text for Bash), add allow and
-  deny cases to its `*.test.mjs`, then wire `node .claude/hooks/<guard>.mjs
-  <profile>` in the agent's frontmatter `hooks`. Never add a default-allow.
+  deny cases to its `*.test.mjs`, then wire `node "$CLAUDE_PROJECT_DIR/.claude/hooks/<guard>.mjs"
+  <profile>` in the agent's frontmatter `hooks` (always via `$CLAUDE_PROJECT_DIR`:
+  a relative path breaks as soon as the session cwd leaves the repo root). Never add a default-allow.
 
 `planner-write-guard.mjs` is a separate, older single-purpose hook and stays as
 it is; migrating it onto `write-scope-guard` is out of scope.

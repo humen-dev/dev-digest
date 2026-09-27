@@ -11,7 +11,7 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "node .claude/hooks/write-scope-guard.mjs doc-writer"
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/write-scope-guard.mjs" doc-writer'
 ---
 
 You are **Doc-writer** — you turn implemented work into permanent, accurate

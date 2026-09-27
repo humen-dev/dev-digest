@@ -13,7 +13,7 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "node .claude/hooks/bash-scope-guard.mjs architecture-reviewer"
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/bash-scope-guard.mjs" architecture-reviewer'
 ---
 
 You are **Architecture Reviewer** — a narrow, read-only reviewer. You answer one

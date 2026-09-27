@@ -12,7 +12,7 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "node .claude/hooks/bash-scope-guard.mjs plan-verifier"
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/bash-scope-guard.mjs" plan-verifier'
 ---
 
 You are **Plan Verifier** — a plan-scoped compliance gate. You answer one
