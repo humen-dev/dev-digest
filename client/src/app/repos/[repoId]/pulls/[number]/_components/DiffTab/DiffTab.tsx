@@ -37,7 +37,9 @@ export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
 
   const { data: reviews } = usePrReviews(prId);
   const { data: smartDiff, isLoading: smartDiffLoading, isError: smartDiffError } = useSmartDiff(prId);
-  const findingAction = useFindingAction();
+  // Destructured: useMutation returns a fresh object every render, which would
+  // bust the overlay memo below; `mutate` is stable.
+  const { mutate: actOnFinding, isPending: findingActionPending } = useFindingAction();
 
   const commentCount = comments?.length ?? 0;
   const commenting: DiffCommentApi = {
@@ -78,23 +80,29 @@ export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
             key={f.id}
             f={f}
             defaultExpanded
-            pending={findingAction.isPending}
+            pending={findingActionPending}
             repoFullName={repoFullName}
             headSha={pr.head_sha}
             onAction={(action) => {
-              if (prId) findingAction.mutate({ findingId: f.id, action, prId });
+              if (prId) actOnFinding({ findingId: f.id, action, prId });
             }}
           />
         ),
       })),
     }),
-    [findings, findingAction, repoFullName, pr.head_sha, prId],
+    [findings, actOnFinding, findingActionPending, repoFullName, pr.head_sha, prId],
   );
 
-  // A failed smart-diff request falls back to the flat, original-order view —
-  // grouping is an enhancement, never a blocker to reading the diff.
-  const effectiveOrder: OrderMode = smartDiffError ? "original" : order;
-  const groups = smartDiff ? buildRoleGroups(pr.files, smartDiff) : [];
+  const groups = React.useMemo(
+    () => (smartDiff ? buildRoleGroups(pr.files, smartDiff) : []),
+    [smartDiff, pr.files],
+  );
+  // Without grouping data (request failed, query disabled because prId is
+  // null, or a PR with no files) fall back to the flat, original-order view —
+  // grouping is an enhancement, never a blocker to reading the diff, and
+  // DiffViewer owns the "no changed files" empty state.
+  const smartUnavailable = smartDiffError || (!smartDiffLoading && groups.length === 0);
+  const effectiveOrder: OrderMode = smartUnavailable ? "original" : order;
 
   return (
     <section>
@@ -102,7 +110,7 @@ export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
         pr={pr}
         order={effectiveOrder}
         onOrderChange={setOrder}
-        orderDisabled={smartDiffError}
+        orderDisabled={smartUnavailable}
         commentCount={commentCount}
         showComments={showComments}
         onToggleComments={() => setShowComments((v) => !v)}
@@ -125,7 +133,6 @@ export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
 
       {effectiveOrder === "smart" &&
         !smartDiffLoading &&
-        !smartDiffError &&
         groups.map((group) => (
           <RoleGroup
             key={group.role}

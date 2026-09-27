@@ -178,10 +178,10 @@ afterEach(() => {
   smartDiffState = { data: SMART_DIFF, isLoading: false, isError: false };
 });
 
-function renderTab() {
+function renderTab({ prId = "pr1", pr = PR }: { prId?: string | null; pr?: PrDetail } = {}) {
   return render(
     <NextIntlClientProvider locale="en" messages={{ prReview: prReviewMessages, shell: shellMessages }}>
-      <DiffTab prId="pr1" pr={PR} repoFullName="acme/widgets" />
+      <DiffTab prId={prId} pr={pr} repoFullName="acme/widgets" />
     </NextIntlClientProvider>,
   );
 }
@@ -255,5 +255,28 @@ describe("DiffTab — smart-diff error", () => {
     expect(screen.getByText("src/config.ts")).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Smart order" })).toBeDisabled();
     expect(screen.getByRole("radio", { name: "Original order" })).toBeDisabled();
+  });
+});
+
+describe("DiffTab — no grouping data", () => {
+  it("falls back to the flat view while prId is null (smart-diff query disabled)", () => {
+    smartDiffState = { data: undefined, isLoading: false, isError: false };
+    renderTab({ prId: null });
+
+    expect(screen.queryByText("Core logic")).not.toBeInTheDocument();
+    expect(screen.getByText("src/config.ts")).toBeInTheDocument();
+    expect(screen.getByText("pnpm-lock.yaml")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Smart order" })).toBeDisabled();
+  });
+
+  it("shows DiffViewer's empty state for a PR with no changed files", () => {
+    smartDiffState = {
+      data: { groups: [], split_suggestion: { too_big: false, total_lines: 0, proposed_splits: [] } },
+      isLoading: false,
+      isError: false,
+    };
+    renderTab({ pr: { ...PR, files: [], files_count: 0 } });
+
+    expect(screen.getByText("No changed files.")).toBeInTheDocument();
   });
 });

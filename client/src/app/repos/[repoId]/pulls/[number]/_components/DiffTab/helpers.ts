@@ -30,6 +30,10 @@ export function currentFindings(reviews: ReviewRecord[]): FindingRecord[] {
   return findings;
 }
 
+function isKnownRole(role: string): role is SmartDiffRole {
+  return (SMART_DIFF_ROLE_ORDER as readonly string[]).includes(role);
+}
+
 export interface RoleGroupFiles {
   role: SmartDiffRole;
   files: PrFile[];
@@ -44,7 +48,10 @@ export interface RoleGroupFiles {
 export function buildRoleGroups(files: PrFile[], smartDiff: SmartDiffResponse): RoleGroupFiles[] {
   const roleByPath = new Map<string, SmartDiffRole>();
   for (const group of smartDiff.groups) {
-    for (const file of group.files) roleByPath.set(file.path, group.role);
+    // The response is typed, not parsed: a role this client doesn't know
+    // (server/client version skew) would otherwise never be rendered.
+    const role = isKnownRole(group.role) ? group.role : "core";
+    for (const file of group.files) roleByPath.set(file.path, role);
   }
 
   const byRole = new Map<SmartDiffRole, PrFile[]>();

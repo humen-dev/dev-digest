@@ -123,3 +123,15 @@ describe("pathsWithFindings / countFlaggedFiles", () => {
     expect(countFlaggedFiles(files, paths)).toBe(2);
   });
 });
+
+describe("buildRoleGroups — unknown role", () => {
+  it("puts files whose role the client does not know into core instead of dropping them", () => {
+    const files: PrFile[] = [{ path: "src/x.ts", additions: 1, deletions: 0, patch: null }];
+    const smartDiff = {
+      groups: [{ role: "generated-by-newer-server", files: [{ path: "src/x.ts", additions: 1, deletions: 0, finding_lines: [] }] }],
+      split_suggestion: { too_big: false, total_lines: 1, proposed_splits: [] },
+    } as unknown as SmartDiffResponse;
+
+    expect(buildRoleGroups(files, smartDiff)).toEqual([{ role: "core", files }]);
+  });
+});
