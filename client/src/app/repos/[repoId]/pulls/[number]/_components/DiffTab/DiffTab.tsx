@@ -1,31 +1,48 @@
+/* DiffTab — "Files changed": groups the diff by reviewer role (core → tests →
+   wiring → docs → boilerplate) with a Smart/Original order toggle, and
+   overlays the PR's current review findings (dot, severity line, inline
+   card) on top of DiffViewer. See docs/plans/smart-diff.md for the contract
+   and decisions this wires together. */
 "use client";
 
 import React from "react";
-import { SectionLabel, Button } from "@devdigest/ui";
-import { DiffViewer, type DiffCommentApi } from "@/components/diff-viewer";
-import { usePrComments, useCreatePrComment } from "@/lib/hooks/reviews";
+import { useTranslations } from "next-intl";
+import { Icon, Skeleton } from "@devdigest/ui";
+import { DiffViewer, type DiffCommentApi, type DiffFindingOverlay } from "@/components/diff-viewer";
+import { usePrComments, useCreatePrComment, usePrReviews, useFindingAction } from "@/lib/hooks/reviews";
+import { useSmartDiff } from "@/lib/hooks/smart-diff";
 import { notify } from "@/lib/toast";
-import type { PrFile } from "@devdigest/shared";
+import type { PrDetail } from "@devdigest/shared";
+import { FindingCard } from "../FindingCard";
+import { SmartDiffHeader } from "./_components/SmartDiffHeader";
+import { RoleGroup } from "./_components/RoleGroup";
+import { buildRoleGroups, countFlaggedFiles, currentFindings, pathsWithFindings } from "./helpers";
+import { DEFAULT_ORDER, type OrderMode } from "./constants";
+import { s } from "./styles";
 
 interface DiffTabProps {
   prId: string | null;
-  filesCount: number;
-  files: PrFile[];
-  /** Inline commenting is offered only on open PRs (GitHub rejects otherwise). */
-  canComment?: boolean;
+  pr: PrDetail;
+  /** github "owner/repo" (null until the repo is loaded) — passed through to FindingCard. */
+  repoFullName: string | null;
 }
 
-export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
+export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
+  const t = useTranslations("prReview");
   const { data: comments } = usePrComments(prId);
   const create = useCreatePrComment(prId);
   // Comments start hidden so the diff is clean by default — toggle to reveal.
   const [showComments, setShowComments] = React.useState(false);
+  const [order, setOrder] = React.useState<OrderMode>(DEFAULT_ORDER);
+
+  const { data: reviews } = usePrReviews(prId);
+  const { data: smartDiff, isLoading: smartDiffLoading, isError: smartDiffError } = useSmartDiff(prId);
+  const findingAction = useFindingAction();
 
   const commentCount = comments?.length ?? 0;
-
   const commenting: DiffCommentApi = {
     comments: comments ?? [],
-    canComment: !!canComment && !!prId,
+    canComment: pr.status === "open" && !!prId,
     showComments,
     posting: create.isPending,
     onSubmit: async (input) => {
@@ -40,26 +57,89 @@ export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
     },
   };
 
+  // "Current findings", restricted to this PR's changed files — same rule the
+  // server applies for `finding_lines` (docs/plans/smart-diff.md Decisions 6-8).
+  const filePaths = React.useMemo(() => new Set(pr.files.map((f) => f.path)), [pr.files]);
+  const findings = React.useMemo(() => {
+    const all = currentFindings(reviews ?? []);
+    return all.filter((f) => filePaths.has(f.file));
+  }, [reviews, filePaths]);
+  const flaggedPaths = React.useMemo(() => pathsWithFindings(findings), [findings]);
+
+  const overlay: DiffFindingOverlay = React.useMemo(
+    () => ({
+      markers: findings.map((f) => ({
+        id: f.id,
+        path: f.file,
+        line: f.start_line,
+        severity: f.severity,
+        card: (
+          <FindingCard
+            key={f.id}
+            f={f}
+            defaultExpanded
+            pending={findingAction.isPending}
+            repoFullName={repoFullName}
+            headSha={pr.head_sha}
+            onAction={(action) => {
+              if (prId) findingAction.mutate({ findingId: f.id, action, prId });
+            }}
+          />
+        ),
+      })),
+    }),
+    [findings, findingAction, repoFullName, pr.head_sha, prId],
+  );
+
+  // A failed smart-diff request falls back to the flat, original-order view —
+  // grouping is an enhancement, never a blocker to reading the diff.
+  const effectiveOrder: OrderMode = smartDiffError ? "original" : order;
+  const groups = smartDiff ? buildRoleGroups(pr.files, smartDiff) : [];
+
   return (
     <section>
-      <SectionLabel
-        icon="Code"
-        right={
-          commentCount > 0 ? (
-            <Button
-              kind="ghost"
-              size="sm"
-              icon={showComments ? "EyeOff" : "Eye"}
-              onClick={() => setShowComments((v) => !v)}
-            >
-              {showComments ? "Hide comments" : "Show comments"} ({commentCount})
-            </Button>
-          ) : undefined
-        }
-      >
-        Files changed · {filesCount} files
-      </SectionLabel>
-      <DiffViewer files={files} commenting={commenting} />
+      <SmartDiffHeader
+        pr={pr}
+        order={effectiveOrder}
+        onOrderChange={setOrder}
+        orderDisabled={smartDiffError}
+        commentCount={commentCount}
+        showComments={showComments}
+        onToggleComments={() => setShowComments((v) => !v)}
+      />
+
+      {smartDiffError && (
+        <div role="alert" style={s.notice}>
+          <Icon.AlertTriangle size={15} />
+          <span>{t("smartDiff.loadError")}</span>
+        </div>
+      )}
+
+      {effectiveOrder === "smart" && smartDiffLoading && (
+        <div style={s.skeletonStack}>
+          <Skeleton height={40} />
+          <Skeleton height={40} />
+          <Skeleton height={40} />
+        </div>
+      )}
+
+      {effectiveOrder === "smart" &&
+        !smartDiffLoading &&
+        !smartDiffError &&
+        groups.map((group) => (
+          <RoleGroup
+            key={group.role}
+            role={group.role}
+            files={group.files}
+            flaggedCount={countFlaggedFiles(group.files, flaggedPaths)}
+            commenting={commenting}
+            findings={overlay}
+          />
+        ))}
+
+      {effectiveOrder === "original" && (
+        <DiffViewer files={pr.files} commenting={commenting} findings={overlay} />
+      )}
     </section>
   );
 }

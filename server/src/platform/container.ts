@@ -37,6 +37,9 @@ import type { ConventionsRepositoryPort } from '../modules/conventions/ports.js'
 import { IntentRepository } from '../modules/intent/repository.js';
 import { IntentService } from '../modules/intent/service.js';
 import type { IntentRepositoryPort } from '../modules/intent/ports.js';
+import { SmartDiffRepository } from '../modules/smart-diff/repository.js';
+import { SmartDiffService } from '../modules/smart-diff/service.js';
+import type { SmartDiffRepositoryPort } from '../modules/smart-diff/ports.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
@@ -70,6 +73,8 @@ export interface ContainerOverrides {
   conventionsRepo?: ConventionsRepositoryPort;
   /** Intent persistence port — tests swap the port, not the service. */
   intentRepo?: IntentRepositoryPort;
+  /** Smart-diff persistence port — tests swap the port, not the service. */
+  smartDiffRepo?: SmartDiffRepositoryPort;
 }
 
 export class Container {
@@ -96,6 +101,7 @@ export class Container {
   private _reposRepo?: RepoRepository;
   private _conventionsService?: ConventionsService;
   private _intentService?: IntentService;
+  private _smartDiffService?: SmartDiffService;
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
@@ -191,6 +197,13 @@ export class Container {
       llm: (provider) => this.llm(provider),
       resolveModel: (workspaceId) => this.featureModels.resolve(workspaceId, 'review_intent'),
       tokenizer: this.tokenizer,
+    }));
+  }
+
+  /** Smart Diff — files-changed grouped by role (docs/plans/smart-diff.md). */
+  get smartDiffService(): SmartDiffService {
+    return (this._smartDiffService ??= new SmartDiffService({
+      smartDiff: this.overrides.smartDiffRepo ?? new SmartDiffRepository(this.db),
     }));
   }
 

@@ -164,14 +164,7 @@ export default function PRDetailPage() {
           />
         )}
 
-        {tab === "diff" && (
-          <DiffTab
-            prId={prId}
-            filesCount={pr.files_count}
-            files={pr.files}
-            canComment={pr.status === "open"}
-          />
-        )}
+        {tab === "diff" && <DiffTab prId={prId} pr={pr} repoFullName={repoFullName} />}
       </div>
 
       {prId && traceRunId && (
