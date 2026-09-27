@@ -19,7 +19,7 @@ export const DOC_EXTENSIONS = ['.md', '.mdx', '.txt', '.rst', '.adoc'] as const;
 export const PLAN_SPEC_GLOBS = ['docs/plans/**', '**/specs/**'] as const;
 
 /** 'Fixes #12', 'closes: #7', 'resolved #3' — same-repo only, no other issue syntax. */
-export const ISSUE_REF_RE = /\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\s*:?\s*#(\d+)\b/gi;
+export const ISSUE_REF_RE = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s*#(?<num>\d+)\b/gi;
 
 /** Per-source timeout for a linked-issue / external-link fetch. */
 export const SOURCE_TIMEOUT_MS = 8_000;

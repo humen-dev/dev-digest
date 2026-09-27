@@ -119,7 +119,7 @@ export function extractReferences(
   // ---- issues ---------------------------------------------------------------
   const issueNumbers: number[] = [];
   for (const m of text.matchAll(ISSUE_REF_RE)) {
-    const n = Number(m[2]);
+    const n = Number(m.groups?.num);
     if (Number.isFinite(n) && !issueNumbers.includes(n)) issueNumbers.push(n);
   }
   const issues: ExtractedIssueRef[] = issueNumbers
