@@ -39,6 +39,7 @@ avoid. Linked (not preloaded) from [`CLAUDE.md`](./CLAUDE.md) — read on demand
 - 2026-09-21 — `server/package.json` is `skip-worktree` in this repo (the workflows already say so: `.github/workflows/server-unit.yml:104`), so a script added to it (e.g. an `arch:check`) is NOT committed and CI never sees it. NEVER rely on new package scripts for CI; call the tool inline like the architecture step does (`.github/workflows/server-unit.yml:72-73`, `pnpm exec depcruise src --config .dependency-cruiser.cjs --ignore-known`).
 
 ## Recurring Errors & Fixes
+- 2026-09-27 — Reading a regex match by **positional index** silently breaks when an alternation contains a nested optional group: `ISSUE_REF_RE` had `fix(e[sd])?`, so `m[2]` was `'es'`/`undefined`, `Number(...)` gave `NaN`, the `Number.isFinite` guard dropped it and every "Fixes #N" vanished with no error — typecheck and existing tests stayed green. ALWAYS make helper groups non-capturing (`(?:…)`) and read the value from a **named group** (`#(?<num>\d+)` → `m.groups?.num`), as in `server/src/modules/intent/constants.ts:22` + `domain/references.ts:122`; pin it with a table test (`server/test/intent-references.test.ts`).
 - 2026-09-18 — Deriving a parent dir with `full.lastIndexOf('/')` breaks on Windows: `path.join` normalizes separators to `\`, so there is no `/` → `slash = -1` → `mkdir` skipped → `writeFile` fails ENOENT (6 tests). ALWAYS use `dirname()` for the parent dir, never a hardcoded `/` scan (`server/test/indexer-pipeline.test.ts:140`).
 
 ## Session Notes
