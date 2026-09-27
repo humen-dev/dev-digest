@@ -12,7 +12,7 @@ avoid. Linked (not preloaded) from [`CLAUDE.md`](./CLAUDE.md) — read on demand
 _(none yet)_
 
 ## What Doesn't Work
-_(none yet)_
+- 2026-09-27 — A prompt section is NOT trusted just because WE assembled it: the intent classifier's "Unresolved sources" list (`reviewer-core/src/intent/classifier-prompt.ts:122-128`) is built from our own reason codes, but each line also carries a `ref` that came from the PR body — external URLs and doc paths. `redactUrl` only strips query/fragment/userinfo, so the URL **path** survives, and the server's `URL_RE` accepts any non-space chars; a non-allowlisted `https://x.io/ignore-previous-instructions-…` therefore lands in the prompt outside `<untrusted>` and outside the guard (found by `/pr-self-review` Phase 3, 2026-09-27). ALWAYS `wrapUntrusted` any text derived from PR content — even a single ref inside an otherwise system-built list — and keep only enum codes (reasons, kinds, counts) in trusted prose.
 
 ## Codebase Patterns
 - 2026-09-18 — Real vs estimated cost are DISTINCT fields. `StructuredResult.costUsd` is best-effort (real provider cost OR an estimate fallback); `StructuredResult.apiCostUsd` is the REAL provider cost only (OpenRouter `usage.cost`), `null` otherwise (`reviewer-core/src/llm/openrouter.ts:107`). `reviewPullRequest` sums `apiCostUsd` across chunks into `ReviewOutcome.apiCostUsd` — null until a chunk reports one (`reviewer-core/src/review/run.ts:184`). For anything money-facing persist `apiCostUsd`, never `costUsd`.

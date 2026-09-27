@@ -51,7 +51,9 @@ export function IntentNotices({
             {": "}
             {[
               ...missingContext,
-              ...unresolved.map((source) => `${source.ref} (${t(`intentCard.${reasonKey(source.reason!)}`)})`),
+              ...unresolved.map((source) =>
+                source.reason ? `${source.ref} (${t(`intentCard.${reasonKey(source.reason)}`)})` : source.ref,
+              ),
             ].join("; ")}
           </span>
         </div>

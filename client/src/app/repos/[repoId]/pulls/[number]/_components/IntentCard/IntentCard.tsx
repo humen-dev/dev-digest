@@ -30,7 +30,9 @@ export function IntentCard({ prId, variant, onViewDetails }: IntentCardProps) {
   const { data, isLoading, isError, error, refetch } = usePrIntent(prId);
   const detect = useDetectIntent(prId);
 
-  if (isLoading) {
+  // No PR id yet ⇒ the query is disabled (isLoading stays false): keep the
+  // skeleton rather than an actionable "Detect intent" that would POST /pulls/null.
+  if (!prId || isLoading) {
     return (
       <Card>
         <div style={s.loadingStack}>

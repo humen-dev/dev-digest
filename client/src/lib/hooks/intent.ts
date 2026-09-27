@@ -10,7 +10,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import type { PrIntentState } from "@devdigest/shared";
 
-const intentKey = (prId: string) => ["pr-intent", prId] as const;
+/** Query key for a PR's intent — exported so callers invalidate through the owning hook module. */
+export const intentKey = (prId: string) => ["pr-intent", prId] as const;
 
 /** Stored intent + staleness for a PR. Read-only — never calls a model. */
 export function usePrIntent(prId: string | null | undefined) {
