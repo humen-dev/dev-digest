@@ -19,3 +19,4 @@ assertions. Target read-only seeded data.
 | `05-pr-diff` | PR #482 → Files changed tab → seeded file in the diff viewer |
 | `06-onboarding` | `/onboarding` → add-repository form renders (no submit) |
 | `07-settings` | `/settings/api-keys` + `/settings/models` → section titles |
+| `13-smart-diff` | PR #482 → Files changed tab → role groups (Core logic/Wiring/Boilerplate), inline "blocker" finding, Boilerplate expand, Original order toggle |
