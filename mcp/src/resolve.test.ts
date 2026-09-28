@@ -111,3 +111,16 @@ describe('resolveAgent', () => {
     expect(err.next).toContain('list_agents');
   });
 });
+
+describe('echoed input sanitising', () => {
+  it('strips invisible (Cf) and control characters from the echoed repo argument', async () => {
+    const api = createFakeApi();
+    // Built from code points so no hidden character lives in this source file.
+    const hidden = [0x200b, 0x202e, 0xe0041, 0x0000].map((cp) => String.fromCodePoint(cp)).join('');
+    const err = await expectToolError(resolveRepo(api, `ghost/rep${hidden}o`));
+
+    expect(err.code).toBe('repo_not_found');
+    expect(/\p{Cf}/u.test(err.message)).toBe(false);
+    expect(/\p{Cc}/u.test(err.message)).toBe(false);
+  });
+});

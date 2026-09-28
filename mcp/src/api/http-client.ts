@@ -192,6 +192,12 @@ export class HttpDevDigestApi implements DevDigestApi {
       raw = await res.json();
     } catch (err) {
       if (this.callSignal?.aborted) throw err;
+      // The body stream broke (timeout / reset after the headers): a transport
+      // failure, not a schema bug. A GET is safe to retry; the POST keeps badBody.
+      if (method !== 'POST' && (err instanceof TypeError || isTimeoutLike(err))) {
+        this.log('api_unreachable', { method, path, ms: Date.now() - start, phase: 'body' });
+        throw new ApiUnreachableError(this.config.apiUrl, err, false);
+      }
       throw badBody(err);
     }
     const parsed = schema.safeParse(raw);

@@ -76,7 +76,7 @@ describe('formatConventions', () => {
     const result = formatConventions(board, { repo: 'r' });
 
     expect(result.conventions).toHaveLength(0);
-    expect(result.note).toContain('pending');
+    expect(result.note).toContain('found 2 pending, 0 accepted, 1 rejected');
     expect(result.note).toMatch(/status: "pending"/);
   });
 

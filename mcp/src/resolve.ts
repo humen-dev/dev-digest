@@ -2,6 +2,7 @@
 // Turns the flat, human-typed tool arguments (repo string, pr number, agent name/id)
 // into the concrete API entities, or throws a ToolError with an actionable `next`.
 import { ToolError } from './errors.js';
+import { clip } from './format/text.js';
 import type { ApiAgent, ApiPull, ApiRepo } from './domain/types.js';
 import type { DevDigestApi } from './ports.js';
 
@@ -10,11 +11,10 @@ const PLAIN_REPO_RE = /^([^/\s]+)\/([^/\s]+)$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_LIST_ITEMS = 10;
 
-/** Strips control characters and clips echoed user input to 100 chars (security: never echo raw untrusted input). */
+/** Echoed user input goes through the same sanitiser as every other untrusted text
+ *  (control + invisible Cf characters stripped, ≤100 chars) — never echo it raw. */
 function clipEcho(text: string): string {
-  // eslint-disable-next-line no-control-regex
-  const stripped = text.replace(/[\u0000-\u001f\u007f-\u009f]/g, '').trim();
-  return stripped.length > 100 ? `${stripped.slice(0, 100)}…` : stripped;
+  return clip(text, 100);
 }
 
 /** Joins up to 10 items; appends `…` when more exist. */

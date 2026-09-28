@@ -67,7 +67,11 @@ describe('toErrorPayload', () => {
     const long = 'x'.repeat(500);
     const err = new ApiError(502, 'bad_response', long);
     const payload = toErrorPayload(err, 'http://127.0.0.1:3001');
-    expect(payload.message.length).toBeLessThan(250);
+    const prefix = 'DevDigest API error 502 bad_response: ';
+    expect(payload.message.startsWith(prefix)).toBe(true);
+    // The API-supplied part is clipped to exactly the 200-char budget (ellipsis included).
+    expect(payload.message.slice(prefix.length)).toHaveLength(200);
+    expect(payload.message.endsWith('…')).toBe(true);
   });
 
   it('maps an unknown thrown value to a generic internal api_error', () => {

@@ -94,6 +94,22 @@ describe('HttpDevDigestApi', () => {
     await expect(api.startReview('p1', 'a1')).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: true });
   });
 
+  it('a GET whose body stream breaks after the headers is api_unreachable, not a 502 schema error', async () => {
+    const brokenBody = (): Response => {
+      const res = new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+      Object.defineProperty(res, 'json', {
+        value: () => Promise.reject(new DOMException('The operation timed out', 'TimeoutError')),
+      });
+      return res;
+    };
+    const fetchStub = vi.fn(async () => brokenBody());
+    const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch);
+
+    await expect(api.listPulls('r1')).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: false });
+    // The paid POST keeps "maybe processed": the 2xx means the run exists.
+    await expect(api.startReview('p1', 'a1')).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: true });
+  });
+
   it('a 5xx on the POST is maybeProcessed; a 5xx on a GET and a 4xx on the POST are not', async () => {
     const respond = (status: number) => vi.fn(async () => jsonResponse({ error: { code: 'x', message: 'boom' } }, status));
 
