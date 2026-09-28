@@ -23,7 +23,7 @@ The DevDigest API must be running (`./scripts/dev.sh` from the repo root, or
 |---|---|---|
 | `list_agents` | — | The reviewer agents available (id, name, model, enabled). |
 | `run_agent_on_pr` | `repo`, `pr`, `agent`, `min_severity?`, `limit?` | Runs a review, waits up to the wait budget, and returns the verdict, score, gate and top findings — or `status:"running"` with a `run_id` if it is still going. |
-| `get_findings` | `repo`, `pr`, `run_id?`, `agent?`, `min_severity?`, `limit?` | The verdict/findings of a finished review: the latest one, or a specific run/agent. Never starts a review. |
+| `get_findings` | `repo`, `pr`, `run_id?`, `agent?`, `min_severity?`, `limit?` | The verdict/findings of a finished review: the latest one (by `created_at`), or a specific run/agent. If a newer run of the same agent is still in progress, the result also carries `newer_run: {run_id, status: "running"}` and a `next` hint. Never starts a review. |
 | `get_conventions` | `repo`, `status?`, `category?`, `limit?` | The repo's extracted coding conventions, each with `path:line` evidence. |
 | `get_blast_radius` | `repo`, `pr` | **Not implemented yet** — always returns a `not_implemented` error naming `get_findings`/`get_conventions` as alternatives. |
 

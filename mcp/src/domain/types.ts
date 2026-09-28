@@ -25,6 +25,8 @@ export interface ReviewResult {
   counts: { critical: number; warning: number; suggestion: number }; // non-dismissed, before filter/limit
   findings: CompactFinding[];
   truncated?: string; // e.g. 'Showing 20 of 34 findings; pass limit (max 100) or min_severity to change.'
+  newer_run?: { run_id: string; status: 'running' }; // get_findings: a newer run of the same agent is still in progress
+  next?: string; // set together with newer_run
 }
 export interface RunningResult { status: 'running'; repo: string; pr: number; run_id: string; agent: string | null; elapsed_s: number; next: string }
 export interface CompactAgent { id: string; name: string; description: string; model: string; enabled: boolean; ci_fail_on: string }

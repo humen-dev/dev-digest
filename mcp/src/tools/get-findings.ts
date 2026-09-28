@@ -105,19 +105,44 @@ export const getFindings: ToolHandler<'get_findings'> = async (args, ctx) => {
     });
   }
 
-  const reviews = await ctx.api.listReviews(pull.id);
-  const candidate = reviews.find((r) => r.kind === 'review' && (agent === null || r.agent_id === agent.id));
+  const [reviews, runs] = await Promise.all([ctx.api.listReviews(pull.id), ctx.api.listRuns(pull.id)]);
+  const isMine = (agentId: string | null) => agent === null || agentId === agent.id;
+
+  // "Newest" is chosen explicitly, not trusted from the API's list order.
+  const candidate = reviews
+    .filter((r) => r.kind === 'review' && isMine(r.agent_id))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  // A re-run still in progress must not hide behind the previous verdict.
+  const newerRunning = runs
+    .filter((r) => r.status === 'running' && isMine(r.agent_id) && r.run_id !== candidate?.run_id)
+    .sort((a, b) => (b.ran_at ?? '').localeCompare(a.ran_at ?? ''))[0];
+
   if (candidate) {
-    const runs = await ctx.api.listRuns(pull.id);
-    const run = runs.find((r) => r.run_id === candidate.run_id) ?? null;
-    return formatReview({
+    const result = formatReview({
       repo: repo.full_name,
       pr: pull.number,
       review: candidate,
-      run,
+      run: runs.find((r) => r.run_id === candidate.run_id) ?? null,
       minSeverity: args.min_severity,
       limit: args.limit,
     });
+    if (!newerRunning) return result;
+    return {
+      ...result,
+      newer_run: { run_id: newerRunning.run_id, status: 'running' as const },
+      next: `A newer review (${newerRunning.run_id}) is still running; call get_findings with that run_id in about 30 seconds.`,
+    };
+  }
+
+  if (newerRunning) {
+    return runningResult(
+      repo,
+      pull,
+      newerRunning.run_id,
+      newerRunning.agent_name,
+      elapsedSeconds(ctx, newerRunning.ran_at),
+      'Call get_findings again in about 30 seconds.',
+    );
   }
 
   const active = await ctx.api.listActiveRuns(pull.id);

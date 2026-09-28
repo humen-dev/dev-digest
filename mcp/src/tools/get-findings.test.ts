@@ -135,4 +135,62 @@ describe('getFindings', () => {
     const result = (await getFindings({ repo: 'acme/payments-api', pr: 482 }, activeCtx)) as RunningResult;
     expect(result.status).toBe('running');
   });
+
+  it('flags a newer run of the same agent that is still in progress next to the last finished review', async () => {
+    const newerRunId = '88888888-8888-4888-8888-888888888888';
+    const api = createFakeApi({
+      runs: {
+        [IDS.pull]: [
+          baseRun({ run_id: newerRunId, status: 'running', ran_at: '2026-01-03T00:00:00.000Z' }),
+          baseRun(),
+        ],
+      },
+      reviews: { [IDS.pull]: [reviewOf()] },
+    });
+    const ctx = makeCtx(api);
+
+    const result = (await getFindings({ repo: 'acme/payments-api', pr: 482 }, ctx)) as ReviewResult;
+
+    expect(result.status).toBe('done');
+    expect(result.run_id).toBe(RUN_ID); // the last finished verdict is still returned
+    expect(result.newer_run).toEqual({ run_id: newerRunId, status: 'running' });
+    expect(result.next).toContain(newerRunId);
+  });
+
+  it('a running run of ANOTHER agent does not flag newer_run when an agent is given', async () => {
+    const api = createFakeApi({
+      runs: {
+        [IDS.pull]: [
+          baseRun({ run_id: '99999999-9999-4999-8999-999999999999', status: 'running', agent_id: IDS.agentSecurity, agent_name: 'Security' }),
+          baseRun(),
+        ],
+      },
+      reviews: { [IDS.pull]: [reviewOf()] },
+    });
+    const ctx = makeCtx(api);
+
+    const result = (await getFindings({ repo: 'acme/payments-api', pr: 482, agent: 'General' }, ctx)) as ReviewResult;
+
+    expect(result.newer_run).toBeUndefined();
+    expect(result.next).toBeUndefined();
+  });
+
+  it('picks the newest review by created_at even when the API lists it second', async () => {
+    const olderRunId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const api = createFakeApi({
+      runs: { [IDS.pull]: [baseRun(), baseRun({ run_id: olderRunId })] },
+      reviews: {
+        [IDS.pull]: [
+          reviewOf({ id: 'r-old', run_id: olderRunId, verdict: 'request_changes', created_at: '2025-12-01T00:00:00.000Z' }),
+          reviewOf({ id: 'r-new', created_at: '2026-01-01T00:00:00.000Z' }),
+        ],
+      },
+    });
+    const ctx = makeCtx(api);
+
+    const result = (await getFindings({ repo: 'acme/payments-api', pr: 482 }, ctx)) as ReviewResult;
+
+    expect(result.run_id).toBe(RUN_ID);
+    expect(result.verdict).toBe('comment');
+  });
 });
