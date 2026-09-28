@@ -38,12 +38,13 @@ function isTimeoutLike(err: unknown): boolean {
 /** Network error codes that prove the request never left: nothing to double-run. */
 const NEVER_SENT = new Set(['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN']);
 
-/** Could the server have received (and acted on) this request? A timeout: yes.
- *  A POST that failed for any reason other than a proven never-sent error
- *  (e.g. ECONNRESET after the body was written): assume yes. A GET is safe to retry. */
+/** Could the server have acted on this request so that a retry would repeat a
+ *  side effect? Never for a GET (reads are safe to retry). For the POST: a
+ *  timeout, or any failure other than a proven never-sent error (e.g.
+ *  ECONNRESET after the body was written) — assume yes. */
 function maybeProcessed(method: string, err: unknown): boolean {
-  if (isTimeoutLike(err)) return true;
   if (method !== 'POST') return false;
+  if (isTimeoutLike(err)) return true;
   const code = (err as { cause?: { code?: string } })?.cause?.code;
   return !(code !== undefined && NEVER_SENT.has(code));
 }
@@ -177,16 +178,22 @@ export class HttpDevDigestApi implements DevDigestApi {
       return undefined as T;
     }
 
+    // A 2xx POST was ACCEPTED (the review run exists): an unreadable body must
+    // not turn into a "retry once" hint that starts a second paid review.
+    const badBody = (cause?: unknown): Error =>
+      method === 'POST'
+        ? new ApiUnreachableError(this.config.apiUrl, cause, true)
+        : new ApiError(502, 'bad_response', `Unexpected response shape from ${path}`);
+
     let raw: unknown;
     try {
       raw = await res.json();
-    } catch {
-      throw new ApiError(502, 'bad_response', `Unexpected response shape from ${path}`);
+    } catch (err) {
+      if (this.callSignal?.aborted) throw err;
+      throw badBody(err);
     }
     const parsed = schema.safeParse(raw);
-    if (!parsed.success) {
-      throw new ApiError(502, 'bad_response', `Unexpected response shape from ${path}`);
-    }
+    if (!parsed.success) throw badBody();
     return parsed.data;
   }
 }

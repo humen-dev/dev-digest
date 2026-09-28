@@ -83,13 +83,22 @@ describe('HttpDevDigestApi', () => {
     });
   });
 
-  it('maps a timeout (AbortError) to ApiUnreachableError', async () => {
+  it('maps a TimeoutError to ApiUnreachableError: maybeProcessed only for the POST', async () => {
     const fetchStub = vi.fn(async () => {
-      const err = new DOMException('The operation was aborted', 'TimeoutError');
-      throw err;
+      throw new DOMException('The operation timed out', 'TimeoutError');
     });
     const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch);
-    await expect(api.listRepos()).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: true });
+    // A slow read is safe to retry…
+    await expect(api.listRepos()).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: false });
+    // …a slow paid POST may already have created the run.
+    await expect(api.startReview('p1', 'a1')).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: true });
+  });
+
+  it('a 2xx POST with an unreadable body is maybeProcessed (the run exists), a GET stays bad_response', async () => {
+    const fetchStub = vi.fn(async () => jsonResponse({ unexpected: true }));
+    const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch);
+    await expect(api.startReview('p1', 'a1')).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: true });
+    await expect(api.listAgents()).rejects.toMatchObject({ name: 'ApiError', status: 502, apiCode: 'bad_response' });
   });
 
   it('withSignal aborts an in-flight request when the tool call is cancelled', async () => {

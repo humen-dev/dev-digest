@@ -87,7 +87,7 @@ export const getFindings: ToolHandler<'get_findings'> = async (args, ctx) => {
     if (run.status === 'cancelled') throw runCancelledError(run);
 
     const reviews = await ctx.api.listReviews(pull.id);
-    const review = reviews.find((r) => r.run_id === run.run_id);
+    const review = reviews.find((r) => r.run_id === run.run_id && r.kind === 'review');
     if (!review) {
       throw new ToolError(
         'no_review',
@@ -112,9 +112,19 @@ export const getFindings: ToolHandler<'get_findings'> = async (args, ctx) => {
   const candidate = reviews
     .filter((r) => r.kind === 'review' && isMine(r.agent_id))
     .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-  // A re-run still in progress must not hide behind the previous verdict.
+  // A re-run still in progress must not hide behind the previous verdict — but
+  // only a run that started AFTER that review counts: a stale row stuck in
+  // 'running' (API died mid-run) must not shadow a current verdict forever.
+  const startedAfterCandidate = (ranAt: string | null): boolean =>
+    candidate === undefined || (ranAt !== null && Date.parse(ranAt) > Date.parse(candidate.created_at));
   const newerRunning = runs
-    .filter((r) => r.status === 'running' && isMine(r.agent_id) && r.run_id !== candidate?.run_id)
+    .filter(
+      (r) =>
+        r.status === 'running' &&
+        isMine(r.agent_id) &&
+        r.run_id !== candidate?.run_id &&
+        startedAfterCandidate(r.ran_at),
+    )
     .sort((a, b) => (b.ran_at ?? '').localeCompare(a.ran_at ?? ''))[0];
 
   if (candidate) {

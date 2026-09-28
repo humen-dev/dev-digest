@@ -157,6 +157,36 @@ describe('getFindings', () => {
     expect(result.next).toContain(newerRunId);
   });
 
+  it('a stale run stuck in running from BEFORE the review does not flag newer_run', async () => {
+    const api = createFakeApi({
+      runs: {
+        [IDS.pull]: [
+          baseRun({ run_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', status: 'running', ran_at: '2025-12-01T00:00:00.000Z' }),
+          baseRun(),
+        ],
+      },
+      reviews: { [IDS.pull]: [reviewOf({ created_at: '2026-01-01T00:00:00.000Z' })] },
+    });
+    const ctx = makeCtx(api);
+
+    const result = (await getFindings({ repo: 'acme/payments-api', pr: 482 }, ctx)) as ReviewResult;
+
+    expect(result.newer_run).toBeUndefined();
+  });
+
+  it('with run_id, a summary record of that run is never reported as the review', async () => {
+    const api = createFakeApi({
+      runs: { [IDS.pull]: [baseRun()] },
+      reviews: { [IDS.pull]: [summaryReview(), reviewOf()] },
+    });
+    const ctx = makeCtx(api);
+
+    const result = (await getFindings({ repo: 'acme/payments-api', pr: 482, run_id: RUN_ID }, ctx)) as ReviewResult;
+
+    expect(result.verdict).toBe('comment');
+    expect(result.summary).toBe('Looks fine overall.');
+  });
+
   it('a running run of ANOTHER agent does not flag newer_run when an agent is given', async () => {
     const api = createFakeApi({
       runs: {

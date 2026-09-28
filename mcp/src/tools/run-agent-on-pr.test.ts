@@ -139,16 +139,29 @@ describe('runAgentOnPr', () => {
     expect(result.status).toBe('done');
   });
 
-  it('an aborted signal stops polling and never calls anything cancel-like', async () => {
+  it('a call cancelled before the review starts never spends tokens on startReview', async () => {
     const controller = new AbortController();
     controller.abort();
     const api = withFixedStartReview(createFakeApi(), RUN_ID);
     const ctx = makeCtx(api, { signal: controller.signal });
 
+    await expect(runAgentOnPr(baseArgs(), ctx)).rejects.toMatchObject({ code: 'run_cancelled' });
+    expect(api.calls.map((c) => c.method)).not.toContain('startReview');
+  });
+
+  it('a cancel right after the review started stops polling and leaves the run going', async () => {
+    const controller = new AbortController();
+    const api = withFixedStartReview(createFakeApi(), RUN_ID);
+    const start = api.startReview;
+    api.startReview = async (prId, agentId) => {
+      const started = await start(prId, agentId);
+      controller.abort(); // the client cancels once the run exists
+      return started;
+    };
+    const ctx = makeCtx(api, { signal: controller.signal });
+
     const result = (await runAgentOnPr(baseArgs(), ctx)) as RunningResult;
 
-    // Aborted before the first poll: the run keeps going server-side and the
-    // agent is pointed at get_findings.
     expect(result.status).toBe('running');
     expect(result.run_id).toBe(RUN_ID);
     expect(result.next).toContain('get_findings');

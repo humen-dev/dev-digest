@@ -12,6 +12,16 @@ import type { ToolHandler } from './types.js';
  * (Decision 10a) or starts a new one after a best-effort warm-up, then waits for
  * it to finish (or times out and returns a RunningResult, per §3.6).
  */
+function throwIfCancelled(signal: AbortSignal): void {
+  if (signal.aborted) {
+    throw new ToolError(
+      'run_cancelled',
+      'The call was cancelled before a review was started; nothing was run.',
+      'Call run_agent_on_pr again to start a review.',
+    );
+  }
+}
+
 export const runAgentOnPr: ToolHandler<'run_agent_on_pr'> = async (args, ctx) => {
   const repo = await resolveRepo(ctx.api, args.repo);
   const pull = await resolvePull(ctx.api, repo, args.pr);
@@ -27,11 +37,14 @@ export const runAgentOnPr: ToolHandler<'run_agent_on_pr'> = async (args, ctx) =>
     runId = activeForAgent.run_id;
     attached = true;
   } else {
+    throwIfCancelled(ctx.signal);
     try {
       await ctx.api.warmPull(pull.id);
     } catch (err) {
       ctx.log('warmPull failed, continuing', { error: String(err) });
     }
+    // Last gate before spending LLM tokens: a cancelled call starts nothing.
+    throwIfCancelled(ctx.signal);
     const started = await ctx.api.startReview(pull.id, agent.id);
     runId = started.run_id;
   }
@@ -64,7 +77,7 @@ export const runAgentOnPr: ToolHandler<'run_agent_on_pr'> = async (args, ctx) =>
   }
 
   const reviews = await ctx.api.listReviews(pull.id);
-  const review = reviews.find((r) => r.run_id === runId);
+  const review = reviews.find((r) => r.run_id === runId && r.kind === 'review');
   if (!review) {
     throw new ToolError('no_review', `No review found for finished run ${runId}.`, 'Call get_findings(repo, pr) to read the latest review.');
   }
