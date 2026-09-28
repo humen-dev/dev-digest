@@ -22,6 +22,8 @@ const CLOSED_PORT_URL = 'http://127.0.0.1:9';
 describe('index.smoke — real stdio launcher, API down', () => {
   let client: Client;
   let transport: StdioClientTransport;
+  // Any non-JSON-RPC line on stdout surfaces as a transport/client error.
+  const protocolErrors: Error[] = [];
 
   beforeAll(async () => {
     transport = new StdioClientTransport({
@@ -32,11 +34,17 @@ describe('index.smoke — real stdio launcher, API down', () => {
       stderr: 'pipe',
     });
     client = new Client({ name: 'smoke-test-client', version: '0.0.0' });
+    client.onerror = (err) => protocolErrors.push(err);
     await client.connect(transport);
   }, 30_000);
 
   afterAll(async () => {
     await client?.close();
+  });
+
+  afterAll(() => {
+    // stdout carried only JSON-RPC: the client never failed to parse a line.
+    expect(protocolErrors).toEqual([]);
   });
 
   it('starts with the API down and lists the 5 tools in order', async () => {

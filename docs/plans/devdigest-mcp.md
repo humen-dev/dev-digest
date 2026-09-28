@@ -402,7 +402,7 @@ Error wire format: `{ isError: true, content: [{ type: 'text', text: JSON.string
   export type WaitOutcome =
     | { kind: 'done' | 'failed' | 'cancelled'; run: ApiRun }
     | { kind: 'timeout'; elapsedMs: number }
-    | { kind: 'aborted' };
+    | { kind: 'aborted'; elapsedMs: number };
   export function waitForRun(o: { ctx: ToolContext; prId: string; runId: string; label: string }): Promise<WaitOutcome>;
   ```
   - Poll `listRuns` every `config.pollMs` until `now() - start >= config.waitMs`.
@@ -410,6 +410,7 @@ Error wire format: `{ isError: true, content: [{ type: 'text', text: JSON.string
   - A run missing from the list counts as still running.
   - Up to 2 consecutive API errors are tolerated; the 3rd is rethrown.
   - `ctx.signal.aborted` → `aborted`, and the server run is not cancelled.
+  - **Revised after Wave 2 verification (2026-09-28):** the real `ctx.sleep` rejects when the client cancels mid-pause, so `waitForRun` catches that rejection and returns `aborted` (a non-abort sleep failure is rethrown). `aborted` carries `elapsedMs`, and `run_agent_on_pr` maps it to the same `RunningResult` as a timeout (the run keeps going server-side; `get_findings` reads it later).
 - **`get_findings` (U6):**
   - Resolve the repo and the PR; resolve the agent if given (`requireEnabled: false`).
   - With `run_id`:
@@ -672,6 +673,7 @@ Error wire format: `{ isError: true, content: [{ type: 'text', text: JSON.string
    register();
    await import('../src/index.ts');
    ```
+   > **Revised after the security review (2026-09-28):** static ESM imports are evaluated before the module body, so a `console.log` redirect inside `index.ts` runs too late. The launcher now redirects `console.log`/`console.info` to stderr first and loads `tsx/esm/api` and `../src/index.ts` with dynamic `import()` (exit 1 with a stderr message if startup fails). The smoke test asserts the client saw no protocol errors on stdout.
 3. `.mcp.json` (repo root):
    ```json
    {

@@ -60,7 +60,7 @@ export function toErrorPayload(err: unknown, apiUrl: string): ToolErrorPayload {
     }
     return {
       error: 'api_error',
-      message: `DevDigest API error ${err.status} ${err.apiCode}: ${clip(err.message, 200)}`,
+      message: `DevDigest API error ${err.status}${err.apiCode ? ` ${err.apiCode}` : ''}: ${clip(err.message, 200)}`,
       next: 'Check the DevDigest API log; retry once.',
     };
   }
