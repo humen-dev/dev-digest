@@ -20,23 +20,35 @@ function makeConvention(over: Partial<ApiConvention> = {}): ApiConvention {
 describe('formatConventions', () => {
   it('defaults to accepted status and limit 30, sorted by occurrences then confidence', () => {
     const candidates: ApiConvention[] = [
-      makeConvention({ id: 'a', occurrences: 2, confidence: 0.9 }),
-      makeConvention({ id: 'b', occurrences: 5, confidence: 0.5 }),
-      makeConvention({ id: 'c', occurrences: null, confidence: 0.99 }),
-      makeConvention({ id: 'd', status: 'pending' }),
+      makeConvention({ id: 'a', evidence_path: 'src/a.ts', occurrences: 2, confidence: 0.9 }),
+      makeConvention({ id: 'b', evidence_path: 'src/b.ts', occurrences: 5, confidence: 0.5 }),
+      makeConvention({ id: 'c', evidence_path: 'src/c.ts', occurrences: null, confidence: 0.99 }),
+      makeConvention({ id: 'e', evidence_path: 'src/e.ts', occurrences: 2, confidence: 0.95 }),
+      makeConvention({ id: 'd', evidence_path: 'src/d.ts', status: 'pending' }),
     ];
     const board: ApiConventionBoard = { candidates, last_scan: { created_at: '2026-01-01T00:00:00.000Z' } };
 
     const result = formatConventions(board, { repo: 'acme/payments-api' });
 
     expect(result.status).toBe('accepted');
-    expect(result.returned).toBe(3);
+    expect(result.returned).toBe(4);
     expect(result.conventions.map((c) => c.evidence)).toEqual([
-      'src/foo.ts:12', // b: occurrences 5
-      'src/foo.ts:12', // a: occurrences 2
-      'src/foo.ts:12', // c: occurrences null (last)
+      'src/b.ts:12', // occurrences 5
+      'src/e.ts:12', // occurrences 2, confidence 0.95
+      'src/a.ts:12', // occurrences 2, confidence 0.9
+      'src/c.ts:12', // occurrences null (last)
     ]);
     expect(result.last_scan_at).toBe('2026-01-01T00:00:00.000Z');
+  });
+
+  it('caps the default output at 30 accepted conventions', () => {
+    const candidates = Array.from({ length: 45 }, (_, i) => makeConvention({ id: `c${i}`, evidence_path: `src/f${i}.ts` }));
+    const result = formatConventions({ candidates, last_scan: null }, { repo: 'acme/payments-api' });
+
+    expect(result.total_matching).toBe(45);
+    expect(result.returned).toBe(30);
+    expect(result.conventions).toHaveLength(30);
+    expect(result.truncated).toBeTruthy();
   });
 
   it('rejects an unknown category listing the 10 valid ones', () => {

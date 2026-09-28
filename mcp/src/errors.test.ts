@@ -19,11 +19,29 @@ describe('toErrorPayload', () => {
     expect(payload.next).toContain('./scripts/dev.sh');
   });
 
+  it('a timed-out request warns that it may have been processed, instead of "start the API and retry"', () => {
+    const err = new ApiUnreachableError('http://127.0.0.1:3001', undefined, true);
+    const payload = toErrorPayload(err, 'http://127.0.0.1:3001');
+    expect(payload.error).toBe('api_unreachable');
+    expect(payload.message).toContain('did not answer in time');
+    expect(payload.next).toContain('get_findings');
+    expect(payload.next).not.toContain('./scripts/dev.sh');
+  });
+
   it('maps a 429 ApiError to rate_limited', () => {
     const err = new ApiError(429, 'rate_limited', 'Too many requests');
     const payload = toErrorPayload(err, 'http://127.0.0.1:3001');
     expect(payload.error).toBe('rate_limited');
     expect(payload.next).toContain('10 review starts per minute');
+  });
+
+  it('clips API-supplied text in the 429 message and the api code', () => {
+    const rateLimited = toErrorPayload(new ApiError(429, null, `slow down\u0000${'x'.repeat(500)}`), 'http://h');
+    expect(rateLimited.message.length).toBeLessThanOrEqual(200);
+    expect(rateLimited.message).not.toContain('\u0000');
+
+    const other = toErrorPayload(new ApiError(500, 'c'.repeat(300), 'boom'), 'http://h');
+    expect(other.message.length).toBeLessThan(120);
   });
 
   it('maps other ApiError statuses to api_error with status/code/message', () => {

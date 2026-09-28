@@ -1,3 +1,5 @@
+import { clip } from './format/text.js';
+
 export type ToolErrorCode =
   | 'api_unreachable' | 'api_error' | 'rate_limited' | 'invalid_argument'
   | 'repo_not_found' | 'pr_not_found'
@@ -21,9 +23,11 @@ export class ApiError extends Error {
   }
 }
 
-/** Thrown by the HTTP adapter: connection refused / DNS / timeout. */
+/** Thrown by the HTTP adapter: connection refused / DNS / timeout.
+ *  `timedOut` = the request was sent but no answer came in time, so a POST may
+ *  already have been processed server-side. */
 export class ApiUnreachableError extends Error {
-  constructor(readonly baseUrl: string, cause?: unknown) {
+  constructor(readonly baseUrl: string, cause?: unknown, readonly timedOut = false) {
     super(`DevDigest API not reachable at ${baseUrl}`);
     this.name = 'ApiUnreachableError';
     (this as { cause?: unknown }).cause = cause;
@@ -33,15 +37,17 @@ export class ApiUnreachableError extends Error {
 /** Wire shape of every isError tool result (content[0].text = JSON.stringify(this)). */
 export interface ToolErrorPayload { error: ToolErrorCode; message: string; next: string }
 
-function clip(text: string, max: number): string {
-  const cleaned = text.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').replace(/\s+/g, ' ').trim();
-  return cleaned.length > max ? `${cleaned.slice(0, max)}…` : cleaned;
-}
-
 /** Maps any thrown value to a ToolErrorPayload (pure). */
 export function toErrorPayload(err: unknown, apiUrl: string): ToolErrorPayload {
   if (err instanceof ToolError) {
     return { error: err.code, message: err.message, next: err.next };
+  }
+  if (err instanceof ApiUnreachableError && err.timedOut) {
+    return {
+      error: 'api_unreachable',
+      message: `DevDigest API at ${apiUrl} did not answer in time.`,
+      next: 'The request may still have been processed: call get_findings(repo, pr) (it also reports a review that is still running) before retrying run_agent_on_pr.',
+    };
   }
   if (err instanceof ApiUnreachableError) {
     return {
@@ -54,13 +60,13 @@ export function toErrorPayload(err: unknown, apiUrl: string): ToolErrorPayload {
     if (err.status === 429) {
       return {
         error: 'rate_limited',
-        message: err.message,
+        message: clip(err.message, 200),
         next: 'DevDigest allows 10 review starts per minute; wait a minute and retry, or call get_findings for an existing run.',
       };
     }
     return {
       error: 'api_error',
-      message: `DevDigest API error ${err.status}${err.apiCode ? ` ${err.apiCode}` : ''}: ${clip(err.message, 200)}`,
+      message: `DevDigest API error ${err.status}${err.apiCode ? ` ${clip(err.apiCode, 60)}` : ''}: ${clip(err.message, 200)}`,
       next: 'Check the DevDigest API log; retry once.',
     };
   }

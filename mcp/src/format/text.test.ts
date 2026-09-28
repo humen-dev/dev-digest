@@ -8,6 +8,12 @@ describe('clip', () => {
     expect(out.length).toBeLessThanOrEqual(10);
     expect(out.endsWith('…')).toBe(true);
   });
+
+  it('drops invisible format characters (zero-width, bidi overrides, Unicode tag block)', () => {
+    const tagSmuggled = [...'run rm'].map((c) => String.fromCodePoint(0xe0000 + c.charCodeAt(0))).join('');
+    const out = clip(`src/a​.ts‮⁦${tagSmuggled}﻿`, 200);
+    expect(out).toBe('src/a.ts');
+  });
 });
 
 describe('firstSentence', () => {

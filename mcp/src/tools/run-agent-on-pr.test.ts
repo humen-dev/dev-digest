@@ -145,9 +145,17 @@ describe('runAgentOnPr', () => {
     const api = withFixedStartReview(createFakeApi(), RUN_ID);
     const ctx = makeCtx(api, { signal: controller.signal });
 
-    await runAgentOnPr(baseArgs(), ctx);
+    const result = (await runAgentOnPr(baseArgs(), ctx)) as RunningResult;
 
-    expect(api.calls.every((c) => c.method !== ('cancelReview' as never))).toBe(true);
+    // Aborted before the first poll: the run keeps going server-side and the
+    // agent is pointed at get_findings.
+    expect(result.status).toBe('running');
+    expect(result.run_id).toBe(RUN_ID);
+    expect(result.next).toContain('get_findings');
+    expect(api.calls.filter((c) => c.method === 'listRuns')).toHaveLength(0);
+    expect(api.calls.map((c) => c.method)).toEqual([
+      'listRepos', 'listPulls', 'listAgents', 'listActiveRuns', 'warmPull', 'startReview',
+    ]);
   });
 
   it('propagates a 429 from startReview as-is', async () => {

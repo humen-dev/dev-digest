@@ -66,6 +66,13 @@ export const getFindings: ToolHandler<'get_findings'> = async (args, ctx) => {
         'Omit run_id to read the latest review, or call run_agent_on_pr.',
       );
     }
+    if (agent && run.agent_id !== agent.id) {
+      throw new ToolError(
+        'invalid_argument',
+        `Run ${run.run_id} belongs to agent "${clip(run.agent_name ?? 'unknown', 100)}", not "${clip(agent.name, 100)}".`,
+        'Pass either run_id or agent, or an agent that matches the run.',
+      );
+    }
     if (run.status === 'running' || run.status === null) {
       return runningResult(
         repo,

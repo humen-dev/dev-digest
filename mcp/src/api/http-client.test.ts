@@ -89,7 +89,15 @@ describe('HttpDevDigestApi', () => {
       throw err;
     });
     const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch);
-    await expect(api.listRepos()).rejects.toBeInstanceOf(ApiUnreachableError);
+    await expect(api.listRepos()).rejects.toMatchObject({ name: 'ApiUnreachableError', timedOut: true });
+  });
+
+  it('marks a refused connection as not timed out', async () => {
+    const fetchStub = vi.fn(async () => {
+      throw new TypeError('fetch failed');
+    });
+    const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch);
+    await expect(api.listRepos()).rejects.toMatchObject({ name: 'ApiUnreachableError', timedOut: false });
   });
 
   it('maps a 404 error envelope to ApiError(404, code, message)', async () => {

@@ -126,7 +126,7 @@ export class HttpDevDigestApi implements DevDigestApi {
     } catch (err) {
       if (err instanceof TypeError || isTimeoutLike(err)) {
         this.log('api_unreachable', { method, path, ms: Date.now() - start });
-        throw new ApiUnreachableError(this.config.apiUrl, err);
+        throw new ApiUnreachableError(this.config.apiUrl, err, isTimeoutLike(err));
       }
       throw err;
     }

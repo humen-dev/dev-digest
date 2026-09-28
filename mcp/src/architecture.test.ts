@@ -28,12 +28,18 @@ function listSourceFiles(dir: string): string[] {
 // Matches `import [type] {...} from '...'` and `import x from '...'`, non-greedy
 // up to the nearest `from`. `[^'"]` matches newlines too, so multi-line named
 // import lists are handled without a dotAll flag.
-const IMPORT_RE = /import\s+(type\s+)?(?:[^'"]*?)from\s+['"]([^'"]+)['"]/g;
+// Re-exports (`export ... from`) create the same dependency as an import.
+const IMPORT_RE = /(?:import|export)\s+(type\s+)?(?:[^'"]*?)from\s+['"]([^'"]+)['"]/g;
+// Dynamic `import('...')` and side-effect `import '...'` have no `from`.
+const DYNAMIC_OR_BARE_RE = /\bimport\s*(?:\(\s*)?['"]([^'"]+)['"]/g;
 
 function extractImports(src: string): ImportInfo[] {
   const out: ImportInfo[] = [];
   for (const m of src.matchAll(IMPORT_RE)) {
     out.push({ specifier: m[2]!, typeOnly: m[1] !== undefined });
+  }
+  for (const m of src.matchAll(DYNAMIC_OR_BARE_RE)) {
+    out.push({ specifier: m[1]!, typeOnly: false });
   }
   return out;
 }
@@ -156,5 +162,19 @@ describe('architecture — import rules (U7)', () => {
         expect(imp.typeOnly, `${key} must import @devdigest/shared as type-only`).toBe(true);
       }
     }
+  });
+
+  it('every ring-1 module the rules name still exists (a rename must not silently pass)', () => {
+    for (const key of RING1) expect(SOURCES.has(key), `${key}.ts is missing`).toBe(true);
+    for (const key of ['ports', 'server', 'index', 'api/http-client', 'api/schemas']) {
+      expect(SOURCES.has(key), `${key}.ts is missing`).toBe(true);
+    }
+  });
+
+  it('the scanner sees re-exports, dynamic and side-effect imports', () => {
+    const found = extractImports(
+      "export * from './a.js';\nexport { x } from './b.js';\nawait import('./c.js');\nimport './d.js';",
+    ).map((i) => i.specifier);
+    expect(found).toEqual(expect.arrayContaining(['./a.js', './b.js', './c.js', './d.js']));
   });
 });

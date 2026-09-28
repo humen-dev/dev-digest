@@ -56,7 +56,9 @@ describe('getFindings', () => {
   it('picks the newest kind:review review, ignoring kind:summary', async () => {
     const api = createFakeApi({
       runs: { [IDS.pull]: [baseRun()] },
-      reviews: { [IDS.pull]: [summaryReview(), reviewOf()] },
+      // The summary review is listed first and is newer, so only the kind filter
+      // can make the kind:review row win.
+      reviews: { [IDS.pull]: [summaryReview({ created_at: '2026-01-02T00:00:00.000Z' }), reviewOf()] },
     });
     const ctx = makeCtx(api);
 
@@ -64,6 +66,8 @@ describe('getFindings', () => {
 
     expect(result.status).toBe('done');
     expect(result.run_id).toBe(RUN_ID);
+    expect(result.verdict).toBe('comment');
+    expect(result.summary).toBe('Looks fine overall.');
     expect(api.calls.some((c) => c.method === 'startReview')).toBe(false);
     expect(api.calls.some((c) => c.method === 'warmPull')).toBe(false);
   });
@@ -84,6 +88,15 @@ describe('getFindings', () => {
     const result = (await getFindings({ repo: 'acme/payments-api', pr: 482, agent: 'Security' }, ctx)) as ReviewResult;
 
     expect(result.agent).toBe('Security');
+  });
+
+  it('rejects a run_id that belongs to a different agent than the one passed', async () => {
+    const api = createFakeApi({ runs: { [IDS.pull]: [baseRun()] }, reviews: { [IDS.pull]: [reviewOf()] } });
+    const ctx = makeCtx(api);
+
+    await expect(
+      getFindings({ repo: 'acme/payments-api', pr: 482, run_id: RUN_ID, agent: 'Security' }, ctx),
+    ).rejects.toMatchObject({ code: 'invalid_argument', next: expect.stringContaining('run_id') });
   });
 
   it('with run_id: running -> RunningResult, unknown -> run_not_found, failed -> run_failed', async () => {
