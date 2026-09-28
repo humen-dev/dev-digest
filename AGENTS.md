@@ -13,10 +13,11 @@ aliases**, not published modules. Each package has its own `AGENTS.md`.
 - [`client/`](./client/AGENTS.md) — `@devdigest/web` · Next.js 15 studio · `:3000`
 - [`reviewer-core/`](./reviewer-core/AGENTS.md) — `@devdigest/reviewer-core` · pure review engine
 - [`e2e/`](./e2e/AGENTS.md) — `@devdigest/e2e` · deterministic agent-browser flows
+- [`mcp/`](./mcp/AGENTS.md) — `@devdigest/mcp` · local stdio MCP server over the API (registered in `.mcp.json`)
 - `@devdigest/shared` — Zod contracts, vendored into each package under `src/vendor/shared`
 
 ## Toolchain
-Node ≥ 22 · **pnpm** ≥ 10 (server/client) · **npm** (reviewer-core/e2e) ·
+Node ≥ 22 · **pnpm** ≥ 10 (server/client) · **npm** (reviewer-core/e2e/mcp) ·
 Docker (Postgres only). TypeScript 5.7 throughout.
 
 ## Commands

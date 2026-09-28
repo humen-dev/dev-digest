@@ -44,7 +44,7 @@ function* addedLines(files, { code = false } = {}) {
 
 const pkgOf = (path) => {
   const seg = posix(path).split('/')[0];
-  return ['client', 'server', 'reviewer-core', 'e2e'].includes(seg) ? seg : null;
+  return ['client', 'server', 'reviewer-core', 'e2e', 'mcp'].includes(seg) ? seg : null;
 };
 
 /**

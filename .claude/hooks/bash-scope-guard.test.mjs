@@ -61,6 +61,7 @@ test('every profile: cd <package> and read-only git allowed', () => {
       'git show HEAD:server/package.json',
       'git merge-base main HEAD',
       'cd ./client/ && git ls-files',
+      'cd mcp && git status',
       'git diff --stat main...HEAD | git log -1',
     ]) assertAllowed(p, cmd);
   }
@@ -127,6 +128,8 @@ test('test-writer: test runners allowed, snapshot/coverage/watch and depcruise d
     'cd reviewer-core && npm test',
     'cd reviewer-core && npm run typecheck',
     'cd e2e && npx vitest run specs/x.test.ts',
+    'cd mcp && npm test',
+    'cd mcp && npm run typecheck',
     'pnpm exec vitest run src --exclude src/slow',
     'pnpm exec vitest run --exclude=src/slow -t "renders row"',
   ]) assertAllowed('test-writer', cmd);

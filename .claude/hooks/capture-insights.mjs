@@ -3,7 +3,7 @@
  * Stop hook — enforces the engineering-insights Session Protocol automatically.
  *
  * It blocks a stop and hands Claude the capture reminder ONLY when module code
- * (client / server / reviewer-core / e2e, excluding the INSIGHTS.md files
+ * (client / server / reviewer-core / e2e / mcp, excluding the INSIGHTS.md files
  * themselves) changed since the last reminder in this session. Stops after pure
  * questions, reviews or research — nothing touched — pass silently, so the
  * protocol no longer costs an extra turn after every answer.
@@ -23,7 +23,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const MODULES = ["client", "server", "reviewer-core", "e2e"];
+const MODULES = ["client", "server", "reviewer-core", "e2e", "mcp"];
 const PATHSPEC = ["--", ...MODULES, ":(exclude,glob)**/INSIGHTS.md"];
 
 let payload = {};

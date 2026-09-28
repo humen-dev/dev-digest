@@ -1,6 +1,6 @@
 ---
 name: engineering-insights
-description: Captures non-obvious engineering insights into the touched module's INSIGHTS.md (client, server, reviewer-core, e2e). Use during a session the moment you hit something a future agent would otherwise relearn — a gotcha, a working approach, a dead-end antipattern, a codebase convention, a tool/library quirk, a recurring error+fix, or an open question — and again at session end, on "wrap up" / "retro", or when /engineering-insights is invoked. Reads the existing file first, never duplicates, writes only substantial file-grounded entries, and is strictly append-only (never overwrites).
+description: Captures non-obvious engineering insights into the touched module's INSIGHTS.md (client, server, reviewer-core, e2e, mcp). Use during a session the moment you hit something a future agent would otherwise relearn — a gotcha, a working approach, a dead-end antipattern, a codebase convention, a tool/library quirk, a recurring error+fix, or an open question — and again at session end, on "wrap up" / "retro", or when /engineering-insights is invoked. Reads the existing file first, never duplicates, writes only substantial file-grounded entries, and is strictly append-only (never overwrites).
 ---
 
 # Engineering Insights
@@ -19,6 +19,7 @@ Write to the `INSIGHTS.md` of the module the task actually touched:
 | `server/**` (incl. `src/modules/repo-intel`) | `server/INSIGHTS.md` |
 | `reviewer-core/**` | `reviewer-core/INSIGHTS.md` |
 | `e2e/**` | `e2e/INSIGHTS.md` |
+| `mcp/**` | `mcp/INSIGHTS.md` |
 
 Shared/vendored code (`src/vendor/shared`) or a cross-cutting change → the module
 most affected. If genuinely ambiguous, ask the user which module owns the insight.

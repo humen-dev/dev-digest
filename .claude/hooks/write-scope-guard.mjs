@@ -23,6 +23,8 @@ const PROFILES = {
       'client/src/test/**/*.{ts,tsx}',
       'reviewer-core/test/**/*.ts',
       'e2e/specs/[0-9][0-9]-*.flow.json',
+      'mcp/src/**/*.test.ts',
+      'mcp/test/**/*.ts',
     ],
     deny: ['client/src/test/setup.ts', '**/src/vendor/**', 'server/src/adapters/mocks.ts', '**/*.config.*'],
     instead: 'write only test files (colocated *.test.ts(x), server/test/**, reviewer-core/test/**, e2e/specs/NN-*.flow.json); report source changes as BLOCKED instead of making them.',
@@ -30,8 +32,8 @@ const PROFILES = {
   'doc-writer': {
     allow: [
       'README.md',
-      '{server,client,reviewer-core,e2e}/README.md',
-      '{server,client,reviewer-core,e2e}/docs/**/*.md',
+      '{server,client,reviewer-core,e2e,mcp}/README.md',
+      '{server,client,reviewer-core,e2e,mcp}/docs/**/*.md',
       'docs/adr/**/*.md',
     ],
     deny: [

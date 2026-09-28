@@ -22,7 +22,7 @@ const WIN = process.platform === 'win32';
 const bin = (name) => name;
 const TSC_CAP = 20;
 
-export const PACKAGES = ['client', 'server', 'reviewer-core', 'e2e'];
+export const PACKAGES = ['client', 'server', 'reviewer-core', 'e2e', 'mcp'];
 
 /** Source files only: a docs-only touch inside a package must not trigger a build. */
 const codeIn = (paths, pkg) =>
@@ -56,6 +56,7 @@ export function planChecks(paths) {
   const server = codeIn(paths, 'server').length > 0;
   const core = codeIn(paths, 'reviewer-core').length > 0;
   const e2e = codeIn(paths, 'e2e').length > 0;
+  const mcp = codeIn(paths, 'mcp').length > 0;
   const shared = paths.some((p) => matchGlob(p, '**/src/vendor/shared/**'));
   const serverSrc = paths.some((p) => matchGlob(p, 'server/src/**'));
 
@@ -99,6 +100,10 @@ export function planChecks(paths) {
   if (e2e || shared) {
     // `npm test` here is `tsx run.ts` and needs a live stack — DET-014 covers it.
     push({ pkg: 'e2e', label: 'typecheck', cmd: bin('npm'), args: ['run', 'typecheck'], timeout: 120_000, parse: 'tsc' });
+  }
+  if (mcp || shared) {
+    push({ pkg: 'mcp', label: 'typecheck', cmd: bin('npm'), args: ['run', 'typecheck'], timeout: 120_000, parse: 'tsc' });
+    push({ pkg: 'mcp', label: 'test', cmd: bin('npm'), args: ['test'], timeout: 180_000, parse: 'vitest' });
   }
   return plan;
 }

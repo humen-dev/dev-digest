@@ -33,9 +33,40 @@ export class ApiUnreachableError extends Error {
 /** Wire shape of every isError tool result (content[0].text = JSON.stringify(this)). */
 export interface ToolErrorPayload { error: ToolErrorCode; message: string; next: string }
 
+function clip(text: string, max: number): string {
+  const cleaned = text.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').replace(/\s+/g, ' ').trim();
+  return cleaned.length > max ? `${cleaned.slice(0, max)}…` : cleaned;
+}
+
 /** Maps any thrown value to a ToolErrorPayload (pure). */
 export function toErrorPayload(err: unknown, apiUrl: string): ToolErrorPayload {
-  void err;
-  void apiUrl;
-  throw new Error('not implemented');
+  if (err instanceof ToolError) {
+    return { error: err.code, message: err.message, next: err.next };
+  }
+  if (err instanceof ApiUnreachableError) {
+    return {
+      error: 'api_unreachable',
+      message: `DevDigest API not reachable at ${apiUrl}.`,
+      next: 'Start it with ./scripts/dev.sh (or: cd server && pnpm dev), or set DEVDIGEST_API_URL; then retry.',
+    };
+  }
+  if (err instanceof ApiError) {
+    if (err.status === 429) {
+      return {
+        error: 'rate_limited',
+        message: err.message,
+        next: 'DevDigest allows 10 review starts per minute; wait a minute and retry, or call get_findings for an existing run.',
+      };
+    }
+    return {
+      error: 'api_error',
+      message: `DevDigest API error ${err.status} ${err.apiCode}: ${clip(err.message, 200)}`,
+      next: 'Check the DevDigest API log; retry once.',
+    };
+  }
+  return {
+    error: 'api_error',
+    message: 'Internal error in devdigest-mcp.',
+    next: 'Retry once; see the MCP server stderr log.',
+  };
 }
