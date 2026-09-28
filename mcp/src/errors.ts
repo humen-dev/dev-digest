@@ -23,11 +23,12 @@ export class ApiError extends Error {
   }
 }
 
-/** Thrown by the HTTP adapter: connection refused / DNS / timeout.
- *  `timedOut` = the request was sent but no answer came in time, so a POST may
- *  already have been processed server-side. */
+/** Thrown by the HTTP adapter: connection refused / DNS / timeout / reset.
+ *  `maybeProcessed` = the request may have reached the server (a timeout, or a
+ *  POST whose connection broke after it was sent), so it must not be blindly
+ *  retried — a repeated paid review would start twice. */
 export class ApiUnreachableError extends Error {
-  constructor(readonly baseUrl: string, cause?: unknown, readonly timedOut = false) {
+  constructor(readonly baseUrl: string, cause?: unknown, readonly maybeProcessed = false) {
     super(`DevDigest API not reachable at ${baseUrl}`);
     this.name = 'ApiUnreachableError';
     (this as { cause?: unknown }).cause = cause;
@@ -42,11 +43,11 @@ export function toErrorPayload(err: unknown, apiUrl: string): ToolErrorPayload {
   if (err instanceof ToolError) {
     return { error: err.code, message: err.message, next: err.next };
   }
-  if (err instanceof ApiUnreachableError && err.timedOut) {
+  if (err instanceof ApiUnreachableError && err.maybeProcessed) {
     return {
       error: 'api_unreachable',
-      message: `DevDigest API at ${apiUrl} did not answer in time.`,
-      next: 'The request may still have been processed: call get_findings(repo, pr) (it also reports a review that is still running) before retrying run_agent_on_pr.',
+      message: `DevDigest API at ${apiUrl} did not answer; the request may have been processed.`,
+      next: 'Call get_findings(repo, pr) first (it also reports a review that is still running); retry run_agent_on_pr only if nothing is there.',
     };
   }
   if (err instanceof ApiUnreachableError) {

@@ -89,7 +89,7 @@ describe('HttpDevDigestApi', () => {
       throw err;
     });
     const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch);
-    await expect(api.listRepos()).rejects.toMatchObject({ name: 'ApiUnreachableError', timedOut: true });
+    await expect(api.listRepos()).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: true });
   });
 
   it('withSignal aborts an in-flight request when the tool call is cancelled', async () => {
@@ -109,12 +109,34 @@ describe('HttpDevDigestApi', () => {
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
   });
 
-  it('marks a refused connection as not timed out', async () => {
+  /** undici's shape: TypeError('fetch failed') with the socket error as `cause`. */
+  function fetchFailed(code: string): TypeError {
+    return new TypeError('fetch failed', { cause: Object.assign(new Error(code), { code }) });
+  }
+
+  it('a refused connection was never sent: not maybeProcessed, even for the paid POST', async () => {
     const fetchStub = vi.fn(async () => {
-      throw new TypeError('fetch failed');
+      throw fetchFailed('ECONNREFUSED');
     });
     const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch);
-    await expect(api.listRepos()).rejects.toMatchObject({ name: 'ApiUnreachableError', timedOut: false });
+    await expect(api.listRepos()).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: false });
+    await expect(api.startReview('p1', 'a1')).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: false });
+  });
+
+  it('a POST whose connection is reset after sending is maybeProcessed (no blind retry of a paid review)', async () => {
+    const fetchStub = vi.fn(async () => {
+      throw fetchFailed('ECONNRESET');
+    });
+    const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch);
+    await expect(api.startReview('p1', 'a1')).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: true });
+  });
+
+  it('a GET reset is safe to retry: not maybeProcessed', async () => {
+    const fetchStub = vi.fn(async () => {
+      throw fetchFailed('ECONNRESET');
+    });
+    const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch);
+    await expect(api.listRuns('p1')).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: false });
   });
 
   it('maps a 404 error envelope to ApiError(404, code, message)', async () => {

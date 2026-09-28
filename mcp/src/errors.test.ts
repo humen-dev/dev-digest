@@ -19,11 +19,11 @@ describe('toErrorPayload', () => {
     expect(payload.next).toContain('./scripts/dev.sh');
   });
 
-  it('a timed-out request warns that it may have been processed, instead of "start the API and retry"', () => {
+  it('a possibly-processed request warns instead of "start the API and retry"', () => {
     const err = new ApiUnreachableError('http://127.0.0.1:3001', undefined, true);
     const payload = toErrorPayload(err, 'http://127.0.0.1:3001');
     expect(payload.error).toBe('api_unreachable');
-    expect(payload.message).toContain('did not answer in time');
+    expect(payload.message).toContain('may have been processed');
     expect(payload.next).toContain('get_findings');
     expect(payload.next).not.toContain('./scripts/dev.sh');
   });

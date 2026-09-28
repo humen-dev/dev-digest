@@ -35,6 +35,19 @@ function isTimeoutLike(err: unknown): boolean {
   return (err as { name?: string })?.name === 'AbortError' || (err as { name?: string })?.name === 'TimeoutError';
 }
 
+/** Network error codes that prove the request never left: nothing to double-run. */
+const NEVER_SENT = new Set(['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN']);
+
+/** Could the server have received (and acted on) this request? A timeout: yes.
+ *  A POST that failed for any reason other than a proven never-sent error
+ *  (e.g. ECONNRESET after the body was written): assume yes. A GET is safe to retry. */
+function maybeProcessed(method: string, err: unknown): boolean {
+  if (isTimeoutLike(err)) return true;
+  if (method !== 'POST') return false;
+  const code = (err as { cause?: { code?: string } })?.cause?.code;
+  return !(code !== undefined && NEVER_SENT.has(code));
+}
+
 /** Thin HTTP client over the running DevDigest API. Never imports Drizzle/Fastify/DB. */
 export class HttpDevDigestApi implements DevDigestApi {
   private readonly fetchImpl: typeof fetch;
@@ -136,7 +149,7 @@ export class HttpDevDigestApi implements DevDigestApi {
       if (this.callSignal?.aborted) throw err;
       if (err instanceof TypeError || isTimeoutLike(err)) {
         this.log('api_unreachable', { method, path, ms: Date.now() - start });
-        throw new ApiUnreachableError(this.config.apiUrl, err, isTimeoutLike(err));
+        throw new ApiUnreachableError(this.config.apiUrl, err, maybeProcessed(method, err));
       }
       throw err;
     }
