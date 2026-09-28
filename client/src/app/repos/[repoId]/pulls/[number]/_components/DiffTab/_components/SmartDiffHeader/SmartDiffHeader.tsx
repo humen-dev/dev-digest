@@ -30,18 +30,19 @@ export function SmartDiffHeader({
 }) {
   const t = useTranslations("prReview");
   return (
-    <SectionLabel
-      icon="Code"
-      right={
-        <div style={s.right}>
-          <span style={s.summary}>
-            {t("smartDiff.summary", {
-              files: pr.files_count,
-              additions: pr.additions,
-              deletions: pr.deletions,
-            })}
-          </span>
-          <OrderToggle order={order} onChange={onOrderChange} disabled={orderDisabled} />
+    <div style={s.wrap}>
+      <SectionLabel icon="Code">{t("smartDiff.eyebrow")}</SectionLabel>
+      <div style={s.row}>
+        <span style={s.summary}>
+          {t.rich("smartDiff.summary", {
+            files: pr.files_count,
+            additions: pr.additions,
+            deletions: pr.deletions,
+            add: (chunks) => <span style={s.additions}>{chunks}</span>,
+            del: (chunks) => <span style={s.deletions}>{chunks}</span>,
+          })}
+        </span>
+        <div style={s.controls}>
           {commentCount > 0 && (
             <Button
               kind="ghost"
@@ -54,10 +55,9 @@ export function SmartDiffHeader({
                 : t("smartDiff.showComments", { count: commentCount })}
             </Button>
           )}
+          <OrderToggle order={order} onChange={onOrderChange} disabled={orderDisabled} />
         </div>
-      }
-    >
-      {t("smartDiff.eyebrow")}
-    </SectionLabel>
+      </div>
+    </div>
   );
 }

@@ -16,14 +16,9 @@ export function swatchFor(color: string): CSSProperties {
 
 /** Co-located styles for RoleGroup. */
 export const s = {
-  group: {
-    border: "1px solid var(--border)",
-    borderRadius: 10,
-    marginBottom: 12,
-    // `clip`, not `hidden`: hidden makes the group a scroll container, which
-    // would pin the sticky header to the group instead of the page (<main>).
-    overflow: "clip",
-  } satisfies CSSProperties,
+  // Flat rows, no card chrome (matches the prototype). No overflow on the
+  // group: any overflow other than visible/clip would trap the sticky header.
+  group: { marginBottom: 2 } satisfies CSSProperties,
   header: {
     // Stays at the top of the scrolling <main> while its group's files scroll by.
     position: "sticky",
@@ -34,7 +29,9 @@ export const s = {
     alignItems: "center",
     gap: 10,
     padding: "12px 14px",
-    background: "var(--bg-elevated)",
+    borderRadius: 8,
+    // Page background so the sticky header covers the files scrolling under it.
+    background: "var(--bg-primary)",
     border: "none",
     cursor: "pointer",
     textAlign: "left",
@@ -53,9 +50,5 @@ export const s = {
     flexShrink: 0,
   } satisfies CSSProperties,
   flagged: { color: "var(--crit)", fontWeight: 600 } satisfies CSSProperties,
-  body: {
-    padding: "10px 12px",
-    borderTop: "1px solid var(--border)",
-    background: "var(--bg-surface)",
-  } satisfies CSSProperties,
+  body: { padding: "4px 0 14px 28px" } satisfies CSSProperties,
 } as const;
