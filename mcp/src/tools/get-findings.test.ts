@@ -157,6 +157,34 @@ describe('getFindings', () => {
     expect(result.next).toContain(newerRunId);
   });
 
+  it('with no review, a row stuck in running but absent from /runs/active is not reported as running', async () => {
+    const api = createFakeApi({
+      runs: { [IDS.pull]: [baseRun({ status: 'running', ran_at: '2025-12-01T00:00:00.000Z' })] },
+      active: { [IDS.pull]: [] },
+    });
+    const ctx = makeCtx(api);
+
+    await expect(getFindings({ repo: 'acme/payments-api', pr: 482 }, ctx)).rejects.toMatchObject({
+      code: 'no_review',
+      next: expect.stringContaining('run_agent_on_pr'),
+    });
+    expect(api.calls.map((c) => c.method)).toContain('listActiveRuns');
+  });
+
+  it('with no review, a run confirmed by /runs/active is reported as running with its elapsed time', async () => {
+    const api = createFakeApi({
+      runs: { [IDS.pull]: [baseRun({ status: 'running', ran_at: '1970-01-01T00:00:00.000Z' })] },
+      active: { [IDS.pull]: [{ run_id: RUN_ID, agent_id: IDS.agentGeneral, agent_name: 'General' }] },
+    });
+    const ctx = makeCtx(api, { now: () => 90_000 });
+
+    const result = (await getFindings({ repo: 'acme/payments-api', pr: 482 }, ctx)) as RunningResult;
+
+    expect(result.status).toBe('running');
+    expect(result.run_id).toBe(RUN_ID);
+    expect(result.elapsed_s).toBe(90);
+  });
+
   it('a stale run stuck in running from BEFORE the review does not flag newer_run', async () => {
     const api = createFakeApi({
       runs: {

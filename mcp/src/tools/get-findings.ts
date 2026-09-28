@@ -112,22 +112,20 @@ export const getFindings: ToolHandler<'get_findings'> = async (args, ctx) => {
   const candidate = reviews
     .filter((r) => r.kind === 'review' && isMine(r.agent_id))
     .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-  // A re-run still in progress must not hide behind the previous verdict — but
-  // only a run that started AFTER that review counts: a stale row stuck in
-  // 'running' (API died mid-run) must not shadow a current verdict forever.
-  const startedAfterCandidate = (ranAt: string | null): boolean =>
-    candidate === undefined || (ranAt !== null && Date.parse(ranAt) > Date.parse(candidate.created_at));
-  const newerRunning = runs
-    .filter(
-      (r) =>
-        r.status === 'running' &&
-        isMine(r.agent_id) &&
-        r.run_id !== candidate?.run_id &&
-        startedAfterCandidate(r.ran_at),
-    )
-    .sort((a, b) => (b.ran_at ?? '').localeCompare(a.ran_at ?? ''))[0];
-
   if (candidate) {
+    // A re-run still in progress must not hide behind the previous verdict — but
+    // only a run that started AFTER that review counts: a stale row stuck in
+    // 'running' (API died mid-run) must not shadow a current verdict forever.
+    const newerRunning = runs
+      .filter(
+        (r) =>
+          r.status === 'running' &&
+          isMine(r.agent_id) &&
+          r.run_id !== candidate.run_id &&
+          r.ran_at !== null &&
+          Date.parse(r.ran_at) > Date.parse(candidate.created_at),
+      )
+      .sort((a, b) => (b.ran_at ?? '').localeCompare(a.ran_at ?? ''))[0];
     const result = formatReview({
       repo: repo.full_name,
       pr: pull.number,
@@ -144,26 +142,19 @@ export const getFindings: ToolHandler<'get_findings'> = async (args, ctx) => {
     };
   }
 
-  if (newerRunning) {
-    return runningResult(
-      repo,
-      pull,
-      newerRunning.run_id,
-      newerRunning.agent_name,
-      elapsedSeconds(ctx, newerRunning.ran_at),
-      'Call get_findings again in about 30 seconds.',
-    );
-  }
-
+  // No finished review yet. A persisted 'running' row alone is not proof of a
+  // live run (a row can stay 'running' forever if the API died mid-run), so
+  // only /runs/active decides; otherwise fall through to no_review.
   const active = await ctx.api.listActiveRuns(pull.id);
-  const activeMatch = active.find((r) => agent === null || r.agent_id === agent.id);
+  const activeMatch = active.find((r) => isMine(r.agent_id));
   if (activeMatch) {
+    const row = runs.find((r) => r.run_id === activeMatch.run_id);
     return runningResult(
       repo,
       pull,
       activeMatch.run_id,
       activeMatch.agent_name,
-      0,
+      elapsedSeconds(ctx, row?.ran_at ?? null),
       'Call get_findings again in about 30 seconds.',
     );
   }
