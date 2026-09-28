@@ -1,5 +1,6 @@
 // src/tools/run-agent-on-pr.ts — ring 2: the outcome-shaped "run a review and wait" use case.
 import { formatReview } from '../format/review.js';
+import { clip } from '../format/text.js';
 import { ToolError } from '../errors.js';
 import { resolveAgent, resolvePull, resolveRepo } from '../resolve.js';
 import { waitForRun } from '../wait.js';
@@ -35,17 +36,16 @@ export const runAgentOnPr: ToolHandler<'run_agent_on_pr'> = async (args, ctx) =>
     runId = started.run_id;
   }
 
-  const outcome = await waitForRun({ ctx, prId: pull.id, runId, label: `run_agent_on_pr(${args.repo}#${args.pr})` });
+  const outcome = await waitForRun({ ctx, prId: pull.id, runId, label: `run_agent_on_pr(${repo.full_name}#${args.pr})` });
 
   if (outcome.kind === 'timeout' || outcome.kind === 'aborted') {
-    const elapsedMs = outcome.kind === 'timeout' ? outcome.elapsedMs : ctx.now();
     const result: RunningResult = {
       status: 'running',
-      repo: args.repo,
+      repo: repo.full_name,
       pr: args.pr,
       run_id: runId,
       agent: agent.name,
-      elapsed_s: Math.floor(elapsedMs / 1000),
+      elapsed_s: Math.floor(outcome.elapsedMs / 1000),
       next: `Review still running; call get_findings with repo, pr and run_id ${runId} in about a minute.`,
     };
     return result;
@@ -54,7 +54,7 @@ export const runAgentOnPr: ToolHandler<'run_agent_on_pr'> = async (args, ctx) =>
   if (outcome.kind === 'failed') {
     throw new ToolError(
       'run_failed',
-      `Review run ${runId} failed: ${(outcome.run.error ?? 'unknown error').slice(0, 300)}`,
+      `Review run ${runId} failed: ${clip(outcome.run.error ?? 'unknown error', 300)}`,
       'Check the LLM API key / model in DevDigest Settings, then call run_agent_on_pr again.',
     );
   }
@@ -70,7 +70,7 @@ export const runAgentOnPr: ToolHandler<'run_agent_on_pr'> = async (args, ctx) =>
   }
 
   return formatReview({
-    repo: args.repo,
+    repo: repo.full_name,
     pr: args.pr,
     review,
     run: outcome.run,

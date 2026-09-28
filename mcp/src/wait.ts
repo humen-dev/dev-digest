@@ -5,7 +5,7 @@ import type { ToolContext } from './tools/types.js';
 export type WaitOutcome =
   | { kind: 'done' | 'failed' | 'cancelled'; run: ApiRun }
   | { kind: 'timeout'; elapsedMs: number }
-  | { kind: 'aborted' };
+  | { kind: 'aborted'; elapsedMs: number };
 
 const TERMINAL_STATUSES = new Set(['done', 'failed', 'cancelled']);
 const MAX_CONSECUTIVE_ERRORS = 2;
@@ -27,7 +27,7 @@ export async function waitForRun(o: {
   let consecutiveErrors = 0;
 
   for (;;) {
-    if (ctx.signal.aborted) return { kind: 'aborted' };
+    if (ctx.signal.aborted) return { kind: 'aborted', elapsedMs: ctx.now() - start };
 
     const elapsedMs = ctx.now() - start;
     if (elapsedMs >= ctx.config.waitMs) return { kind: 'timeout', elapsedMs };
@@ -56,11 +56,18 @@ export async function waitForRun(o: {
       return { kind: status as 'done' | 'failed' | 'cancelled', run };
     }
 
-    if (ctx.signal.aborted) return { kind: 'aborted' };
+    if (ctx.signal.aborted) return { kind: 'aborted', elapsedMs: ctx.now() - start };
 
     const remaining = ctx.config.waitMs - (ctx.now() - start);
     if (remaining <= 0) return { kind: 'timeout', elapsedMs: ctx.now() - start };
 
-    await ctx.sleep(Math.min(ctx.config.pollMs, remaining), ctx.signal);
+    try {
+      await ctx.sleep(Math.min(ctx.config.pollMs, remaining), ctx.signal);
+    } catch (err) {
+      // The real sleep rejects when the client cancels mid-pause; that is an
+      // abort, not a failure (the server-side run keeps going).
+      if (ctx.signal.aborted) return { kind: 'aborted', elapsedMs: ctx.now() - start };
+      throw err;
+    }
   }
 }

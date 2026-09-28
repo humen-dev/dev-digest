@@ -94,6 +94,39 @@ describe('waitForRun', () => {
     expect(outcome.kind).toBe('aborted');
   });
 
+  it('returns aborted (not a thrown error) when the client cancels during the pause between polls', async () => {
+    const controller = new AbortController();
+    const api = createFakeApi({
+      runs: { pr1: [{ run_id: 'r1', agent_id: 'a1', agent_name: 'General', status: 'running', error: null, score: null, blockers: null, findings_count: null, ran_at: null }] },
+    });
+    // Mirrors the real sleep in server.ts: it rejects when the signal aborts mid-pause.
+    const ctx = makeCtx(api, {
+      signal: controller.signal,
+      sleep: async () => {
+        controller.abort();
+        throw new Error('aborted');
+      },
+    });
+
+    const outcome = await waitForRun({ ctx, prId: 'pr1', runId: 'r1', label: 'test' });
+
+    expect(outcome.kind).toBe('aborted');
+    expect(api.calls.map((c) => c.method)).toEqual(['listRuns']);
+  });
+
+  it('rethrows a sleep failure that is not an abort', async () => {
+    const api = createFakeApi({
+      runs: { pr1: [{ run_id: 'r1', agent_id: 'a1', agent_name: 'General', status: 'running', error: null, score: null, blockers: null, findings_count: null, ran_at: null }] },
+    });
+    const ctx = makeCtx(api, {
+      sleep: async () => {
+        throw new Error('timer broke');
+      },
+    });
+
+    await expect(waitForRun({ ctx, prId: 'pr1', runId: 'r1', label: 'test' })).rejects.toThrow('timer broke');
+  });
+
   it('treats a run missing from the list as still running', async () => {
     const api = createFakeApi({ runs: { pr1: [] } });
     const ctx = makeCtx(api);

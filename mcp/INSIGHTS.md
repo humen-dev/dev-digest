@@ -15,6 +15,7 @@ _(none yet)_
 _(none yet)_
 
 ## Codebase Patterns
+- 2026-09-28 — `PrMeta.id` is `nullish` in the shared contract (`server/src/vendor/shared/contracts/platform.ts:159`), so `GET /repos/:id/pulls` may return a PR row that cannot be addressed by `/pulls/:id/...`. NEVER default it to `''` (that silently builds `/pulls//review`); drop such rows at the adapter boundary — `ApiPullListSchema` in `mcp/src/api/schemas.ts` filters them, and the tool then reports `pr_not_found` with an onward hint.
 - 2026-09-28 — A new package is invisible to the agent tooling until it is registered in EVERY hard-coded package list, and one of them is easy to miss: besides `pr-self-review` (`checks.mjs` `PACKAGES`, `rules.mjs` `pkgOf`, `routing.json`), `capture-insights.mjs` `MODULES`, `write-scope-guard.mjs` and the engineering-insights SKILL table, `plan-verifier`/`test-writer` can only `cd` into dirs matched by `CD_DIR` in `.claude/hooks/bash-scope-guard.mjs:17` — without it every mandatory plan-verifier run returns INCOMPLETE ("may not run \"cd mcp\""). ALWAYS extend all of them (and their `*.test.mjs`) together. Also: `pr-self-review.mjs` has no `--help`/dry-run — invoking it runs a full review.
 
 ## Tool & Library Notes
