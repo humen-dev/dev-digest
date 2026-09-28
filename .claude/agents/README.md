@@ -10,11 +10,13 @@ to …") or let the main session delegate to it.
 | Agent | Model | Role | Writes | Skills injected |
 |---|---|---|---|---|
 | [researcher](researcher.md) | sonnet | Finds facts in the repo or on the web and reports them with evidence | nothing | none |
-| [planner](planner.md) | opus | Turns a feature request into a Development Plan split into parallel work units | only `docs/plans/*.md` (hook-enforced) | the 11 coding skills (same as implementer) |
+| [brainstormer](brainstormer.md) | opus | Shapes a raw idea into a Design brief: questions, 2–3 grounded approaches, a recommendation — before planning | nothing (no write/shell tools) | none |
+| [planner](planner.md) | opus | Turns a feature request into a Development Plan split into parallel work units | only `docs/plans/*.md` — `Write` only, no `Edit` (hook-enforced) | the 11 coding skills (same as implementer) |
 | [implementer](implementer.md) | sonnet | Implements one work unit of an approved plan | only the files its unit owns | the 11 coding skills (same as planner) |
 | [plan-verifier](plan-verifier.md) | opus | Checks the finished code against an approved plan item by item; PASS / FAIL / INCOMPLETE | nothing (Bash limited to read-only git + the plan's checks via `bash-scope-guard`) | none — the plan is the standard |
 | [test-writer](test-writer.md) | sonnet | Writes tests for a plan unit's §6 rows or an under-tested area (`backfill` or `tdd`) and runs them | only test files and test helpers (hook-enforced `write-scope-guard`; Bash limited to tests/typecheck) | `react-testing-library`, `frontend-ui-architecture`, `onion-architecture`, `fastify-best-practices`, `drizzle-orm-patterns`, `typescript-expert`, `zod` |
 | [architecture-reviewer](architecture-reviewer.md) | sonnet | Reviews a change set for file placement and import direction (depcruise first) | nothing (Bash limited to depcruise + read-only git via `bash-scope-guard`) | `onion-architecture`, `frontend-ui-architecture` |
+| [security-reviewer](security-reviewer.md) | opus | Reviews a change set for exploitable vulnerabilities (traced source → sink, OWASP) — never placement | nothing (Bash limited to read-only git via `bash-scope-guard`) | `security` |
 | [doc-writer](doc-writer.md) | sonnet | Turns implemented work (plan, range or notes) into permanent Markdown docs, ADRs and diagrams | only `README.md` files, `<pkg>/docs/**`, `docs/adr/**` (hook-enforced `write-scope-guard`; no shell) | `mermaid-diagram` |
 
 The 11 coding skills: `onion-architecture`, `frontend-ui-architecture`,
@@ -23,7 +25,7 @@ The 11 coding skills: `onion-architecture`, `frontend-ui-architecture`,
 `typescript-expert`, `zod`, `security` (see [../skills/README.md](../skills/README.md)).
 **Keep the `skills:` lists of `planner` and `implementer` identical** — the plan
 must only ask for practices the implementer is equipped to apply.
-The four review/docs agents deliberately do **not** use the 11-skill list — each
+The five review/docs agents deliberately do **not** use the 11-skill list — each
 gets only the skills its narrow role needs — so the planner/implementer sync rule
 is unaffected by them.
 
@@ -31,7 +33,9 @@ is unaffected by them.
 
 ```mermaid
 flowchart TD
-  R[Feature request] -->|describe| P[planner]
+  R[Feature request] -->|idea still open| B[brainstormer]
+  B -->|"Design brief · user picks approach"| P[planner]
+  R -->|already concrete| P
   P -->|"docs/plans/slug.md"| A{User approves plan}
   A -->|approved| W0["Wave 0 — main session:<br/>contracts, schema + migration,<br/>deps, shared registries"]
   W0 -->|"one unit each"| I["implementer × N<br/>(parallel, same checkout)"]
@@ -42,9 +46,12 @@ flowchart TD
   V -->|"PASS · last wave"| O{Optional passes}
   O -->|test gaps| TW[test-writer]
   O -->|placement check| AR[architecture-reviewer]
+  O -->|exploitability check| SR[security-reviewer]
   O -->|permanent docs| DW[doc-writer]
   AR -->|request_changes| I
+  SR -->|request_changes| I
   AR -->|"approve / comment"| PR[/pr-self-review → PR/]
+  SR -->|"approve / comment"| PR
   TW -->|tests added| PR
   DW -->|docs added| PR
   O -->|skip| PR
@@ -61,11 +68,20 @@ flowchart TD
   implementer is still running (it reads a moving tree otherwise). `FAIL` goes
   back to the owning unit's implementer; re-run it with `previous` = the last
   report (re-verify mode).
-- **`test-writer`, `architecture-reviewer` and `doc-writer` are optional.** Use
-  test-writer when the plan's §6 rows or an area lack tests; architecture-reviewer
-  before `/pr-self-review` on larger or cross-package changes (`request_changes`
-  → implementer); doc-writer once the feature is implemented. None of them
-  replaces `/pr-self-review`, which stays the authoritative gate.
+- **`brainstormer` is optional and comes first** — use it when the request is
+  still an idea; skip it when the request already fixes goal, behaviour and scope.
+- **`test-writer`, `architecture-reviewer`, `security-reviewer` and `doc-writer`
+  are optional.** Use test-writer when the plan's §6 rows or an area lack tests;
+  architecture-reviewer before `/pr-self-review` on larger or cross-package
+  changes; security-reviewer whenever the diff touches routes, input, outbound
+  fetches, paths, secrets, prompts or untrusted PR/issue/doc text (the two
+  reviewers run in parallel; `request_changes` from either → implementer);
+  doc-writer once the feature is implemented. None of them replaces
+  `/pr-self-review`, which stays the authoritative gate.
+- **Reviewer lanes don't overlap:** architecture-reviewer answers *where does the
+  code live and which way do imports point*; security-reviewer answers *can an
+  attacker exploit it*. Each hands the other's topics off instead of reporting
+  them, so a finding is never double-counted.
 - Units that touch `.claude/**` cannot go to `implementer` (it is forbidden
   there) — run them in `general-purpose` subagents or the main session.
 - `researcher` is standalone — use it whenever facts are needed (including while
@@ -92,15 +108,41 @@ recorded for it. It builds on the standard Claude Code subagent mechanism
 ([docs](https://code.claude.com/docs/en/sub-agents)). The *interview mode* it
 introduced was later reused by `planner`.
 
+## brainstormer
+
+Pre-planning idea shaper. Input: the raw request (text, screenshot, lesson brief).
+
+**Design**
+- Tools `Read, Grep, Glob, WebSearch, WebFetch` only — no write, shell or agent
+  tools; its output is the reply.
+- Interview is its normal mode: ≤ 4 multiple-choice questions per round (with
+  defaults), at most three rounds, only about what the code can't answer.
+- Then a fixed **Design brief**: problem & goal, user-visible behaviour, 2–3
+  approaches each grounded in existing code (`path:line`) with cost/risk, a
+  recommendation, constraints the planner must respect, out of scope, open questions.
+- Never plans units, file ownership or waves — hand-off is explicit: the user
+  picks an approach, the main session passes the brief to `planner`.
+- YAGNI: the smallest approach that meets the goal is recommended; extras go to
+  *Out of scope / later*.
+
+**Based on**
+
+| Practice | Source |
+|---|---|
+| Understand context first, ask focused questions, propose 2–3 approaches with trade-offs and a recommendation, YAGNI, design before plan | [obra/superpowers — `brainstorming`](https://github.com/obra/superpowers/blob/main/skills/brainstorming/SKILL.md) |
+| Separate exploration from planning so the planner gets a settled goal | [Anthropic — Claude Code best practices (explore → plan → code)](https://www.anthropic.com/engineering/claude-code-best-practices) |
+| Read-only tool list | [Claude Code — Create custom subagents](https://code.claude.com/docs/en/sub-agents) |
+
 ## planner
 
 Writes `docs/plans/<slug>.md` following [`docs/plans/_TEMPLATE.md`](../../docs/plans/_TEMPLATE.md).
 
 **Design**
-- Read-only for code: `Bash`, `PowerShell`, `Agent`, `Skill` disallowed; `Write`/`Edit`
-  allowed but a frontmatter `PreToolUse` hook
-  ([planner-write-guard.mjs](../hooks/planner-write-guard.mjs)) denies any path
-  outside `docs/plans/*.md`.
+- Read-only for code: `Edit`, `Bash`, `PowerShell`, `Agent`, `Skill` disallowed.
+  Only `Write` is granted — the planner authors its plan file and re-`Write`s it
+  whole to revise it; it never patches existing files. A frontmatter `PreToolUse`
+  hook ([planner-write-guard.mjs](../hooks/planner-write-guard.mjs)) denies any
+  path outside `docs/plans/*.md`.
 - Injects the same 11 coding skills as the implementer; the architecture skills
   decide where every planned file lives.
 - Reads root + package `AGENTS.md` and `INSIGHTS.md` before planning.
@@ -374,6 +416,62 @@ the intended placement.
 | Read-only tools only (no Bash) | — | The model would guess the import graph; depcruise is deterministic. |
 | depcruise configs for client / reviewer-core | — | Out of scope; client review is skill-checklist only. |
 
+## security-reviewer
+
+Narrow, read-only exploitability reviewer. Input: `range` (default `git
+merge-base main HEAD` .. working tree, untracked included) or `paths`; optional `plan`.
+
+**Design**
+- Tools `Read, Grep, Glob, Bash`; `Write`, `Edit`, `PowerShell`, `Agent`, `Skill`
+  and web tools disallowed. Bash goes through
+  [`bash-scope-guard.mjs security-reviewer`](../hooks/bash-scope-guard.mjs):
+  `cd <package>` and read-only git only — no tests, audits or network.
+- Skill: `security` only (OWASP Top 10:2025, confidence table, *Do NOT flag*).
+- Model **opus**: an adversarial reviewer whose CRITICAL blocks the change.
+- **Lane split with architecture-reviewer** (table in the prompt): placement and
+  import direction are handed off, never reported; for the grounding gate and
+  `INJECTION_GUARD` the architecture reviewer flags that the path changed, the
+  security reviewer judges whether it was weakened.
+- **Trace or drop:** every finding names source → sink with `file:line` per hop;
+  server-controlled values aren't sources; upstream controls (zod schema,
+  workspace scoping, helmet, rate limits, React escaping) are checked before
+  reporting; confidence ≥ 80 only.
+- DevDigest threat checklist: workspace-scoped resources (IDOR), schema-first
+  routes, Drizzle-only SQL, prompt injection + lethal trifecta, SSRF allowlist
+  (`isAllowlistedHost`), `isSafeRepoPath`, secrets only via
+  `LocalSecretsProvider`, `redactUrl` in logs, XSS on LLM/PR text, per-route rate
+  limits on expensive routes, fail-closed catches, new dependencies.
+- Same severity/verdict vocabulary as `/pr-self-review`; never quotes a secret.
+- Report skeleton:
+
+  ```markdown
+  ## Security review — <range>
+  | Field | Value |   # Verdict · Attack surface · Scope files
+  ### Findings (confidence ≥ 80 only)
+  | ID | Severity | Confidence | OWASP | Source → sink (file:line per hop) | Exploit scenario | Fix |
+  ### Checked and clean
+  ### Pre-existing risk touched (does not affect verdict, max 5)
+  ### Handed off (not my lane)
+  ### Not reviewed
+  ```
+
+**Based on**
+
+| Practice | Source |
+|---|---|
+| Role, OWASP scope, trace-to-exploit, three severities, verdict as a pure function, no padding, lethal trifecta only with all three legs | This repo: [`docs/agent-prompts/security-reviewer.md`](../../docs/agent-prompts/security-reviewer.md) (the product's own security-review prompt) |
+| OWASP Top 10:2025 categories, confidence table, *Do NOT flag* | This repo: [`.claude/skills/security/SKILL.md`](../skills/security/SKILL.md) |
+| 0–100 confidence with threshold 80, ignore pre-existing issues | [anthropics/claude-code — `code-review` plugin](https://github.com/anthropics/claude-code/blob/main/plugins/code-review/README.md) |
+| Narrow single-purpose reviewers with separate lanes | [anthropics/claude-code — `pr-review-toolkit`](https://github.com/anthropics/claude-code/blob/main/plugins/pr-review-toolkit/README.md) |
+| Lethal trifecta | [Simon Willison — The lethal trifecta for AI agents](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/) |
+
+**Considered and deliberately not adopted**
+
+| Practice | Source | Why not |
+|---|---|---|
+| Running `pnpm audit` / SAST tools from the agent | — | Network and tool installs are out of scope for a read-only reviewer; new deps are reviewed from the diff. |
+| One combined architecture + security reviewer | — | Mixed lanes blur the verdict and double-count findings; separate agents keep responsibility checkable. |
+
 ## doc-writer
 
 Turns implemented work into permanent docs. Input: `source` (a plan path, a git
@@ -444,7 +542,8 @@ hooks instead of one hook per agent:
   — profiles `test-writer`, `doc-writer`. Repo-relative globs: **deny list first**,
   then allow list, anything else denied.
 - [`bash-scope-guard.mjs <profile>`](../hooks/bash-scope-guard.mjs) (`Bash`) —
-  profiles `test-writer`, `architecture-reviewer`, `plan-verifier`. An
+  profiles `test-writer`, `architecture-reviewer`, `security-reviewer` (read-only
+  git only), `plan-verifier`. An
   **allowlist**: the command is split on `&&` `||` `;` `|` and newlines and every
   segment must match (`cd <package>` and read-only git are common to all). Before
   that, `<` / `>`, backticks, any `$`, background `&`, `tee` and env-assignment

@@ -51,5 +51,8 @@ engine contract in
   `reviewer-core`, the executor calls `IntentForReviewPort.ensureForReview` once
   per run (reuses a non-stale `pr_intent` row, else classifies). Classification
   failure never fails the run — the review proceeds without intent, flagged in
-  the Live Log and `RunTrace.intent.status = 'unavailable'`. See
-  `intent-layer.md` for the full contract.
+  the Live Log and `RunTrace.intent.status = 'unavailable'`. Otherwise the Live
+  Log line states status, confidence, resolved/unresolved source counts **and the
+  provider/model, tokens in/out and real cost** of the classification (`reused`
+  is marked "no model call this run" — the numbers are the original call's);
+  never source content. See `intent-layer.md` for the full contract.

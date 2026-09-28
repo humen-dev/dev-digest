@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * PreToolUse hook (Bash) for read-mostly subagents — usage:
- *   node .claude/hooks/bash-scope-guard.mjs <profile>   # test-writer | architecture-reviewer | plan-verifier
+ *   node .claude/hooks/bash-scope-guard.mjs <profile>   # test-writer | architecture-reviewer | security-reviewer | plan-verifier
  *
  * An allow-list, not a block-list: the command is split into segments
  * (`&&` `||` `;` `|` newline) and EVERY segment must match one of the profile's
@@ -76,6 +76,7 @@ const DEPCRUISE_TEXT = 'pnpm exec depcruise src --config .dependency-cruiser.cjs
 const PROFILES = {
   'test-writer': { matchers: [isTestRun], allowed: `${COMMON}, ${TESTS}` },
   'architecture-reviewer': { matchers: [isDepcruise], allowed: `${COMMON}, ${DEPCRUISE_TEXT}` },
+  'security-reviewer': { matchers: [], allowed: COMMON },
   'plan-verifier': {
     matchers: [isTestRun, isDepcruise, isHookTest],
     allowed: `${COMMON}, ${TESTS}, ${DEPCRUISE_TEXT}, node --test .claude/hooks/*.test.mjs`,

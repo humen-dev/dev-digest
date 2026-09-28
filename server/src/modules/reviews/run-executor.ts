@@ -6,7 +6,7 @@ import * as schema from '../../db/schema.js';
 import type { AgentRow } from '../../db/rows.js';
 import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './repository.js';
 import { REVIEW_STRATEGY } from './constants.js';
-import { renderSkillBlocks, taskLine } from './helpers.js';
+import { intentLogLine, renderSkillBlocks, taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
 import type { EnsureIntentResult, IntentForReviewPort } from '../intent/ports.js';
 
@@ -115,15 +115,7 @@ export class ReviewRunExecutor {
       () => this.intent.ensureForReview(workspaceId, pull.id, { diff, logger, progress: runLog }),
       { kind: 'tool' },
     );
-    const sources = intentResult.record?.sources ?? [];
-    const resolvedSources = sources.filter((s) => s.status === 'resolved').length;
-    const unresolvedSources = sources.length - resolvedSources;
-    runLog.info(
-      intentResult.status === 'unavailable'
-        ? `PR intent unavailable (${intentResult.reason ?? 'unknown_error'}) — reviewing without it`
-        : `PR intent ${intentResult.status} (${intentResult.record?.confidence ?? 'unknown'} confidence, ` +
-            `${resolvedSources} resolved / ${unresolvedSources} unresolved source(s))`,
-    );
+    runLog.info(intentLogLine(intentResult));
 
     for (const { agent, runId } of jobs) {
       const agentStart = Date.now();

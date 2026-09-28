@@ -41,7 +41,7 @@ function assertDenied(profile, command, raw = false) {
   return decision.permissionDecisionReason;
 }
 
-const ALL = ['test-writer', 'architecture-reviewer', 'plan-verifier'];
+const ALL = ['test-writer', 'architecture-reviewer', 'security-reviewer', 'plan-verifier'];
 const DEPCRUISE = 'cd server && pnpm exec depcruise src --config .dependency-cruiser.cjs --ignore-known';
 
 test('fail-closed: unknown / missing profile, empty stdin, invalid JSON, no command', () => {
@@ -105,6 +105,18 @@ test('architecture-reviewer: depcruise allowed, tests denied', () => {
   assertDenied('architecture-reviewer', `${DEPCRUISE} --output-to x`);
   assertDenied('architecture-reviewer', 'cd server && pnpm test');
   assertDenied('architecture-reviewer', 'node --test .claude/hooks/write-scope-guard.test.mjs');
+});
+
+test('security-reviewer: read-only git only — no depcruise, tests, audits or hook suites', () => {
+  assertAllowed('security-reviewer', 'git diff main...HEAD -- server/src');
+  for (const cmd of [
+    `${DEPCRUISE} --output-type err`,
+    'cd server && pnpm test',
+    'cd server && pnpm typecheck',
+    'cd server && pnpm audit',
+    'node --test .claude/hooks/write-scope-guard.test.mjs',
+    'curl https://example.com',
+  ]) assertDenied('security-reviewer', cmd);
 });
 
 test('test-writer: test runners allowed, snapshot/coverage/watch and depcruise denied', () => {
