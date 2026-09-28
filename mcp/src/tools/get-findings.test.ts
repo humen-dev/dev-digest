@@ -248,6 +248,8 @@ describe('getFindings', () => {
           baseRun(),
         ],
       },
+      // Confirmed live by /runs/active, so only the ran_at < created_at check can suppress it.
+      active: { [IDS.pull]: [{ run_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', agent_id: IDS.agentGeneral, agent_name: 'General' }] },
       reviews: { [IDS.pull]: [reviewOf({ created_at: '2026-01-01T00:00:00.000Z' })] },
     });
     const ctx = makeCtx(api);
@@ -274,10 +276,15 @@ describe('getFindings', () => {
     const api = createFakeApi({
       runs: {
         [IDS.pull]: [
-          baseRun({ run_id: '99999999-9999-4999-8999-999999999999', status: 'running', agent_id: IDS.agentSecurity, agent_name: 'Security' }),
+          baseRun({
+            run_id: '99999999-9999-4999-8999-999999999999', status: 'running', agent_id: IDS.agentSecurity,
+            agent_name: 'Security', ran_at: '2026-01-03T00:00:00.000Z',
+          }),
           baseRun(),
         ],
       },
+      // Live and newer than the review, so only the agent filter can suppress it.
+      active: { [IDS.pull]: [{ run_id: '99999999-9999-4999-8999-999999999999', agent_id: IDS.agentSecurity, agent_name: 'Security' }] },
       reviews: { [IDS.pull]: [reviewOf()] },
     });
     const ctx = makeCtx(api);
