@@ -14,6 +14,18 @@ export const s = {
     color: "var(--warn)",
     fontSize: 13,
   } satisfies CSSProperties,
+  info: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+    padding: "9px 12px",
+    borderRadius: 8,
+    border: "1px solid var(--border)",
+    background: "var(--info-bg)",
+    color: "var(--text-secondary)",
+    fontSize: 13,
+  } satisfies CSSProperties,
   skeletonStack: {
     display: "flex",
     flexDirection: "column",

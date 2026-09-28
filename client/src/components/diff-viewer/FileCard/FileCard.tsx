@@ -75,6 +75,7 @@ export function FileCard({
     }
     return anchorMarkers(fileFindings, rightLines);
   }, [fileFindings, lines]);
+  const showFindingCards = findings?.showCards !== false;
 
   return (
     <div style={s.fileCard}>
@@ -118,11 +119,12 @@ export function FileCard({
                 threads={threadsForLine(ln, matched)}
                 commenting={commenting}
                 markers={ln.newNo != null ? findingsByLine.get(ln.newNo) : undefined}
+                showFindingCards={showFindingCards}
               />
             ))
           )}
           {commenting && commenting.showComments && <OutdatedComments threads={outdated} />}
-          <UnanchoredFindings markers={unanchoredFindings} />
+          {showFindingCards && <UnanchoredFindings markers={unanchoredFindings} />}
         </div>
       )}
     </div>

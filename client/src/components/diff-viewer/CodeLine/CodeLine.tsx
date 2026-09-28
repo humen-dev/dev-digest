@@ -21,12 +21,15 @@ export function CodeLine({
   threads,
   commenting,
   markers,
+  showFindingCards = true,
 }: {
   ln: Line;
   path: string;
   threads: CommentThread[];
   commenting?: DiffCommentApi;
   markers?: DiffFindingMarker[];
+  /** false keeps the severity bar/label but hides the finding cards. */
+  showFindingCards?: boolean;
 }) {
   const t = useTranslations("shell");
   const [hover, setHover] = React.useState(false);
@@ -81,7 +84,7 @@ export function CodeLine({
         )}
       </div>
 
-      {markers && markers.length > 0 && (
+      {showFindingCards && markers && markers.length > 0 && (
         <div style={cs.thread}>
           {markers.map((m) => (
             <div key={m.id} style={findingCardRailStyle(SEV[m.severity].c)}>

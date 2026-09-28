@@ -152,6 +152,7 @@ const PR: PrDetail = {
   ],
 };
 
+let reviewsData: ReviewRecord[] = REVIEWS;
 const mutate = vi.fn();
 let smartDiffState: { data?: SmartDiffResponse; isLoading: boolean; isError: boolean } = {
   data: SMART_DIFF,
@@ -162,7 +163,7 @@ let smartDiffState: { data?: SmartDiffResponse; isLoading: boolean; isError: boo
 vi.mock("@/lib/hooks/reviews", () => ({
   usePrComments: () => ({ data: [] }),
   useCreatePrComment: () => ({ isPending: false, mutateAsync: vi.fn() }),
-  usePrReviews: () => ({ data: REVIEWS }),
+  usePrReviews: () => ({ data: reviewsData }),
   useFindingAction: () => ({ mutate, isPending: false }),
 }));
 
@@ -175,6 +176,7 @@ import { DiffTab } from "./DiffTab";
 afterEach(() => {
   cleanup();
   mutate.mockClear();
+  reviewsData = REVIEWS;
   smartDiffState = { data: SMART_DIFF, isLoading: false, isError: false };
 });
 
@@ -278,5 +280,36 @@ describe("DiffTab — no grouping data", () => {
     renderTab({ pr: { ...PR, files: [], files_count: 0 } });
 
     expect(screen.getByText("No changed files.")).toBeInTheDocument();
+  });
+});
+
+describe("DiffTab — comments toggle", () => {
+  it("hides finding cards together with comments but keeps the line's severity label and the file dot", () => {
+    renderTab();
+    expect(screen.getByText("Hardcoded Stripe secret key in commit")).toBeInTheDocument();
+
+    // 0 GitHub comments + 3 current findings.
+    fireEvent.click(screen.getByRole("button", { name: "Hide comments (3)" }));
+
+    expect(screen.queryByText("Hardcoded Stripe secret key in commit")).not.toBeInTheDocument();
+    expect(screen.getByText("blocker")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Has review findings").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Show comments (3)" }));
+    expect(screen.getByText("Hardcoded Stripe secret key in commit")).toBeInTheDocument();
+  });
+});
+
+describe("DiffTab — no review yet", () => {
+  it("explains that no review has run instead of showing empty counters", () => {
+    reviewsData = [];
+    renderTab();
+    expect(screen.getByRole("status")).toHaveTextContent("No review has run on this PR yet");
+    expect(screen.queryByLabelText(/files? with findings/)).not.toBeInTheDocument();
+  });
+
+  it("does not show the notice once a review exists", () => {
+    renderTab();
+    expect(screen.queryByText(/No review has run on this PR yet/)).not.toBeInTheDocument();
   });
 });

@@ -20,6 +20,9 @@ export interface DiffFindingMarker {
 
 export interface DiffFindingOverlay {
   markers: DiffFindingMarker[];
+  /** false hides the cards (inline + outside-diff block) so the diff reads
+      clean; the file dot and the line's severity bar/label stay. Default true. */
+  showCards?: boolean;
 }
 
 function bySeverityThenId(a: DiffFindingMarker, b: DiffFindingMarker): number {

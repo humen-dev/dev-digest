@@ -85,7 +85,8 @@
     "loadError": "Couldn’t group files by role — showing the original order.",
     "showComments": "Show comments ({count})",
     "hideComments": "Hide comments ({count})",
-    "commentPostError": "Couldn't post the comment to GitHub."
+    "commentPostError": "Couldn't post the comment to GitHub.",
+    "noReviewYet": "No review has run on this PR yet — run a review to see its findings right in the diff."
   },
   "list": {
     "breadcrumb": "Pull Requests",

@@ -31,8 +31,10 @@ export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
   const t = useTranslations("prReview");
   const { data: comments } = usePrComments(prId);
   const create = useCreatePrComment(prId);
-  // Comments start hidden so the diff is clean by default — toggle to reveal.
-  const [showComments, setShowComments] = React.useState(false);
+  // One toggle for GitHub comments and review-finding cards: both visible by
+  // default, hidden together when the reviewer wants a clean diff (the file
+  // dot and the line's severity bar/label stay).
+  const [showComments, setShowComments] = React.useState(true);
   const [order, setOrder] = React.useState<OrderMode>(DEFAULT_ORDER);
 
   const { data: reviews } = usePrReviews(prId);
@@ -89,9 +91,12 @@ export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
           />
         ),
       })),
+      showCards: showComments,
     }),
-    [findings, actOnFinding, findingActionPending, repoFullName, pr.head_sha, prId],
+    [findings, actOnFinding, findingActionPending, repoFullName, pr.head_sha, prId, showComments],
   );
+  // Empty state instead of silent zero counters: no review has run yet.
+  const noReviewYet = reviews != null && !reviews.some((r) => r.kind === "review");
 
   const groups = React.useMemo(
     () => (smartDiff ? buildRoleGroups(pr.files, smartDiff) : []),
@@ -111,7 +116,7 @@ export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
         order={effectiveOrder}
         onOrderChange={setOrder}
         orderDisabled={smartUnavailable}
-        commentCount={commentCount}
+        commentCount={commentCount + findings.length}
         showComments={showComments}
         onToggleComments={() => setShowComments((v) => !v)}
       />
@@ -120,6 +125,13 @@ export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
         <div role="alert" style={s.notice}>
           <Icon.AlertTriangle size={15} />
           <span>{t("smartDiff.loadError")}</span>
+        </div>
+      )}
+
+      {noReviewYet && (
+        <div role="status" style={s.info}>
+          <Icon.Info size={15} />
+          <span>{t("smartDiff.noReviewYet")}</span>
         </div>
       )}
 

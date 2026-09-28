@@ -20,9 +20,15 @@ export const s = {
     border: "1px solid var(--border)",
     borderRadius: 10,
     marginBottom: 12,
-    overflow: "hidden",
+    // `clip`, not `hidden`: hidden makes the group a scroll container, which
+    // would pin the sticky header to the group instead of the page (<main>).
+    overflow: "clip",
   } satisfies CSSProperties,
   header: {
+    // Stays at the top of the scrolling <main> while its group's files scroll by.
+    position: "sticky",
+    top: 0,
+    zIndex: 2,
     width: "100%",
     display: "flex",
     alignItems: "center",
