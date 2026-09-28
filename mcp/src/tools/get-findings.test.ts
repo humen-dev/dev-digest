@@ -103,7 +103,10 @@ describe('getFindings', () => {
   });
 
   it('with run_id: running -> RunningResult, unknown -> run_not_found, failed -> run_failed', async () => {
-    const api = createFakeApi({ runs: { [IDS.pull]: [baseRun({ status: 'running' })] } });
+    const api = createFakeApi({
+      runs: { [IDS.pull]: [baseRun({ status: 'running' })] },
+      active: { [IDS.pull]: [{ run_id: RUN_ID, agent_id: IDS.agentGeneral, agent_name: 'General' }] },
+    });
     const ctx = makeCtx(api);
 
     const running = (await getFindings({ repo: 'acme/payments-api', pr: 482, run_id: RUN_ID }, ctx)) as RunningResult;
@@ -145,6 +148,7 @@ describe('getFindings', () => {
           baseRun(),
         ],
       },
+      active: { [IDS.pull]: [{ run_id: newerRunId, agent_id: IDS.agentGeneral, agent_name: 'General' }] },
       reviews: { [IDS.pull]: [reviewOf()] },
     });
     const ctx = makeCtx(api);
@@ -183,6 +187,57 @@ describe('getFindings', () => {
     expect(result.status).toBe('running');
     expect(result.run_id).toBe(RUN_ID);
     expect(result.elapsed_s).toBe(90);
+  });
+
+  it('a newer run stuck in running but absent from /runs/active does not flag newer_run', async () => {
+    const api = createFakeApi({
+      runs: {
+        [IDS.pull]: [
+          baseRun({ run_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', status: 'running', ran_at: '2026-01-03T00:00:00.000Z' }),
+          baseRun(),
+        ],
+      },
+      active: { [IDS.pull]: [] },
+      reviews: { [IDS.pull]: [reviewOf()] },
+    });
+    const ctx = makeCtx(api);
+
+    const result = (await getFindings({ repo: 'acme/payments-api', pr: 482 }, ctx)) as ReviewResult;
+
+    expect(result.status).toBe('done');
+    expect(result.newer_run).toBeUndefined();
+    expect(result.next).toBeUndefined();
+  });
+
+  it('with run_id, a row stuck in running that the server no longer executes is reported as stale, not running', async () => {
+    const api = createFakeApi({
+      runs: { [IDS.pull]: [baseRun({ status: 'running' })] },
+      active: { [IDS.pull]: [] },
+    });
+    const ctx = makeCtx(api);
+
+    await expect(getFindings({ repo: 'acme/payments-api', pr: 482, run_id: RUN_ID }, ctx)).rejects.toMatchObject({
+      code: 'run_failed',
+      message: expect.stringContaining('no longer executing'),
+      next: expect.stringContaining('run_agent_on_pr'),
+    });
+  });
+
+  it('with run_id, a run that finished between the two reads returns its review, not "stale"', async () => {
+    const api = createFakeApi(
+      {
+        runs: { [IDS.pull]: [baseRun({ status: 'running' })] },
+        active: { [IDS.pull]: [] },
+        reviews: { [IDS.pull]: [reviewOf()] },
+      },
+      { runStatusScript: { [RUN_ID]: ['running', 'done'] } }, // 1st listRuns: running, re-read: done
+    );
+    const ctx = makeCtx(api);
+
+    const result = (await getFindings({ repo: 'acme/payments-api', pr: 482, run_id: RUN_ID }, ctx)) as ReviewResult;
+
+    expect(result.status).toBe('done');
+    expect(result.run_id).toBe(RUN_ID);
   });
 
   it('a stale run stuck in running from BEFORE the review does not flag newer_run', async () => {

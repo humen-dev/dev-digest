@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | draft |
+| Status | done |
 | Goal | A coding agent (Claude Code or any MCP client) can list DevDigest reviewer agents, run a review on a PR and get a short verdict with findings, re-read finished findings, and read a repo's conventions, all through a local stdio MCP server. `get_blast_radius` is registered now as a stub. |
 | Packages touched | **new `mcp/`** (`@devdigest/mcp`) · repo root (`.mcp.json`, `AGENTS.md`, `README.md`, `TESTING.md`, `scripts/dev.sh`, `.github/workflows/mcp.yml`, `.claude/` tooling registration). **No change** to server · client · reviewer-core · e2e · shared. |
 
@@ -358,6 +358,7 @@ export interface DevDigestApi {
 > **Revised after `/pr-self-review` (2026-09-28):** `ApiUnreachableError` gained `timedOut` (a timed-out paid POST must not be answered with "start the API and retry"), and the port gained the optional `withSignal()` so `server.ts` can bind each tool call's cancellation signal to in-flight HTTP requests (`AbortSignal.any` with the per-request timeout). `loadConfig` rejects credentialed `DEVDIGEST_API_URL`s and keeps only `origin + pathname`.
 > **Revised again (PR #9 follow-ups, 2026-09-28):** `timedOut` was renamed `maybeProcessed` and widened: it is true for a timeout AND for a POST that failed with anything but a proven never-sent network error (`ECONNREFUSED`/`ENOTFOUND`/`EAI_AGAIN`), e.g. `ECONNRESET` after the body was written. `ReviewResult` gained optional `newer_run: { run_id, status: 'running' }` — `get_findings` without `run_id` returns the newest finished review (by `created_at`) and flags a newer run of the same agent that is still in progress.
 > **Round-4 refinements (2026-09-28):** `maybeProcessed` is never set for a GET (reads are safe to retry), and a 2xx POST whose body cannot be read/parsed is also `maybeProcessed` (the run exists). `newer_run` only counts a running run whose `ran_at` is after the chosen review's `created_at` (a stale row stuck in `running` must not shadow a current verdict). Every lookup of a review by `run_id` filters `kind === 'review'`. `run_agent_on_pr` checks cancellation before `warmPull` and again right before `startReview`: a cancelled call starts nothing (`run_cancelled`).
+> **Stale `running` rows (2026-09-28):** a run row can stay `running` forever when the API dies mid-run, so `get_findings` treats only `GET /pulls/:id/runs/active` as proof of life in every branch — no review yet (fall through to `no_review`), `newer_run` (only live runs are flagged), and `run_id` (a non-active `running` row is re-read once and, if still `running`, reported as `run_failed` "no longer executing" instead of "running" forever).
 ```ts
 // src/tools/types.ts — ring 2: the use-case calling convention. Result shapes live in domain/types.ts.
 import type { DevDigestApi } from '../ports.js';
