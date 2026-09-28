@@ -12,6 +12,7 @@ avoid. Linked (not preloaded) from [`CLAUDE.md`](./CLAUDE.md) — read on demand
 _(none yet)_
 
 ## What Doesn't Work
+- 2026-09-28 — A `console.log = console.error` redirect as the "first statement" of an ESM entry (`mcp/src/index.ts`) does NOT run first: static `import`s are evaluated before the module body, so any top-level stdout write in a dependency would still corrupt the stdio JSON-RPC stream. ALWAYS redirect in the launcher and load everything after it with dynamic `import()` (`mcp/bin/devdigest-mcp.mjs`); the smoke test guards it via `client.onerror` (`mcp/src/index.smoke.test.ts`).
 - 2026-09-28 — The test `makeCtx` sleep (`mcp/test/fake-api.ts`) always resolves, but the real `ToolContext.sleep` REJECTS when the client cancels mid-pause (`mcp/src/server.ts:40,49`). Code that only checks `ctx.signal.aborted` between polls therefore passes every fake-clock test yet turns a user cancel into an "Internal error" in production. ALWAYS wrap `ctx.sleep` so an abort-caused rejection maps to the aborted outcome (`mcp/src/wait.ts:66`), and test it with a `sleep` override that aborts and throws.
 
 ## Codebase Patterns

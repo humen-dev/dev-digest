@@ -29,8 +29,9 @@ build step). **npm**, standalone package (not a pnpm workspace member).
   handlers), `bin/devdigest-mcp.mjs` (launcher).
 
 ## Conventions (non-default)
-- **stdout is protocol-only.** `index.ts` redirects `console.log`/`console.info`
-  to stderr before anything else runs; all logging goes to stderr.
+- **stdout is protocol-only.** `bin/devdigest-mcp.mjs` redirects
+  `console.log`/`console.info` to stderr before loading any module (static ESM
+  imports would run first); all logging goes to stderr.
 - Tools depend only on the `DevDigestApi` **port**, never on `fetch` or the SDK
   directly — enforced by `src/architecture.test.ts`.
 - Tool descriptions ≤300 chars, key info first (tool search reads names +
