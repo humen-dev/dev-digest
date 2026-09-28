@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "devdigest": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["mcp/bin/devdigest-mcp.mjs"],
+      "env": { "DEVDIGEST_API_URL": "${DEVDIGEST_API_URL:-http://127.0.0.1:3001}" }
+    }
+  }
+}
