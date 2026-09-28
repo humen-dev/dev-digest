@@ -20,8 +20,8 @@ export const CONVENTION_CATEGORIES = [
 function toCompact(c: ApiConvention): CompactConvention {
   return {
     rule: clip(c.rule, 200),
-    category: c.category,
-    evidence: `${c.evidence_path}:${c.evidence_line}`,
+    category: clip(c.category, 40),
+    evidence: `${clip(c.evidence_path, 200)}:${c.evidence_line}`,
     occurrences: c.occurrences,
   };
 }

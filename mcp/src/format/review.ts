@@ -6,15 +6,15 @@ const SEVERITY_RANK: Record<ApiSeverity, number> = { CRITICAL: 0, WARNING: 1, SU
 
 function loc(finding: ApiFinding): string {
   return finding.start_line === finding.end_line
-    ? `${finding.file}:${finding.start_line}`
-    : `${finding.file}:${finding.start_line}-${finding.end_line}`;
+    ? `${clip(finding.file, 200)}:${finding.start_line}`
+    : `${clip(finding.file, 200)}:${finding.start_line}-${finding.end_line}`;
 }
 
 function toCompact(finding: ApiFinding): CompactFinding {
   return {
     loc: loc(finding),
     severity: finding.severity,
-    category: finding.category,
+    category: clip(finding.category, 40),
     title: clip(finding.title, 120),
     message: clip(firstSentence(finding.rationale), 200),
   };

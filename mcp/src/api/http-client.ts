@@ -108,7 +108,8 @@ export class HttpDevDigestApi implements DevDigestApi {
     schema: OutputSchema<T> | undefined,
     opts: { timeoutMs?: number; jsonBody?: unknown; discardBody?: boolean } = {},
   ): Promise<T> {
-    const url = new URL(path, `${this.config.apiUrl}/`);
+    // Relative resolution keeps a path prefix in DEVDIGEST_API_URL (e.g. http://h/api).
+    const url = new URL(path.replace(/^\/+/, ''), `${this.config.apiUrl}/`);
     const timeoutMs = opts.timeoutMs ?? this.config.requestTimeoutMs;
     const start = Date.now();
     let res: Response;

@@ -1,8 +1,9 @@
 // src/index.ts — ring 4: composition root. The only file (besides server.ts) that
 // imports the MCP SDK, and the only file that constructs HttpDevDigestApi.
 
-// First statement: stdout is protocol-only. Redirect stray console output to
-// stderr before anything else (including imports below) can run any code.
+// stdout is protocol-only. ESM evaluates the static imports below BEFORE this
+// body, so the launcher (bin/devdigest-mcp.mjs) does the redirect first; it is
+// repeated here for direct `tsx src/index.ts` runs.
 console.log = console.error;
 console.info = console.error;
 

@@ -163,6 +163,13 @@ describe('HttpDevDigestApi', () => {
     await expect(api.listRepos()).rejects.toMatchObject({ name: 'ApiError', status: 500 });
   });
 
+  it('keeps a path prefix in the configured API URL', async () => {
+    const fetchStub = vi.fn(async (_url: URL) => jsonResponse([]));
+    const api = new HttpDevDigestApi({ ...config(), apiUrl: 'http://127.0.0.1:3001/api' }, fetchStub as unknown as typeof fetch);
+    await api.listRepos();
+    expect(String(fetchStub.mock.calls[0]![0])).toBe('http://127.0.0.1:3001/api/repos');
+  });
+
   it('drops pulls without an id instead of producing an empty path segment', async () => {
     const fetchStub = vi.fn(async () =>
       jsonResponse([

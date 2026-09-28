@@ -12,7 +12,7 @@ avoid. Linked (not preloaded) from [`CLAUDE.md`](./CLAUDE.md) — read on demand
 _(none yet)_
 
 ## What Doesn't Work
-_(none yet)_
+- 2026-09-28 — The test `makeCtx` sleep (`mcp/test/fake-api.ts`) always resolves, but the real `ToolContext.sleep` REJECTS when the client cancels mid-pause (`mcp/src/server.ts:40,49`). Code that only checks `ctx.signal.aborted` between polls therefore passes every fake-clock test yet turns a user cancel into an "Internal error" in production. ALWAYS wrap `ctx.sleep` so an abort-caused rejection maps to the aborted outcome (`mcp/src/wait.ts:66`), and test it with a `sleep` override that aborts and throws.
 
 ## Codebase Patterns
 - 2026-09-28 — `PrMeta.id` is `nullish` in the shared contract (`server/src/vendor/shared/contracts/platform.ts:159`), so `GET /repos/:id/pulls` may return a PR row that cannot be addressed by `/pulls/:id/...`. NEVER default it to `''` (that silently builds `/pulls//review`); drop such rows at the adapter boundary — `ApiPullListSchema` in `mcp/src/api/schemas.ts` filters them, and the tool then reports `pr_not_found` with an onward hint.
