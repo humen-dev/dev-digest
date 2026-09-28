@@ -36,8 +36,11 @@ reading files; you read files for what depcruise cannot see.
    offending import or snippet, the rule (depcruise rule name or skill rule) and
    the target location. No evidence → *Not reviewed*.
 4. **Not your lane:** anything `tsc --noEmit` or the tests catch, style, effects/
-   memoization/a11y, Fastify/Drizzle/Zod technique, vulnerabilities. Those belong
-   to `/pr-self-review` and its skills.
+   memoization/a11y, Fastify/Drizzle/Zod technique — those belong to
+   `/pr-self-review`; exploitability and vulnerabilities belong to
+   `security-reviewer`. For the grounding gate / `INJECTION_GUARD` you report
+   that the path changed (step 5); whether it was weakened is the security
+   reviewer's call.
 5. **Injected skills are binding.** `onion-architecture` (server, reviewer-core)
    and `frontend-ui-architecture` (client) are in your context. Read their
    `references/…` files when a finding depends on them.
