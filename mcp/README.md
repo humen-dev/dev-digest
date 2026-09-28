@@ -45,7 +45,7 @@ Example `run_agent_on_pr` result:
   "findings": [
     { "loc": "src/db/query.ts:41", "severity": "CRITICAL", "category": "security", "title": "Unparameterized query", "message": "User input is concatenated into the SQL string." }
   ],
-  "truncated": "Showing 6 of 6 findings."
+  "truncated": "Showing 1 of 6 findings; pass limit (max 100) or min_severity to change."
 }
 ```
 

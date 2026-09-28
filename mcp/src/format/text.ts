@@ -21,12 +21,10 @@ export function firstSentence(md: string): string {
   const withoutFences = md.replace(/```[\s\S]*?```/g, ' ');
   const withoutInlineCode = withoutFences.replace(/`([^`]*)`/g, '$1');
   const withoutHeadings = withoutInlineCode.replace(/^#+\s*/gm, '');
-  const normalized = withoutHeadings.replace(/\s+/g, ' ').trim();
-  const newlineIdx = normalized.indexOf('\n');
+  // Cut at the first non-empty line BEFORE collapsing whitespace, otherwise the
+  // newline boundary is gone.
+  const firstLine = withoutHeadings.split('\n').map((l) => l.trim()).find((l) => l !== '') ?? '';
+  const normalized = firstLine.replace(/\s+/g, ' ').trim();
   const periodIdx = normalized.indexOf('. ');
-  const candidates = [newlineIdx, periodIdx].filter((i) => i >= 0);
-  if (candidates.length === 0) return normalized;
-  const cut = Math.min(...candidates);
-  const endsAtPeriod = cut === periodIdx;
-  return normalized.slice(0, endsAtPeriod ? cut + 1 : cut).trim();
+  return periodIdx >= 0 ? normalized.slice(0, periodIdx + 1) : normalized;
 }

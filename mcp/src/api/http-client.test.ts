@@ -162,4 +162,16 @@ describe('HttpDevDigestApi', () => {
     const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch);
     await expect(api.listRepos()).rejects.toMatchObject({ name: 'ApiError', status: 500 });
   });
+
+  it('drops pulls without an id instead of producing an empty path segment', async () => {
+    const fetchStub = vi.fn(async () =>
+      jsonResponse([
+        { id: 'p1', number: 1, title: 'a', status: 'open' },
+        { id: null, number: 2, title: 'b', status: 'open' },
+        { number: 3, title: 'c', status: 'open' },
+      ]),
+    );
+    const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch);
+    await expect(api.listPulls('r1')).resolves.toEqual([{ id: 'p1', number: 1, title: 'a', status: 'open' }]);
+  });
 });

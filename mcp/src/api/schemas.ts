@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import type {
   Repo, PrMeta, Agent, RunSummary, ConventionCandidate, ConventionBoard, Finding, Verdict,
+  FindingRecord, ReviewRecord, ReviewRunTarget,
 } from '@devdigest/shared';
 
 // ---- drift check helper (pure type-level; never used at runtime) ----------
@@ -20,14 +21,20 @@ export type ApiRepoParsed = z.infer<typeof ApiRepoSchema>;
 type _RepoOk = AssertAssignable<Pick<Repo, 'id' | 'owner' | 'name' | 'full_name'>, ApiRepoParsed>;
 
 // ---- Pull -------------------------------------------------------------
+// `PrMeta.id` is nullish in the contract: a PR row without an id cannot be
+// addressed (`/pulls/:id/...`), so the list schema drops it instead of
+// inventing an empty id that would produce `/pulls//review`.
 export const ApiPullSchema = z.object({
-  id: z.string().nullish().transform((v) => v ?? ''),
+  id: z.string().nullish(),
   number: z.number().int(),
   title: z.string(),
   status: z.string(),
 });
 export type ApiPullParsed = { id: string; number: number; title: string; status: string };
-type _PullOk = AssertAssignable<Pick<PrMeta, 'number' | 'title' | 'status'>, Pick<ApiPullParsed, 'number' | 'title' | 'status'>>;
+type _PullOk = AssertAssignable<
+  { id: NonNullable<PrMeta['id']> } & Pick<PrMeta, 'number' | 'title' | 'status'>,
+  ApiPullParsed
+>;
 
 // ---- Agent --------------------------------------------------------------
 export const ApiAgentSchema = z.object({
@@ -55,10 +62,7 @@ export const StartReviewResponseSchema = z.object({
   runs: z.array(ApiStartedRunSchema).min(1),
 });
 export type ApiStartedRunParsed = z.infer<typeof ApiStartedRunSchema>;
-type _StartedRunOk = AssertAssignable<
-  { run_id: string; agent_id: string; agent_name: string },
-  ApiStartedRunParsed
->;
+type _StartedRunOk = AssertAssignable<ReviewRunTarget, ApiStartedRunParsed>;
 
 // ---- Run summary ----------------------------------------------------------
 export const ApiRunSchema = z.object({
@@ -113,6 +117,7 @@ type _FindingOk = AssertAssignable<
     'id' | 'severity' | 'category' | 'title' | 'file' | 'start_line' | 'end_line' | 'rationale' | 'confidence'
   >
 >;
+type _FindingDismissedOk = AssertAssignable<Pick<FindingRecord, 'dismissed_at'>, Pick<ApiFindingParsed, 'dismissed_at'>>;
 
 export const ApiReviewSchema = z.object({
   id: z.string(),
@@ -130,6 +135,12 @@ export type ApiReviewParsed = z.infer<typeof ApiReviewSchema>;
 // verdict is persisted as the shared Verdict enum (or null); confirm it stays
 // assignable to the local nullable-string shape if the shared enum changes.
 type _ReviewVerdictOk = AssertAssignable<Verdict, NonNullable<ApiReviewParsed['verdict']>>;
+type _ReviewOk = AssertAssignable<
+  Pick<ReviewRecord, 'id' | 'run_id' | 'agent_id' | 'kind' | 'verdict' | 'summary' | 'score' | 'created_at'>,
+  Pick<ApiReviewParsed, 'id' | 'run_id' | 'agent_id' | 'kind' | 'verdict' | 'summary' | 'score' | 'created_at'>
+>;
+// agent_name is nullish in the contract; the schema normalises undefined → null.
+type _ReviewAgentNameOk = AssertAssignable<ReviewRecord['agent_name'], string | null | undefined>;
 
 // ---- Conventions ------------------------------------------------------
 export const ApiConventionSchema = z.object({
@@ -163,7 +174,11 @@ type _ConventionBoardOk = AssertAssignable<
 
 // ---- list schemas -------------------------------------------------------
 export const ApiRepoListSchema = z.array(ApiRepoSchema);
-export const ApiPullListSchema = z.array(ApiPullSchema);
+export const ApiPullListSchema = z
+  .array(ApiPullSchema)
+  .transform((pulls) =>
+    pulls.flatMap((p): ApiPullParsed[] => (p.id ? [{ id: p.id, number: p.number, title: p.title, status: p.status }] : [])),
+  );
 export const ApiAgentListSchema = z.array(ApiAgentSchema);
 export const ApiRunListSchema = z.array(ApiRunSchema);
 export const ApiActiveRunListSchema = z.array(ApiActiveRunSchema);

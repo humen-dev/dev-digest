@@ -138,10 +138,10 @@ Dependencies are installed by the orchestrator **only via npm** (it never hand-e
 "paths": {
   "@devdigest/shared": ["../server/src/vendor/shared/index.ts"],
   "@devdigest/shared/*": ["../server/src/vendor/shared/*"],
-  "zod": ["./node_modules/zod"],
-  "zod/*": ["./node_modules/zod/*"]
+  "zod": ["./node_modules/zod"]
 }
 ```
+> **Revised during Wave 1 (2026-09-28):** the `"zod/*": ["./node_modules/zod/*"]` alias copied from reviewer-core was removed. It hijacks the MCP SDK's internal `zod/v3` / `zod/v4/core` imports, producing two unrelated zod declaration chains, `TS2589` on every `registerTool`, and a multi-minute `tsc` run. Only the bare `"zod"` specifier is aliased (see `mcp/INSIGHTS.md`).
 `mcp/vitest.config.ts`: `include: ['src/**/*.test.ts']`, `environment: 'node'`, `testTimeout: 20_000`.
 `mcp/CLAUDE.md`: exactly `@AGENTS.md` (stub convention, root `AGENTS.md`).
 `mcp/INSIGHTS.md`: a skeleton with the same headings as `reviewer-core/INSIGHTS.md:1-31`, with all sections `_(none yet)_`.
@@ -714,7 +714,7 @@ Error wire format: `{ isError: true, content: [{ type: 'text', text: JSON.string
 | Kind | docs / tooling |
 | Wave | 1 |
 | Depends on | U0 |
-| Owns (create/modify) | `mcp/AGENTS.md`, `mcp/README.md`, `AGENTS.md` (root), `README.md` (root), `TESTING.md`, `.github/workflows/mcp.yml`, `scripts/dev.sh`, and, if Open question 3 = yes: `.claude/skills/pr-self-review/scripts/checks.mjs`, `.claude/skills/pr-self-review/scripts/rules.mjs`, `.claude/skills/pr-self-review/routing.json`, `.claude/hooks/capture-insights.mjs`, `.claude/hooks/write-scope-guard.mjs`, `.claude/hooks/write-scope-guard.test.mjs`, `.claude/skills/engineering-insights/SKILL.md` |
+| Owns (create/modify) | `mcp/AGENTS.md`, `mcp/README.md`, `AGENTS.md` (root), `README.md` (root), `TESTING.md`, `.github/workflows/mcp.yml`, `scripts/dev.sh`, and, if Open question 3 = yes: `.claude/skills/pr-self-review/scripts/checks.mjs`, `.claude/skills/pr-self-review/scripts/rules.mjs`, `.claude/skills/pr-self-review/routing.json`, `.claude/hooks/capture-insights.mjs`, `.claude/hooks/write-scope-guard.mjs`, `.claude/hooks/write-scope-guard.test.mjs`, `.claude/skills/engineering-insights/SKILL.md`, `.claude/hooks/bash-scope-guard.mjs` + `.claude/hooks/bash-scope-guard.test.mjs` (add `mcp` to `CD_DIR`; added during Wave 1, user-approved OQ3) |
 | Must not touch | any `mcp/src/**`, `.mcp.json`, any `INSIGHTS.md`, `.claude/settings.json` |
 | Consumes | §3 (documents it; does not import code) |
 | Produces | package map entries, CI job, gate integration |
@@ -780,7 +780,7 @@ Ownership check:
 - Wave 2: U5 `wait*`, `tools/run-agent-on-pr*`; U6 the four other `tools/*` files. No overlap.
 
 Serialized files:
-- `mcp/INSIGHTS.md` belongs to Wave 0 only; implementers never edit it.
+- `mcp/INSIGHTS.md` is created in Wave 0 and afterwards edited only by the orchestrator (append-only, via the engineering-insights skill); implementers never edit it.
 - `.mcp.json` belongs to U7 only.
 - Root `AGENTS.md`/`README.md`/`TESTING.md` and the `.claude/**` files belong to U8 only.
 - No `src/vendor/**`, migration, `server/src/modules/index.ts`, `client/src/lib/api.ts` or `messages/**` is touched.

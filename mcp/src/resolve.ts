@@ -66,7 +66,10 @@ export async function resolvePull(api: DevDigestApi, repo: ApiRepo, pr: number):
   if (match) return match;
   throw new ToolError(
     'pr_not_found',
-    `PR #${pr} not found in ${repo.full_name}. Known PR numbers: ${capList(pulls.map((p) => String(p.number)))}.`,
+    // The API returns pulls unordered; list the newest (highest) numbers first.
+    `PR #${pr} not found in ${repo.full_name}. Known PR numbers: ${capList(
+      pulls.map((p) => p.number).sort((a, b) => b - a).map(String),
+    )}.`,
     'DevDigest syncs PRs from GitHub when a token is configured (Settings); check the PR number or open the repo in the web UI.',
   );
 }
