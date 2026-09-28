@@ -170,7 +170,9 @@ export class HttpDevDigestApi implements DevDigestApi {
       } catch {
         // body wasn't JSON — keep the generic message.
       }
-      throw new ApiError(res.status, code, message);
+      // A 5xx on the POST may come after the run was created (or from a proxy
+      // after forwarding): never let it read as "retry once". 4xx = rejected.
+      throw new ApiError(res.status, code, message, method === 'POST' && res.status >= 500);
     }
 
     if (opts.discardBody || !schema) {

@@ -94,6 +94,19 @@ describe('HttpDevDigestApi', () => {
     await expect(api.startReview('p1', 'a1')).rejects.toMatchObject({ name: 'ApiUnreachableError', maybeProcessed: true });
   });
 
+  it('a 5xx on the POST is maybeProcessed; a 5xx on a GET and a 4xx on the POST are not', async () => {
+    const respond = (status: number) => vi.fn(async () => jsonResponse({ error: { code: 'x', message: 'boom' } }, status));
+
+    const post5xx = new HttpDevDigestApi(config(), respond(502) as unknown as typeof fetch);
+    await expect(post5xx.startReview('p1', 'a1')).rejects.toMatchObject({ name: 'ApiError', status: 502, maybeProcessed: true });
+
+    const get5xx = new HttpDevDigestApi(config(), respond(500) as unknown as typeof fetch);
+    await expect(get5xx.listRuns('p1')).rejects.toMatchObject({ name: 'ApiError', status: 500, maybeProcessed: false });
+
+    const post4xx = new HttpDevDigestApi(config(), respond(404) as unknown as typeof fetch);
+    await expect(post4xx.startReview('p1', 'a1')).rejects.toMatchObject({ name: 'ApiError', status: 404, maybeProcessed: false });
+  });
+
   it('a 2xx POST with an unreadable body is maybeProcessed (the run exists), a GET stays bad_response', async () => {
     const fetchStub = vi.fn(async () => jsonResponse({ unexpected: true }));
     const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch);

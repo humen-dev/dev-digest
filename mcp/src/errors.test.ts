@@ -28,6 +28,17 @@ describe('toErrorPayload', () => {
     expect(payload.next).not.toContain('./scripts/dev.sh');
   });
 
+  it('a maybeProcessed 5xx points at get_findings instead of "retry once"', () => {
+    const payload = toErrorPayload(new ApiError(500, 'internal', 'boom', true), 'http://h');
+    expect(payload.error).toBe('api_error');
+    expect(payload.message).toContain('may have been processed');
+    expect(payload.next).toContain('get_findings');
+    expect(payload.next).not.toContain('retry once');
+
+    const plain = toErrorPayload(new ApiError(500, 'internal', 'boom'), 'http://h');
+    expect(plain.next).toContain('retry once');
+  });
+
   it('maps a 429 ApiError to rate_limited', () => {
     const err = new ApiError(429, 'rate_limited', 'Too many requests');
     const payload = toErrorPayload(err, 'http://127.0.0.1:3001');

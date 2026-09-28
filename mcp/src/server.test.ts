@@ -295,7 +295,9 @@ describe('createServer — tool call wiring', () => {
 
     expect(threw).toBe(false);
     expect(result.isError).toBeUndefined();
-    expect(clientErrors.map((e) => e.message).join('\n')).not.toContain('progress notification');
+    // Nothing at all may reach the client: an unknown-token progress message and a
+    // malformed one (no/null token → schema error in the handler) both land here.
+    expect(clientErrors).toEqual([]);
   });
 
   it('returns exactly one text content that parses as JSON, with no structuredContent, on success', async () => {

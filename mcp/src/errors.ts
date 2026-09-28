@@ -15,9 +15,16 @@ export class ToolError extends Error {
   }
 }
 
-/** Thrown by the HTTP adapter: the API answered with a non-2xx status. */
+/** Thrown by the HTTP adapter: the API answered with a non-2xx status.
+ *  `maybeProcessed` = a 5xx on the paid POST: the server (or a proxy in front of
+ *  it) may have created the run before failing, so it must not be blindly retried. */
 export class ApiError extends Error {
-  constructor(readonly status: number, readonly apiCode: string | null, message: string) {
+  constructor(
+    readonly status: number,
+    readonly apiCode: string | null,
+    message: string,
+    readonly maybeProcessed = false,
+  ) {
     super(message);
     this.name = 'ApiError';
   }
@@ -65,11 +72,15 @@ export function toErrorPayload(err: unknown, apiUrl: string): ToolErrorPayload {
         next: 'DevDigest allows 10 review starts per minute; wait a minute and retry, or call get_findings for an existing run.',
       };
     }
-    return {
-      error: 'api_error',
-      message: `DevDigest API error ${err.status}${err.apiCode ? ` ${clip(err.apiCode, 60)}` : ''}: ${clip(err.message, 200)}`,
-      next: 'Check the DevDigest API log; retry once.',
-    };
+    const message = `DevDigest API error ${err.status}${err.apiCode ? ` ${clip(err.apiCode, 60)}` : ''}: ${clip(err.message, 200)}`;
+    if (err.maybeProcessed) {
+      return {
+        error: 'api_error',
+        message: `${message} The request may have been processed.`,
+        next: 'Call get_findings(repo, pr) first (it also reports a review that is still running); retry run_agent_on_pr only if nothing is there.',
+      };
+    }
+    return { error: 'api_error', message, next: 'Check the DevDigest API log; retry once.' };
   }
   return {
     error: 'api_error',
