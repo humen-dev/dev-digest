@@ -29,7 +29,9 @@ function listSourceFiles(dir: string): string[] {
 // up to the nearest `from`. `[^'"]` matches newlines too, so multi-line named
 // import lists are handled without a dotAll flag.
 // Re-exports (`export ... from`) create the same dependency as an import.
-const IMPORT_RE = /(?:import|export)\s+(type\s+)?(?:[^'"]*?)from\s+['"]([^'"]+)['"]/g;
+// Anchored to a statement start (`m` flag) and never crossing a `;`, so a match
+// cannot begin at an earlier `export type X = ...;` and borrow its `type`.
+const IMPORT_RE = /^\s*(?:import|export)\s+(type\s+)?(?:[^'";]*?)from\s+['"]([^'"]+)['"]/gm;
 // Dynamic `import('...')` and side-effect `import '...'` have no `from`.
 const DYNAMIC_OR_BARE_RE = /\bimport\s*(?:\(\s*)?['"]([^'"]+)['"]/g;
 
@@ -111,9 +113,9 @@ describe('architecture — import rules (U7)', () => {
     }
   });
 
-  it('new HttpDevDigestApi( appears only in index.ts', () => {
+  it('new HttpDevDigestApi( appears only in index.ts (and the adapter\'s own withSignal copy)', () => {
     for (const [key, src] of SOURCES) {
-      if (key === 'index') continue;
+      if (key === 'index' || key === 'api/http-client') continue;
       expect(src.includes('new HttpDevDigestApi('), `${key} must not construct HttpDevDigestApi`).toBe(false);
     }
   });
@@ -176,5 +178,10 @@ describe('architecture — import rules (U7)', () => {
       "export * from './a.js';\nexport { x } from './b.js';\nawait import('./c.js');\nimport './d.js';",
     ).map((i) => i.specifier);
     expect(found).toEqual(expect.arrayContaining(['./a.js', './b.js', './c.js', './d.js']));
+  });
+
+  it('the scanner does not mark a value import as type-only because of an earlier type statement', () => {
+    const imports = extractImports("export type A = string;\nimport { x } from '@devdigest/shared';");
+    expect(imports.find((i) => i.specifier === '@devdigest/shared')).toEqual({ specifier: '@devdigest/shared', typeOnly: false });
   });
 });

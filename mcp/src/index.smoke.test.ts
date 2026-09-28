@@ -2,6 +2,7 @@
 // process, with the DevDigest API unreachable (a closed port), and talks to it
 // over stdio via the SDK client. Verifies T6 (no startup I/O; starts with the
 // API down) and T10 (stdout carries only JSON-RPC).
+import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,9 +16,21 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 const LAUNCHER = path.join(REPO_ROOT, 'mcp', 'bin', 'devdigest-mcp.mjs');
 
-// A refused connection: nothing listens on port 9 (the well-known "discard"
-// port), so the API adapter always reports api_unreachable.
-const CLOSED_PORT_URL = 'http://127.0.0.1:9';
+/** A port that was free a moment ago and is now closed: bind port 0, read the
+ *  OS-assigned port, close. Unlike a fixed port (e.g. 9, "discard"), nothing can
+ *  be listening there, so the adapter gets a refused connection, not a timeout. */
+async function closedPort(): Promise<number> {
+  const server = net.createServer();
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as net.AddressInfo;
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+  return port;
+}
+
+// Tool calls hit a refused loopback connection; on Windows that is retried for
+// ~2 s, so give them headroom over vitest's default.
+const CALL_TIMEOUT_MS = 15_000;
+let CLOSED_PORT_URL = '';
 
 describe('index.smoke — real stdio launcher, API down', () => {
   let client: Client;
@@ -26,6 +39,7 @@ describe('index.smoke — real stdio launcher, API down', () => {
   const protocolErrors: Error[] = [];
 
   beforeAll(async () => {
+    CLOSED_PORT_URL = `http://127.0.0.1:${await closedPort()}`;
     transport = new StdioClientTransport({
       command: 'node',
       args: [LAUNCHER],
@@ -62,7 +76,7 @@ describe('index.smoke — real stdio launcher, API down', () => {
     expect(payload.error).toBe('api_unreachable');
     expect(payload.message).toContain(CLOSED_PORT_URL);
     expect(payload.next).toContain('./scripts/dev.sh');
-  });
+  }, CALL_TIMEOUT_MS);
 
   it('get_blast_radius is not_implemented and makes no API call', async () => {
     const result = await client.callTool({ name: 'get_blast_radius', arguments: { repo: 'a/b', pr: 1 } });
@@ -70,7 +84,7 @@ describe('index.smoke — real stdio launcher, API down', () => {
     const content = result.content as { type: string; text: string }[];
     const payload = JSON.parse(content[0]!.text) as { error: string; next: string };
     expect(payload.error).toBe('not_implemented');
-  });
+  }, CALL_TIMEOUT_MS);
 
   it('the server process stays alive after the calls above (it started with the API down)', async () => {
     // A further round-trip proves the process is still responsive.

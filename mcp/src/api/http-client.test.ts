@@ -92,6 +92,23 @@ describe('HttpDevDigestApi', () => {
     await expect(api.listRepos()).rejects.toMatchObject({ name: 'ApiUnreachableError', timedOut: true });
   });
 
+  it('withSignal aborts an in-flight request when the tool call is cancelled', async () => {
+    const fetchStub = vi.fn(
+      (_url: URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+        }),
+    );
+    const controller = new AbortController();
+    const api = new HttpDevDigestApi(config(), fetchStub as unknown as typeof fetch).withSignal(controller.signal);
+
+    const pending = api.listPulls('r1');
+    controller.abort();
+
+    // Rejected with the abort itself, not mapped to a (timed-out) ApiUnreachableError.
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
   it('marks a refused connection as not timed out', async () => {
     const fetchStub = vi.fn(async () => {
       throw new TypeError('fetch failed');

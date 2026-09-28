@@ -13,5 +13,8 @@ export interface DevDigestApi {
   listActiveRuns(prId: string): Promise<ApiActiveRun[]>; //                  GET  /pulls/:id/runs/active
   listReviews(prId: string): Promise<ApiReview[]>; //                        GET  /pulls/:id/reviews
   getConventions(repoId: string): Promise<ApiConventionBoard>; //            GET  /repos/:id/conventions
+  /** Optional: a view whose requests also abort when `signal` does (the tool
+   *  call was cancelled). Adapters without it just ignore cancellation. */
+  withSignal?(signal: AbortSignal): DevDigestApi;
 }
 // Every method throws ApiUnreachableError or ApiError (src/errors.ts) and nothing else.

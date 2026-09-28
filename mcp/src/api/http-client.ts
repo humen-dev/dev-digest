@@ -43,8 +43,14 @@ export class HttpDevDigestApi implements DevDigestApi {
     private readonly config: McpConfig,
     fetchImpl: typeof fetch = fetch,
     private readonly log: HttpLogger = noopLogger,
+    private readonly callSignal?: AbortSignal,
   ) {
     this.fetchImpl = fetchImpl;
+  }
+
+  /** Same client, but every request also aborts when the tool call is cancelled. */
+  withSignal(signal: AbortSignal): HttpDevDigestApi {
+    return new HttpDevDigestApi(this.config, this.fetchImpl, this.log, signal);
   }
 
   async listRepos(): Promise<ApiRepo[]> {
@@ -121,9 +127,13 @@ export class HttpDevDigestApi implements DevDigestApi {
           ...(opts.jsonBody !== undefined ? { 'content-type': 'application/json' } : {}),
         },
         ...(opts.jsonBody !== undefined ? { body: JSON.stringify(opts.jsonBody) } : {}),
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: this.callSignal
+          ? AbortSignal.any([this.callSignal, AbortSignal.timeout(timeoutMs)])
+          : AbortSignal.timeout(timeoutMs),
       });
     } catch (err) {
+      // The caller cancelled the tool call: not an API failure, the result is discarded.
+      if (this.callSignal?.aborted) throw err;
       if (err instanceof TypeError || isTimeoutLike(err)) {
         this.log('api_unreachable', { method, path, ms: Date.now() - start });
         throw new ApiUnreachableError(this.config.apiUrl, err, isTimeoutLike(err));

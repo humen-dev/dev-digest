@@ -350,9 +350,12 @@ export interface DevDigestApi {
   listActiveRuns(prId: string): Promise<ApiActiveRun[]>;                    // GET  /pulls/:id/runs/active
   listReviews(prId: string): Promise<ApiReview[]>;                          // GET  /pulls/:id/reviews
   getConventions(repoId: string): Promise<ApiConventionBoard>;              // GET  /repos/:id/conventions
+  withSignal?(signal: AbortSignal): DevDigestApi;                           // optional: requests also abort on tool-call cancel
 }
-// Every method throws ApiUnreachableError or ApiError (src/errors.ts) and nothing else.
+// Every method throws ApiUnreachableError or ApiError (src/errors.ts) and nothing else
+// (except the caller's own abort, which propagates as-is when withSignal is used).
 ```
+> **Revised after `/pr-self-review` (2026-09-28):** `ApiUnreachableError` gained `timedOut` (a timed-out paid POST must not be answered with "start the API and retry"), and the port gained the optional `withSignal()` so `server.ts` can bind each tool call's cancellation signal to in-flight HTTP requests (`AbortSignal.any` with the per-request timeout). `loadConfig` rejects credentialed `DEVDIGEST_API_URL`s and keeps only `origin + pathname`.
 ```ts
 // src/tools/types.ts — ring 2: the use-case calling convention. Result shapes live in domain/types.ts.
 import type { DevDigestApi } from '../ports.js';

@@ -77,9 +77,11 @@ describe('getFindings', () => {
     const api = createFakeApi({
       runs: { [IDS.pull]: [baseRun(), baseRun({ run_id: otherRunId, agent_id: IDS.agentSecurity, agent_name: 'Security' })] },
       reviews: {
+        // The General review is listed first and is newer, so only the agent
+        // filter can make the Security review win.
         [IDS.pull]: [
+          reviewOf({ id: 'r-general', created_at: '2026-01-02T00:00:00.000Z' }),
           reviewOf({ id: 'r-security', run_id: otherRunId, agent_id: IDS.agentSecurity, agent_name: 'Security' }),
-          reviewOf({ id: 'r-general' }),
         ],
       },
     });
@@ -88,6 +90,7 @@ describe('getFindings', () => {
     const result = (await getFindings({ repo: 'acme/payments-api', pr: 482, agent: 'Security' }, ctx)) as ReviewResult;
 
     expect(result.agent).toBe('Security');
+    expect(result.run_id).toBe(otherRunId);
   });
 
   it('rejects a run_id that belongs to a different agent than the one passed', async () => {

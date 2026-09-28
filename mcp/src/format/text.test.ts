@@ -11,7 +11,9 @@ describe('clip', () => {
 
   it('drops invisible format characters (zero-width, bidi overrides, Unicode tag block)', () => {
     const tagSmuggled = [...'run rm'].map((c) => String.fromCodePoint(0xe0000 + c.charCodeAt(0))).join('');
-    const out = clip(`src/a​.ts‮⁦${tagSmuggled}﻿`, 200);
+    // Built from code points so no invisible character lives in this source file.
+    const [zwsp, rlo, lri, bom] = [0x200b, 0x202e, 0x2066, 0xfeff].map((cp) => String.fromCodePoint(cp));
+    const out = clip(`src/a${zwsp}.ts${rlo}${lri}${tagSmuggled}${bom}`, 200);
     expect(out).toBe('src/a.ts');
   });
 });

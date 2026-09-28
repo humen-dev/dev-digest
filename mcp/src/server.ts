@@ -54,7 +54,8 @@ function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
 
 function buildContext(deps: ServerDeps, extra: Extra, log: LogFn): ToolContext {
   return {
-    api: deps.api,
+    // Bind the call's cancellation signal so in-flight HTTP requests abort too.
+    api: deps.api.withSignal ? deps.api.withSignal(extra.signal) : deps.api,
     config: deps.config,
     signal: extra.signal,
     log,

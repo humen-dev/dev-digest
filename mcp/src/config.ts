@@ -28,10 +28,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): McpConfig {
     throw new Error(`DEVDIGEST_API_URL is not a valid URL: ${rawUrl}`);
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error(`DEVDIGEST_API_URL must be http(s): ${rawUrl}`);
+    throw new Error(`DEVDIGEST_API_URL must be http(s): ${url.origin}`);
+  }
+  // fetch rejects credentialed URLs, and apiUrl is echoed into tool results and
+  // stderr — so never accept (or repeat) user:password here.
+  if (url.username !== '' || url.password !== '') {
+    throw new Error('DEVDIGEST_API_URL must not contain credentials (user:password@).');
   }
   return {
-    apiUrl: rawUrl.replace(/\/+$/, ''),
+    apiUrl: `${url.origin}${url.pathname}`.replace(/\/+$/, ''),
     waitMs: intFromEnv(env.DEVDIGEST_MCP_WAIT_MS, DEFAULTS.waitMs, LIMITS.waitMs),
     pollMs: intFromEnv(env.DEVDIGEST_MCP_POLL_MS, DEFAULTS.pollMs, LIMITS.pollMs),
     requestTimeoutMs: DEFAULTS.requestTimeoutMs,
