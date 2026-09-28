@@ -4,6 +4,7 @@ import React, { useCallback } from "react";
 import { Icon, Avatar, Badge, Button, Tabs } from "@devdigest/ui";
 import { RunReviewDropdown } from "../RunReviewDropdown";
 import { s } from "./styles";
+import { useStickyHeightVar } from "./hooks";
 import type { PrDetail } from "@/lib/types";
 
 interface PrDetailHeaderProps {
@@ -28,6 +29,8 @@ export function PrDetailHeader({
   onRunStart,
   onRunsStarted,
 }: PrDetailHeaderProps) {
+  // Sticky header: publish its height so content below can stick under it.
+  const headerRef = useStickyHeightVar<HTMLDivElement>();
   const handleRunStart = useCallback(() => {
     onRunStart();
   }, [onRunStart]);
@@ -44,7 +47,7 @@ export function PrDetailHeader({
         : "var(--warn)";
 
   return (
-    <div style={s.root}>
+    <div ref={headerRef} style={s.root}>
       <div style={s.titleRow}>
         <div style={s.titleCol}>
           <h1 style={s.h1}>

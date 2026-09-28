@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { PR_HEADER_HEIGHT_VAR } from "../../../PrDetailHeader";
 
 /** Chevron rotates 90deg when the group is open. */
 export function chevronFor(open: boolean): CSSProperties {
@@ -20,9 +21,10 @@ export const s = {
   // group: any overflow other than visible/clip would trap the sticky header.
   group: { marginBottom: 2 } satisfies CSSProperties,
   header: {
-    // Stays at the top of the scrolling <main> while its group's files scroll by.
+    // Sticks right under the (itself sticky) PR header while its group's
+    // files scroll by — the header publishes its height in this variable.
     position: "sticky",
-    top: 0,
+    top: `var(${PR_HEADER_HEIGHT_VAR}, 0px)`,
     zIndex: 2,
     width: "100%",
     display: "flex",
