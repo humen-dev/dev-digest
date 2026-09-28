@@ -286,9 +286,16 @@ describe('createServer — tool call wiring', () => {
         return { status: 'done' as const };
       },
     }));
+    // The SDK client consumes notifications/progress itself; one that arrives for
+    // a call that passed no progress token is reported through onerror.
+    const clientErrors: Error[] = [];
+    client.onerror = (err) => clientErrors.push(err);
+
     const result = await client.callTool({ name: 'get_findings', arguments: { repo: 'acme/payments-api', pr: 482 } });
+
     expect(threw).toBe(false);
     expect(result.isError).toBeUndefined();
+    expect(clientErrors.map((e) => e.message).join('\n')).not.toContain('progress notification');
   });
 
   it('returns exactly one text content that parses as JSON, with no structuredContent, on success', async () => {

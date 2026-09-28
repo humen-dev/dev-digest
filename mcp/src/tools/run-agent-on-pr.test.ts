@@ -162,7 +162,11 @@ describe('runAgentOnPr', () => {
     const api = createFakeApi(undefined, { failOn: { startReview: new ApiError(429, 'rate_limited', 'too many') } });
     const ctx = makeCtx(api);
 
-    await expect(runAgentOnPr(baseArgs(), ctx)).rejects.toBeInstanceOf(ApiError);
+    await expect(runAgentOnPr(baseArgs(), ctx)).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 429,
+      apiCode: 'rate_limited',
+    });
   });
 
   it('rejects a disabled agent before any startReview call', async () => {
