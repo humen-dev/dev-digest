@@ -9,7 +9,7 @@ avoid. Linked (not preloaded) from [`CLAUDE.md`](./CLAUDE.md) — read on demand
 > entry so stale ones are easy to prune.
 
 ## What Works
-_(none yet)_
+- 2026-09-28 — For the stdio smoke test, a "dead API" beats a "closed port": keep a `net.createServer((s) => s.destroy())` bound on port 0 for the whole suite and count its connections (`mcp/src/index.smoke.test.ts` `startDeadApi`). Nothing can grab the port (a closed-then-freed port is a race), the adapter still sees a failed request, and `connections()` turns "makes no API call" / "no startup I/O" into real assertions instead of test-name promises.
 
 ## What Doesn't Work
 - 2026-09-28 — `createFakeApi` (`mcp/test/fake-api.ts`) defaults `active` to `{}`, so every run is "not live" unless a test seeds `/runs/active`. After `get_findings` began requiring `/runs/active` confirmation, older negative tests ("stale run before the review", "another agent's run" → no `newer_run`) passed vacuously — the empty active list alone suppressed the flag. ALWAYS seed the run as live in a test that should prove a *different* guard, and mutation-check it (delete that guard → the test must fail), as in `mcp/src/tools/get-findings.test.ts`.
