@@ -1,5 +1,72 @@
 {
   "version": 1,
   "comment": "Accepted findings baseline — the review-side twin of server/.dependency-cruiser-known-violations.json. Key format: <rule id>|<repo-relative POSIX path>|<normalized title>. A reason is mandatory. Phase-3 (LLM) findings may NOT be accepted here: fix the routed skill or the code instead. Add entries with: node .claude/skills/pr-self-review/scripts/pr-self-review.mjs accept \"<key>\" --reason \"...\"",
-  "accepted": []
+  "accepted": [
+    {
+      "key": "DET-003|client/src/vendor/shared/adapters.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23, reviewer-core/INSIGHTS.md 2026-09-18). Intent-layer contract blocks were edited byte-identically in server/ and client/ copies (verified by architecture-reviewer, 2026-09-27; plan docs/plans/intent-layer.md §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "key": "DET-003|client/src/vendor/shared/contracts/platform.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23, reviewer-core/INSIGHTS.md 2026-09-18). Intent-layer contract blocks were edited byte-identically in server/ and client/ copies (verified by architecture-reviewer, 2026-09-27; plan docs/plans/intent-layer.md §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "key": "DET-003|client/src/vendor/shared/contracts/review-api.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23, reviewer-core/INSIGHTS.md 2026-09-18). Intent-layer contract blocks were edited byte-identically in server/ and client/ copies (verified by architecture-reviewer, 2026-09-27; plan docs/plans/intent-layer.md §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "key": "DET-003|client/src/vendor/shared/contracts/trace.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23, reviewer-core/INSIGHTS.md 2026-09-18). Intent-layer contract blocks were edited byte-identically in server/ and client/ copies (verified by architecture-reviewer, 2026-09-27; plan docs/plans/intent-layer.md §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/adapters.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23, reviewer-core/INSIGHTS.md 2026-09-18). Intent-layer contract blocks were edited byte-identically in server/ and client/ copies (verified by architecture-reviewer, 2026-09-27; plan docs/plans/intent-layer.md §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/contracts/platform.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23, reviewer-core/INSIGHTS.md 2026-09-18). Intent-layer contract blocks were edited byte-identically in server/ and client/ copies (verified by architecture-reviewer, 2026-09-27; plan docs/plans/intent-layer.md §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/contracts/review-api.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23, reviewer-core/INSIGHTS.md 2026-09-18). Intent-layer contract blocks were edited byte-identically in server/ and client/ copies (verified by architecture-reviewer, 2026-09-27; plan docs/plans/intent-layer.md §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/contracts/trace.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23, reviewer-core/INSIGHTS.md 2026-09-18). Intent-layer contract blocks were edited byte-identically in server/ and client/ copies (verified by architecture-reviewer, 2026-09-27; plan docs/plans/intent-layer.md §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "key": "DET-003|client/src/vendor/shared/contracts/brief.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23). Smart Diff widened SmartDiffRole to five roles byte-identically in the server/ and client/ brief.ts copies, as the L03 Smart Diff task requires (verified by plan-verifier U0-AC-1 and architecture-reviewer, 2026-09-27; plan docs/plans/smart-diff.md §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/contracts/brief.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23). Smart Diff widened SmartDiffRole to five roles byte-identically in the server/ and client/ brief.ts copies, as the L03 Smart Diff task requires (verified by plan-verifier U0-AC-1 and architecture-reviewer, 2026-09-27; plan docs/plans/smart-diff.md §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-09-27"
+    },
+    {
+      "key": "DET-018|.|change set is large",
+      "reason": "Deliberate: at the author's request one PR ships the whole L03 lesson — subagent pipeline, Intent Layer and Smart Diff. Each part was planned, implemented in waves and verified separately (plan-verifier + architecture-reviewer per wave; docs/plans/intent-layer.md, docs/plans/smart-diff.md).",
+      "addedBy": "mgume",
+      "addedAt": "2026-09-27"
+    }
+  ]
 }

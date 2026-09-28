@@ -1,11 +1,17 @@
 /* CodeLine — one rendered diff line: gutter number, +/- sign, text, plus the
-   hover "+" affordance, any anchored comment threads, and an inline composer. */
+   hover "+" affordance, any anchored comment threads, an inline composer, and
+   (optional) a review-findings overlay: a severity bar + label pill on the
+   row, and each finding's card slot rendered indented beneath it. */
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
+import { Icon, SEV } from "@devdigest/ui";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
 import { type Line } from "../helpers";
-import { s, lineRowFor, lineSignFor } from "../styles";
+import { worstSeverity, type DiffFindingMarker } from "../findings";
+import { LINE_LABEL_KEY } from "../constants";
+import { s, lineRowFor, findingRowFor, lineSignFor, findingPillStyle, findingCardRailStyle } from "../styles";
 import { CommentThreadView } from "../CommentThreadView";
 import { InlineComposer } from "../InlineComposer";
 
@@ -14,12 +20,18 @@ export function CodeLine({
   path,
   threads,
   commenting,
+  markers,
+  showFindingCards = true,
 }: {
   ln: Line;
   path: string;
   threads: CommentThread[];
   commenting?: DiffCommentApi;
+  markers?: DiffFindingMarker[];
+  /** false keeps the severity bar/label but hides the finding cards. */
+  showFindingCards?: boolean;
 }) {
+  const t = useTranslations("shell");
   const [hover, setHover] = React.useState(false);
   const [composing, setComposing] = React.useState(false);
 
@@ -34,6 +46,8 @@ export function CodeLine({
   const sign = ln.kind === "add" ? "+" : ln.kind === "del" ? "−" : "";
   const target = commenting?.canComment ? commentTargetFor(ln) : null;
   const showAdd = hover && !!target && !composing;
+  const worst = markers && markers.length > 0 ? worstSeverity(markers) : null;
+  const WorstIcon = worst ? Icon[SEV[worst].icon] : null;
 
   return (
     <div
@@ -41,7 +55,7 @@ export function CodeLine({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <div style={lineRowFor(ln.kind)}>
+      <div style={worst ? findingRowFor(ln.kind, SEV[worst].c) : lineRowFor(ln.kind)}>
         <span className="mono tnum" style={{ ...s.lineNo, position: "relative" }}>
           {showAdd && target && (
             <button
@@ -62,7 +76,23 @@ export function CodeLine({
         <span className="mono" style={s.lineText}>
           {ln.text || " "}
         </span>
+        {worst && WorstIcon && (
+          <span style={findingPillStyle(SEV[worst].c, SEV[worst].bg)}>
+            <WorstIcon size={11} />
+            {t(`diffViewer.lineLabel.${LINE_LABEL_KEY[worst]}`)}
+          </span>
+        )}
       </div>
+
+      {showFindingCards && markers && markers.length > 0 && (
+        <div style={cs.thread}>
+          {markers.map((m) => (
+            <div key={m.id} style={findingCardRailStyle(SEV[m.severity].c)}>
+              {m.card}
+            </div>
+          ))}
+        </div>
+      )}
 
       {commenting &&
         commenting.showComments &&

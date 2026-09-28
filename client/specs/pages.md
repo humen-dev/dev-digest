@@ -35,6 +35,25 @@ of styling. Pairs with [`./README.md`](./README.md) and the architecture in
     severity's finding cards, click again to clear.
 - Finding cards in **Review runs** carry **Accept / Dismiss** actions (persisted via
   `useFindingAction`); the list popover is preview-only.
+- **Files changed** (Smart Diff) — defaults to **Smart order**: files grouped by role
+  from `useSmartDiff` (`GET /pulls/:id/smart-diff`, see
+  [`../../server/specs/smart-diff.md`](../../server/specs/smart-diff.md)) in the order
+  core → tests → wiring → docs → boilerplate; each group header shows the role label
+  and «N files». docs and boilerplate groups start collapsed; files inside expanded
+  groups follow the `AUTO_EXPAND_MAX_LINES` rule.
+  - Findings overlay comes from `usePrReviews` (latest review per agent, dismissed
+    hidden — same rule as the server): group header «● N» = number of **files** with
+    findings; file card = a dot without a number (distinct from the GitHub comment
+    counter); under line `RIGHT:start_line` = severity bar + label (blocker / warning /
+    suggestion) and the same `FindingCard` as Agent runs with Accept / Reject.
+    Accept/Reject invalidates `["reviews", prId]`, so markers update without refetching
+    smart-diff. Findings whose line is outside the diff are listed at the card's foot.
+  - One **Show / Hide comments** toggle (visible by default, count = GitHub comments + current
+    findings) hides both GitHub comment threads and finding cards; the file dot and the line's
+    severity bar/label stay. Group headers are sticky within the scrolling page. With no
+    `kind=review` review yet, an info notice says no review has run instead of empty counters.
+  - **Original order** toggle shows the flat GitHub order. If smart-diff fails, the tab
+    falls back to Original order with the toggle disabled.
 
 ## Invariants
 - No screen fetches outside a `src/lib/hooks/*` hook.

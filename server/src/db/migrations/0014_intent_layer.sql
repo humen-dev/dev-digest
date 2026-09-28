@@ -1,0 +1,13 @@
+ALTER TABLE "pr_intent" ADD COLUMN "head_sha" text;--> statement-breakpoint
+ALTER TABLE "pr_intent" ADD COLUMN "confidence" text DEFAULT 'low' NOT NULL;--> statement-breakpoint
+ALTER TABLE "pr_intent" ADD COLUMN "missing_context" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "pr_intent" ADD COLUMN "out_of_scope_files" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "pr_intent" ADD COLUMN "sources" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "pr_intent" ADD COLUMN "provider" text;--> statement-breakpoint
+ALTER TABLE "pr_intent" ADD COLUMN "model" text;--> statement-breakpoint
+ALTER TABLE "pr_intent" ADD COLUMN "prompt_tokens_est" integer;--> statement-breakpoint
+ALTER TABLE "pr_intent" ADD COLUMN "tokens_in" integer;--> statement-breakpoint
+ALTER TABLE "pr_intent" ADD COLUMN "tokens_out" integer;--> statement-breakpoint
+ALTER TABLE "pr_intent" ADD COLUMN "api_cost_usd" double precision;--> statement-breakpoint
+ALTER TABLE "pr_intent" ADD COLUMN "created_at" timestamp with time zone DEFAULT now() NOT NULL;--> statement-breakpoint
+ALTER TABLE "pr_intent" ADD COLUMN "updated_at" timestamp with time zone DEFAULT now() NOT NULL;

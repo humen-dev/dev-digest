@@ -39,6 +39,17 @@ engine contract in
   review), `cost_usd` (sum of priced runs), and `findings` (across all review runs).
 
 ## Invariants
-- No endpoint outside the review trigger performs a model call.
+- **Only two PR-scoped endpoints perform a model call:** `POST /pulls/:id/review`
+  (this spec) and `POST /pulls/:id/intent` (see `intent-layer.md`) — the intent
+  route is a second, deliberate trigger. Every other `/pulls/*` endpoint,
+  including intent reads and review reads, never calls a model. Model calls
+  outside the PR flow (e.g. `POST /repos/:id/conventions/extract`) are governed
+  by their own specs.
 - Findings persistence and gate logic are security-critical — a finding without a
   real diff citation must not reach the DB.
+- **Review pre-work includes intent.** Before the diff is handed to
+  `reviewer-core`, the executor calls `IntentForReviewPort.ensureForReview` once
+  per run (reuses a non-stale `pr_intent` row, else classifies). Classification
+  failure never fails the run — the review proceeds without intent, flagged in
+  the Live Log and `RunTrace.intent.status = 'unavailable'`. See
+  `intent-layer.md` for the full contract.

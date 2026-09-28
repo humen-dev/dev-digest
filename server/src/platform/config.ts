@@ -26,6 +26,10 @@ const EnvSchema = z.object({
   // Note: even when on, sections only populate once the repo is indexed; an
   // unindexed repo degrades gracefully. Per-agent override: agents.repo_intel.
   REPO_INTEL_ENABLED: z.string().optional(),
+  // Intent layer: hosts whose https links in a PR body may be fetched as intent
+  // sources (comma-separated; subdomains match). Empty string ⇒ no external
+  // fetching. Every fetch still goes through the SSRF-safe UrlFetcher.
+  INTENT_LINK_ALLOWLIST: z.string().optional(),
   API_PORT: z.coerce.number().int().default(3001),
   WEB_PORT: z.coerce.number().int().default(3000),
   DEVDIGEST_CLONE_DIR: z.string().optional(),
@@ -59,7 +63,12 @@ export type AppConfig = {
    * EXACTLY like the ripgrep-only baseline.
    */
   repoIntelEnabled: boolean;
+  /** Lower-cased hostnames whose links the intent classifier may fetch (subdomains match). */
+  intentLinkAllowlist: string[];
 };
+
+const DEFAULT_INTENT_LINK_ALLOWLIST =
+  'github.com,raw.githubusercontent.com,gist.github.com,gist.githubusercontent.com';
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = EnvSchema.parse(env);
@@ -77,5 +86,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     webOrigin: `http://localhost:${parsed.WEB_PORT}`,
     embeddingsEnabled: parsed.EMBEDDINGS_ENABLED === 'true',
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
+    intentLinkAllowlist: (parsed.INTENT_LINK_ALLOWLIST ?? DEFAULT_INTENT_LINK_ALLOWLIST)
+      .split(',')
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean),
   };
 }

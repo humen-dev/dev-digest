@@ -9,4 +9,5 @@ repo-intel indexing internals, review-run execution, ADRs.
 
 ## Index
 - [`architecture.md`](./architecture.md) — DI container, plugin order, request lifecycle, adapters
+- [`smart-diff.md`](./smart-diff.md) — `modules/smart-diff/` module layout, first-match role classifier, current-findings rule
 - _(add docs here, e.g. `repo-intel.md`, `db-schema.md`)_

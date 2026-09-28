@@ -26,3 +26,4 @@ test-results/
 
 # pr-self-review gate state (signature, last report, PR body draft)
 .claude/.pr-self-review/
+.claude/.insights-state/

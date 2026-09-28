@@ -1,0 +1,1 @@
+export { IntentNotices } from "./IntentNotices";

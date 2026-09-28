@@ -1,5 +1,6 @@
 import type {
   Finding,
+  IntentForReview,
   LLMProvider,
   PromptAssembly,
   Review,
@@ -9,6 +10,8 @@ import type {
 import { Review as ReviewSchema } from '@devdigest/shared';
 import { assemblePrompt } from '../prompt.js';
 import { groundFindings, groundingSummary } from '../grounding.js';
+import { renderIntentForPrompt } from '../intent/render-for-review.js';
+import { applyScopeFilter, type ScopeFilterSummary } from '../intent/scope-filter.js';
 import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
 
 /**
@@ -71,6 +74,15 @@ export interface ReviewInput {
   /** PR author's description/body (untrusted; truncated + delimiter-wrapped in
       the prompt). Empty/undefined → section omitted. */
   prDescription?: string;
+  /**
+   * Classified PR intent (from `reviewer-core/src/intent/classify.ts` /
+   * server's `IntentService`). When present it is rendered into the prompt
+   * (`## PR intent`, untrusted-wrapped) and used, AFTER grounding, to
+   * deterministically drop non-serious out-of-scope findings and merge serious
+   * ones into one aggregate signal (`ReviewOutcome.scope`). Absent → no prompt
+   * section, no filtering (`scope.applied === false`).
+   */
+  intent?: IntentForReview;
   /** Task framing line, e.g. "Review PR #482 …". */
   task?: string;
   /** Override the structured-output retry budget. */
@@ -117,6 +129,12 @@ export interface ReviewOutcome {
   apiCostUsd: number | null;
   /** Joined raw model outputs (for the run trace). */
   raw: string;
+  /**
+   * Outcome of the deterministic out-of-scope filter (§ intent layer). Absent
+   * intent ⇒ `{ applied: false, skippedReason: 'no_intent', filteredOut: 0,
+   * aggregated: 0 }` and `review.findings` unchanged from the grounded set.
+   */
+  scope: ScopeFilterSummary;
 }
 
 function selectMode(strategy: ReviewStrategy, diff: UnifiedDiff, threshold: number): ReviewMode {
@@ -134,6 +152,10 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
   const emit = (kind: RunEventKind, msg: string, data?: unknown) =>
     input.onEvent?.({ kind, msg, data });
 
+  // Rendered once (not per chunk): the intent doesn't change across map-reduce
+  // chunks of the same diff.
+  const renderedIntent = input.intent ? renderIntentForPrompt(input.intent) : undefined;
+
   const promptParts = {
     system: input.systemPrompt,
     skills: input.skills,
@@ -142,6 +164,7 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     callers: input.callers,
     repoMap: input.repoMap,
     prDescription: input.prDescription,
+    intent: renderedIntent,
     task: input.task,
   };
 
@@ -212,11 +235,26 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
   }
   emit('result', `Citation grounding: ${grounding}`);
 
-  // Score is derived from the findings that SURVIVED grounding (not the model's
-  // self-reported number, and not the pre-grounding set) so the score, the
-  // findings list, and the deterministic event always agree.
+  // Deterministic out-of-scope filter (intent layer) — runs AFTER grounding,
+  // on grounded findings only. No intent (or low confidence, or no
+  // out-of-scope files) ⇒ no-op, identical to the pre-intent behaviour.
+  const scope = applyScopeFilter(ground.kept, input.intent);
+  for (const d of scope.dropped) {
+    emit('info', `intent scope: dropped "${d.finding.title}" (${d.reason})`);
+  }
+  if (scope.summary.aggregated > 0) {
+    emit(
+      'result',
+      `Intent scope: merged ${scope.summary.aggregated} out-of-scope finding(s) into 1 ` +
+        `(${scope.summary.filteredOut} filtered out)`,
+    );
+  }
+
+  // Score is derived from the findings that SURVIVED grounding + the scope
+  // filter (not the model's self-reported number, and not the pre-filter set)
+  // so the score, the findings list, and the deterministic events always agree.
   return {
-    review: { ...merged, findings: ground.kept, score: scoreFromFindings(ground.kept) },
+    review: { ...merged, findings: scope.kept, score: scoreFromFindings(scope.kept) },
     grounding,
     dropped: ground.dropped,
     mode,
@@ -227,5 +265,6 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     costUsd,
     apiCostUsd,
     raw: raws.join('\n---\n'),
+    scope: scope.summary,
   };
 }

@@ -1,5 +1,5 @@
 import type { Container } from '../../platform/container.js';
-import type { Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
+import type { Provider, Review, RunIntentInfo, RunTrace, UnifiedDiff } from '@devdigest/shared';
 import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
 import * as schema from '../../db/schema.js';
@@ -8,6 +8,7 @@ import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './reposit
 import { REVIEW_STRATEGY } from './constants.js';
 import { renderSkillBlocks, taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
+import type { EnsureIntentResult, IntentForReviewPort } from '../intent/ports.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -45,6 +46,7 @@ export class ReviewRunExecutor {
     private container: Container,
     private repo: ReviewRepository,
     private agents: Container['agentsRepo'],
+    private intent: IntentForReviewPort,
   ) {}
 
   /**
@@ -74,6 +76,10 @@ export class ReviewRunExecutor {
     // mark the rows failed and persist the buffered log so it survives a reload.
     const failAll = async (msg: string) => {
       for (const { runId, agent } of jobs) {
+        // Trace before status (see runOneAgent) — same ordering, same reason.
+        await this.repo
+          .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed'))
+          .catch(() => undefined);
         await this.repo
           .completeAgentRun(runId, {
             status: 'failed',
@@ -84,9 +90,6 @@ export class ReviewRunExecutor {
             grounding: '0/0 passed',
             error: msg,
           })
-          .catch(() => undefined);
-        await this.repo
-          .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed'))
           .catch(() => undefined);
         this.container.runBus.complete(runId);
       }
@@ -104,6 +107,24 @@ export class ReviewRunExecutor {
     }
     runLog.info(`Diff ready — ${diff.files.length} changed file(s); starting ${jobs.length} agent run(s)`);
 
+    // Intent derivation (once per PR, shared across every queued run): reuses a
+    // non-stale row or classifies synchronously. Never throws — a failure
+    // resolves to `unavailable` and the review runs WITHOUT intent below.
+    const intentResult = await runLog.step(
+      'Deriving PR intent',
+      () => this.intent.ensureForReview(workspaceId, pull.id, { diff, logger, progress: runLog }),
+      { kind: 'tool' },
+    );
+    const sources = intentResult.record?.sources ?? [];
+    const resolvedSources = sources.filter((s) => s.status === 'resolved').length;
+    const unresolvedSources = sources.length - resolvedSources;
+    runLog.info(
+      intentResult.status === 'unavailable'
+        ? `PR intent unavailable (${intentResult.reason ?? 'unknown_error'}) — reviewing without it`
+        : `PR intent ${intentResult.status} (${intentResult.record?.confidence ?? 'unknown'} confidence, ` +
+            `${resolvedSources} resolved / ${unresolvedSources} unresolved source(s))`,
+    );
+
     for (const { agent, runId } of jobs) {
       const agentStart = Date.now();
       logger?.info(
@@ -111,7 +132,7 @@ export class ReviewRunExecutor {
         `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
       );
       try {
-        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog);
+        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog, intentResult);
         logger?.info(
           {
             runId,
@@ -143,6 +164,7 @@ export class ReviewRunExecutor {
     agent: AgentRow,
     runId: string,
     parentLog: RunLogger,
+    intentResult: EnsureIntentResult,
   ): Promise<RunOutcome> {
     const start = Date.now();
     // Narrow the fanned-out pre-work logger to THIS run; the shared diff/intent
@@ -211,6 +233,9 @@ export class ReviewRunExecutor {
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
+        // Intent layer — omitted when derivation was `unavailable`; the review
+        // runs unfiltered/without the prompt section, identical to pre-intent.
+        ...(intentResult.intent ? { intent: intentResult.intent } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),
@@ -247,21 +272,12 @@ export class ReviewRunExecutor {
       // the timeline colors on, NOT the model's self-reported verdict.
       const blockers = countBlockers(keptFindings, agent.ciFailOn);
 
-      // ---- Observability: agent_runs + ONE run_traces document --------------
-      await this.repo.completeAgentRun(runId, {
-        status: 'done',
-        durationMs,
-        tokensIn,
-        tokensOut,
-        findingsCount: findingRows.length,
-        grounding,
-        score: outcome.review.score,
-        blockers,
-        // Real provider cost only (null for openai/anthropic or unpriced OpenRouter).
-        costUsd: outcome.apiCostUsd,
-        error: null,
-      });
-
+      // ---- Observability: ONE run_traces document, THEN agent_runs status ---
+      // Trace is saved BEFORE the run is marked 'done': the PR page treats
+      // 'done' as "the trace is ready to fetch" (GET /runs/:id/trace), so
+      // flipping the status first would let a client's poll race ahead of the
+      // trace write and 404 (the intent pre-work step measurably widens this
+      // window — see server INSIGHTS 2026-09-27).
       const trace: RunTrace = {
         config: {
           agent: agent.name,
@@ -299,9 +315,24 @@ export class ReviewRunExecutor {
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),
+        intent: this.intentTrace(intentResult, outcome.scope),
       };
-      runLog.info('Run complete; trace persisted');
       await this.repo.saveRunTrace(runId, trace);
+      runLog.info('Run complete; trace persisted');
+
+      await this.repo.completeAgentRun(runId, {
+        status: 'done',
+        durationMs,
+        tokensIn,
+        tokensOut,
+        findingsCount: findingRows.length,
+        grounding,
+        score: outcome.review.score,
+        blockers,
+        // Real provider cost only (null for openai/anthropic or unpriced OpenRouter).
+        costUsd: outcome.apiCostUsd,
+        error: null,
+      });
       this.container.runBus.complete(runId);
 
       return { review, findings: findingRows, grounding, raw: outcome.review };
@@ -312,6 +343,11 @@ export class ReviewRunExecutor {
       const status = cancelled ? 'cancelled' : 'failed';
       const msg = cancelled ? 'Cancelled by user' : (err as Error).message;
       runLog.error(cancelled ? 'Run cancelled by user' : `Run failed: ${msg}`);
+      // Same ordering as the success path: persist the trace BEFORE the
+      // terminal status, so a client polling on status never 404s the trace.
+      await this.repo
+        .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed', Date.now() - start))
+        .catch(() => undefined);
       await this.repo
         .completeAgentRun(runId, {
           status,
@@ -322,9 +358,6 @@ export class ReviewRunExecutor {
           grounding: '0/0 passed',
           error: msg,
         })
-        .catch(() => undefined);
-      await this.repo
-        .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed', Date.now() - start))
         .catch(() => undefined);
       this.container.runBus.complete(runId);
       throw err;
@@ -447,6 +480,29 @@ export class ReviewRunExecutor {
   }
 
   /**
+   * Build the per-run `trace.intent` (§3.2 `RunIntentInfo`): status/confidence/
+   * head_sha/reason come from the ONE shared `ensureForReview` call for the PR;
+   * filter_applied/filtered_out/aggregated come from THIS agent's own scope
+   * filter outcome (`reviewPullRequest`'s `ReviewOutcome.scope`) — the intent is
+   * shared, but each agent's findings (and thus what got filtered) differ.
+   * Never content — codes and counts only.
+   */
+  private intentTrace(
+    intentResult: EnsureIntentResult,
+    scope: { applied: boolean; filteredOut: number; aggregated: number },
+  ): RunIntentInfo {
+    return {
+      status: intentResult.status,
+      confidence: intentResult.record?.confidence ?? null,
+      head_sha: intentResult.record?.head_sha ?? null,
+      reason: intentResult.reason,
+      filter_applied: scope.applied,
+      filtered_out: scope.filteredOut,
+      aggregated: scope.aggregated,
+    };
+  }
+
+  /**
    * A minimal RunTrace whose `log` is the run's full SSE buffer — persisted on
    * failure/cancel (and pre-work failures) so the events (and WHY it failed)
    * survive a reload, not just the in-memory stream.
@@ -474,6 +530,7 @@ export class ReviewRunExecutor {
       memory_pulled: [],
       specs_read: [],
       log: this.container.runBus.buffer(runId).map((e) => ({ t: e.t, kind: e.kind, msg: e.msg })),
+      intent: null,
     };
   }
 }

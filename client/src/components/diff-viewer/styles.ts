@@ -64,6 +64,14 @@ export const s = {
     color: "var(--text-primary)",
     paddingRight: 12,
   } satisfies CSSProperties,
+  /** Small dot after a file's path when it has review findings — no number. */
+  findingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: "50%",
+    background: "var(--crit)",
+    flexShrink: 0,
+  } satisfies CSSProperties,
 } as const;
 
 /** Chevron rotates 90deg when the file card is open. */
@@ -89,4 +97,41 @@ export function lineSignFor(kind: Line["kind"]): CSSProperties {
     color: kind === "add" ? "var(--code-add-text)" : kind === "del" ? "var(--code-del-text)" : "var(--text-muted)",
     flexShrink: 0,
   };
+}
+
+/** Same row as `lineRowFor`, plus a severity-coloured left bar for a flagged
+    line (drawn with an inset box-shadow so it never shifts the row's width). */
+export function findingRowFor(kind: Line["kind"], color: string): CSSProperties {
+  const background = kind === "add" ? "var(--code-add)" : kind === "del" ? "var(--code-del)" : "transparent";
+  return {
+    display: "flex",
+    alignItems: "stretch",
+    fontSize: 13,
+    lineHeight: "20px",
+    background,
+    boxShadow: `inset 3px 0 0 0 ${color}`,
+  };
+}
+
+/** Right-aligned severity pill on a flagged line (icon + "blocker"/"warning"/"suggestion"). */
+export function findingPillStyle(color: string, background: string): CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    fontSize: 11,
+    fontWeight: 600,
+    padding: "2px 8px",
+    margin: "2px 12px",
+    borderRadius: 999,
+    color,
+    background,
+    flexShrink: 0,
+    whiteSpace: "nowrap",
+  };
+}
+
+/** Left border in the finding's severity colour for its card, in the rail below the line. */
+export function findingCardRailStyle(color: string): CSSProperties {
+  return { borderLeft: `3px solid ${color}`, paddingLeft: 10 };
 }

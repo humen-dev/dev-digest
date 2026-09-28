@@ -9,7 +9,8 @@ import { isIP } from 'node:net';
 import { ValidationError } from '../../platform/errors.js';
 
 export interface UrlFetcher {
-  fetch(url: string, maxBytes: number): Promise<{ filename: string; bytes: Buffer }>;
+  /** `contentType` is the final response's `content-type` header (null when absent). */
+  fetch(url: string, maxBytes: number): Promise<{ filename: string; bytes: Buffer; contentType: string | null }>;
 }
 
 const MAX_REDIRECTS = 3;
@@ -59,7 +60,10 @@ async function assertPublicHost(u: URL): Promise<void> {
 }
 
 export class HttpUrlFetcher implements UrlFetcher {
-  async fetch(rawUrl: string, maxBytes: number): Promise<{ filename: string; bytes: Buffer }> {
+  async fetch(
+    rawUrl: string,
+    maxBytes: number,
+  ): Promise<{ filename: string; bytes: Buffer; contentType: string | null }> {
     let u: URL;
     try {
       u = new URL(rawUrl);
@@ -84,7 +88,7 @@ export class HttpUrlFetcher implements UrlFetcher {
       if (declared > maxBytes) throw new ValidationError(`File is too large (${declared} > ${maxBytes} bytes).`);
       const bytes = await readCapped(res, maxBytes);
       const filename = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() ?? '') || 'skill.md';
-      return { filename, bytes };
+      return { filename, bytes, contentType: res.headers.get('content-type') };
     }
     throw new ValidationError('Too many redirects.');
   }

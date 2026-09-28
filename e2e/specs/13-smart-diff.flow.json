@@ -1,0 +1,28 @@
+{
+  "name": "Files changed groups the diff by role, overlays the seeded finding, and toggles to original order",
+  "description": "Read-only: PR #482 → Files changed tab → Smart order groups the seeded pr_files into Core logic / Wiring / Boilerplate (docs/plans/smart-diff.md classifier); the seeded CRITICAL finding on src/config.ts:12 renders inline with a 'blocker' label; expanding the collapsed Boilerplate group reveals pnpm-lock.yaml; switching to Original order falls back to the flat GitHub-order view. No model call, no mutation.",
+  "steps": [
+    { "cmd": ["open", "{BASE}/"], "label": "load the app root" },
+    { "cmd": ["wait", "--url", "/pulls"], "label": "land on the PR list" },
+    { "cmd": ["find", "text", "Add rate limiting to public API endpoints", "click"], "label": "open the PR row" },
+    { "cmd": ["wait", "--url", "/pulls/482"], "label": "navigate to the PR detail route" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "PR detail data settles" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Files changed"], "label": "switch to the Files changed tab" },
+    { "cmd": ["wait", "--url", "tab=diff"], "label": "diff tab is active in the URL" },
+    { "cmd": ["wait", "--text", "Smart order"], "label": "Smart order is the default toggle state" },
+    { "cmd": ["wait", "--text", "Core logic"], "label": "core role group renders, expanded by default" },
+    { "cmd": ["wait", "--text", "Wiring"], "label": "wiring role group renders (src/index.ts)" },
+    { "cmd": ["wait", "--text", "Boilerplate"], "label": "boilerplate role group renders, collapsed by default" },
+    { "cmd": ["wait", "--text", "blocker"], "label": "the seeded CRITICAL finding shows its severity label on the changed line" },
+    {
+      "cmd": ["wait", "--text", "Hardcoded Stripe secret key in commit"],
+      "label": "the finding card renders inline under src/config.ts:12"
+    },
+    { "cmd": ["scrollintoview", "[aria-controls=\"role-group-boilerplate\"]"], "label": "scroll the Boilerplate group header into view (clicks off-viewport are lost)" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Boilerplate"], "label": "expand the collapsed Boilerplate group" },
+    { "cmd": ["wait", "--text", "pnpm-lock.yaml"], "label": "the boilerplate file is revealed" },
+    { "cmd": ["scrollintoview", "[role=\"radiogroup\"]"], "label": "scroll the order toggle back into view" },
+    { "cmd": ["find", "role", "radio", "click", "--name", "Original order"], "label": "switch to Original order" },
+    { "cmd": ["wait", "--text", "README.md"], "label": "flat GitHub-order view shows README.md, hidden until now in the collapsed Docs group" }
+  ]
+}

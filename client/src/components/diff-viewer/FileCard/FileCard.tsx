@@ -1,5 +1,6 @@
-/* FileCard — one collapsible file in the diff: header (path, +/- stat, comment
-   count) and, when open, its parsed lines plus any outdated comments. */
+/* FileCard — one collapsible file in the diff: header (path, findings dot,
+   +/- stat, comment count) and, when open, its parsed lines, any outdated
+   comments, and review findings whose line isn't in the rendered patch. */
 "use client";
 
 import React from "react";
@@ -15,9 +16,11 @@ import {
   type CommentThread,
   type DiffCommentApi,
 } from "../comments";
+import { anchorMarkers, markersForPath, type DiffFindingOverlay } from "../findings";
 import { s, chevronFor } from "../styles";
 import { CodeLine } from "../CodeLine";
 import { OutdatedComments } from "../OutdatedComments";
+import { UnanchoredFindings } from "../UnanchoredFindings";
 
 /** Threads anchored to a given parsed line (RIGHT=new, LEFT=old). */
 function threadsForLine(ln: Line, matched: Map<string, CommentThread[]>): CommentThread[] {
@@ -30,7 +33,15 @@ function threadsForLine(ln: Line, matched: Map<string, CommentThread[]>): Commen
   return out;
 }
 
-export function FileCard({ file, commenting }: { file: PrFile; commenting?: DiffCommentApi }) {
+export function FileCard({
+  file,
+  commenting,
+  findings,
+}: {
+  file: PrFile;
+  commenting?: DiffCommentApi;
+  findings?: DiffFindingOverlay;
+}) {
   const t = useTranslations("shell");
   const [open, setOpen] = React.useState(
     (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES
@@ -52,6 +63,20 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
     ? commenting.comments.filter((c) => c.path === file.path).length
     : 0;
 
+  // Review findings for this file, anchored to a rendered RIGHT line or not.
+  const fileFindings = React.useMemo(
+    () => markersForPath(findings, file.path),
+    [findings, file.path]
+  );
+  const { byLine: findingsByLine, unanchored: unanchoredFindings } = React.useMemo(() => {
+    const rightLines = new Set<number>();
+    for (const ln of lines) {
+      if ((ln.kind === "add" || ln.kind === "ctx") && ln.newNo != null) rightLines.add(ln.newNo);
+    }
+    return anchorMarkers(fileFindings, rightLines);
+  }, [fileFindings, lines]);
+  const showFindingCards = findings?.showCards !== false;
+
   return (
     <div style={s.fileCard}>
       <div onClick={() => setOpen((o) => !o)} style={s.fileHeader}>
@@ -60,6 +85,14 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
         <span className="mono" style={s.filePath}>
           {file.path}
         </span>
+        {fileFindings.length > 0 && (
+          <span
+            role="img"
+            aria-label={t("diffViewer.hasFindings")}
+            title={t("diffViewer.hasFindings")}
+            style={s.findingDot}
+          />
+        )}
         <span className="mono tnum" style={s.fileStat}>
           <span style={s.addText}>+{file.additions}</span>{" "}
           <span style={s.delText}>−{file.deletions}</span>
@@ -85,10 +118,13 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
                 path={file.path}
                 threads={threadsForLine(ln, matched)}
                 commenting={commenting}
+                markers={ln.newNo != null ? findingsByLine.get(ln.newNo) : undefined}
+                showFindingCards={showFindingCards}
               />
             ))
           )}
           {commenting && commenting.showComments && <OutdatedComments threads={outdated} />}
+          {showFindingCards && <UnanchoredFindings markers={unanchoredFindings} />}
         </div>
       )}
     </div>

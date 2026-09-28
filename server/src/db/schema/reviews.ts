@@ -52,7 +52,33 @@ export const prIntent = pgTable('pr_intent', {
   intent: text('intent').notNull(),
   inScope: jsonb('in_scope').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   outOfScope: jsonb('out_of_scope').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  /** PR head the intent was derived from; null only for legacy rows (⇒ stale). */
+  headSha: text('head_sha'),
+  confidence: text('confidence', { enum: ['high', 'medium', 'low'] }).notNull().default('low'),
+  missingContext: jsonb('missing_context').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  outOfScopeFiles: jsonb('out_of_scope_files').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  sources: jsonb('sources').$type<IntentSourceJson[]>().notNull().default(sql`'[]'::jsonb`),
+  provider: text('provider'),
+  model: text('model'),
+  promptTokensEst: integer('prompt_tokens_est'),
+  tokensIn: integer('tokens_in'),
+  tokensOut: integer('tokens_out'),
+  /** Real provider cost only (never an estimate). */
+  apiCostUsd: doublePrecision('api_cost_usd'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+/** One intent source as stored in `pr_intent.sources` (mirrors the IntentSource contract). */
+export interface IntentSourceJson {
+  kind: 'pr_title' | 'pr_body' | 'file_list' | 'github_issue' | 'repo_doc' | 'external_link';
+  ref: string;
+  title: string | null;
+  status: 'resolved' | 'unresolved';
+  reason: string | null;
+  chars: number;
+  truncated: boolean;
+}
 
 export const prBrief = pgTable('pr_brief', {
   prId: uuid('pr_id')

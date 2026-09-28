@@ -1,14 +1,14 @@
 {
   "name": "Skill Versions tab shows a seeded skill's version history",
-  "description": "Opens the seeded uncovered-branch-gate skill through the list's preview panel, switches to its Versions tab, and confirms the v1 snapshot created at seed time renders as the current version. Exercises GET /skills/:id/versions.",
+  "description": "Opens the seeded uncovered-branch-gate skill from its card in the Skills grid, switches to its Versions tab, and confirms the v1 snapshot created at seed time renders as the current version. Exercises GET /skills/:id/versions.",
   "steps": [
     { "cmd": ["open", "{BASE}/skills"], "label": "load the skills index" },
     { "cmd": ["wait", "--load", "networkidle"], "label": "skills fetch settles" },
     { "cmd": ["wait", "--text", "uncovered-branch-gate"], "label": "seeded skill is listed in the grid" },
-    { "cmd": ["find", "text", "uncovered-branch-gate", "click"], "label": "preview uncovered-branch-gate" },
-    { "cmd": ["find", "text", "Open editor", "click"], "label": "open it from the preview panel" },
+    { "cmd": ["find", "text", "uncovered-branch-gate", "click", "--exact"], "label": "open uncovered-branch-gate from its card" },
     { "cmd": ["wait", "--url", "/skills/"], "label": "navigated to the skill detail route" },
-    { "cmd": ["find", "text", "Versions", "click"], "label": "switch to the Versions tab" },
+    { "cmd": ["wait", "--text", "The description IS the skill's interface — the agent reads it to decide when this skill applies to a review."], "label": "editor loaded on the Config tab" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Versions", "--exact"], "label": "switch to the Versions tab" },
     { "cmd": ["wait", "--url", "tab=versions"], "label": "versions tab is active in the URL" },
     { "cmd": ["wait", "--load", "networkidle"], "label": "version history fetch settles" },
     { "cmd": ["wait", "--text", "v1"], "label": "seeded v1 snapshot renders" },
