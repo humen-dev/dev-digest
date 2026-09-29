@@ -98,13 +98,16 @@ export class BlastService {
     for (let depth = 2; depth <= bfsDepth && frontier.length > 0 && reached.length < MAX_INDIRECT_FRONTIER; depth++) {
       const found = await this.deps.blast.listImporters(repoId, frontier);
       edgeQueries++;
-      edges.push(...found);
       const next: string[] = [];
       for (const e of found) {
-        if (seen.has(e.fromFile) || reached.length >= MAX_INDIRECT_FRONTIER) continue;
-        seen.add(e.fromFile);
-        next.push(e.fromFile);
-        reached.push(e.fromFile);
+        if (!seen.has(e.fromFile) && reached.length < MAX_INDIRECT_FRONTIER) {
+          seen.add(e.fromFile);
+          next.push(e.fromFile);
+          reached.push(e.fromFile);
+        }
+        // Keep only edges into files we admitted: an edge past the cap would let
+        // attribution list a file whose facts were never fetched.
+        if (seen.has(e.fromFile)) edges.push(e);
       }
       frontier = next;
     }
