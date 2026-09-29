@@ -50,4 +50,4 @@ avoid. Linked (not preloaded) from [`CLAUDE.md`](./CLAUDE.md) — read on demand
 _(none yet)_
 
 ## Open Questions
-_(none yet)_
+- 2026-09-29 — Incremental Python reindex never clears the facts of the LAST deleted `.py` file. The Python fact patch runs only when `allPyFiles.length > 0` (`server/src/modules/repo-intel/pipeline/incremental.ts:224`, `:240`). So if a commit removes every `.py` file, their old `file_facts` rows (endpoints/crons) stay behind and still show up in Blast Radius until a full reindex (`INDEXER_VERSION` bump or a fresh clone). Open: patch with an empty row set when the tree had Python files before, or delete facts for removed paths generically.

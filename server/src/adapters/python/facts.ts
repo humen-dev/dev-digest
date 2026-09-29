@@ -187,8 +187,9 @@ function readImports(outline: PyOutline): ImportFacts {
   const facts: ImportFacts = { django: new Map(), flask: false, fastapi: false };
   for (const imp of outline.imports) {
     if (imp.level > 0) continue;
-    if (imp.module === 'flask' || imp.module.startsWith('flask.')) facts.flask = true;
-    if (imp.module === 'fastapi' || imp.module.startsWith('fastapi.')) facts.fastapi = true;
+    // §3.4: "imports a module starting with flask / fastapi" — a plain prefix match.
+    if (imp.module.startsWith('flask')) facts.flask = true;
+    if (imp.module.startsWith('fastapi')) facts.fastapi = true;
     if (imp.kind === 'from' && DJANGO_MODULES.has(imp.module)) {
       for (const n of imp.names) facts.django.set(n.alias ?? n.name, n.name);
     }
@@ -421,7 +422,7 @@ function extractCrons(outline: PyOutline, locals: ReadonlySet<string>): CronsAnd
   };
 
   for (const a of outline.assignments) {
-    if (a.value && a.op !== ':' && isBeatTarget(a)) addBeat(a.value);
+    if (a.value && isBeatTarget(a)) addBeat(a.value);
     // django-crontab
     if (a.value && a.value.kind === 'seq' && a.targets.some((t) => lastSegment(t) === 'CRONJOBS')) {
       for (const item of a.value.items) {

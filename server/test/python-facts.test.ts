@@ -464,3 +464,126 @@ describe('cron and job recognisers', () => {
     expect(rowOf(rows, 't.py')?.crons).toEqual(['job:invite_member', 'job:plain']);
   });
 });
+
+// ------------------------------------------- rework: positives / negatives --
+
+describe('positive recognisers (rework)', () => {
+  it('url() imported from django.conf.urls, @require_GET and @api_view without args', () => {
+    const rows = run({
+      'u.py': lines(
+        'from django.conf.urls import url',
+        'from django.views.decorators.http import require_GET',
+        'from rest_framework.decorators import api_view',
+        '',
+        '@require_GET',
+        'def a(r): ...',
+        '',
+        '@api_view',
+        'def b(r): ...',
+        '',
+        '@api_view()',
+        'def c(r): ...',
+        '',
+        "urlpatterns = [url(r'^a/$', a), url(r'^b/$', b), url(r'^c/$', c)]",
+      ),
+    });
+    expect(rowOf(rows, 'u.py')?.endpoints).toEqual(['GET /a/', 'GET /b/', 'GET /c/']);
+  });
+
+  it('enables Flask/FastAPI on any module starting with flask/fastapi', () => {
+    const rows = run({
+      'f.py': lines('import flask_smorest', "@bp.get('/f')", 'def f(): ...'),
+      'g.py': lines('from fastapi_users import FastAPIUsers', "@app.post('/g')", 'def g(): ...'),
+    });
+    expect(rowOf(rows, 'f.py')?.endpoints).toEqual(['GET /f']);
+    expect(rowOf(rows, 'g.py')?.endpoints).toEqual(['POST /g']);
+  });
+
+  it('reads an annotated CELERY_BEAT_SCHEDULE assignment', () => {
+    const rows = run({
+      's.py': lines(
+        'CELERY_BEAT_SCHEDULE: dict = {',
+        "  'a': {'task': 'p.t.a', 'schedule': 7},",
+        '}',
+      ),
+    });
+    expect(rowOf(rows, 's.py')?.crons).toEqual(['every 7s (a)']);
+  });
+});
+
+describe('negative recognisers (rework)', () => {
+  it('DRF register on a non-Router variable and a bare-annotated beat name yield nothing', () => {
+    const rows = run(
+      {
+        'urls.py': lines(
+          'from django.urls import path',
+          'from . import views',
+          'r = make_thing()',
+          "r.register('items', views.V)",
+          'urlpatterns = r.urls',
+        ),
+        's.py': lines('CELERY_BEAT_SCHEDULE: dict'),
+      },
+      { 'urls.py|views.V': { file: 'views.py', name: 'V' } },
+    );
+    expect(rows).toEqual([]);
+  });
+
+  it('beat-dict: a dict whose target does not end in beat_schedule is ignored', () => {
+    const rows = run({
+      's.py': lines("MY_SCHEDULE = {'a': {'task': 'p.t.a', 'schedule': 5}}"),
+    });
+    expect(rows).toEqual([]);
+  });
+
+  it('update(): non-beat kwargs and a bare update() callee are ignored', () => {
+    const rows = run({
+      'c.py': lines(
+        "app.conf.update(other={'k': {'task': 'm.run', 'schedule': 5}})",
+        "update(beat_schedule={'k': {'task': 'm.run', 'schedule': 5}})",
+      ),
+    });
+    expect(rows).toEqual([]);
+  });
+
+  it('add_periodic_task without an owner, and add_job with an unsupported trigger, are ignored', () => {
+    const rows = run({
+      'c.py': lines('add_periodic_task(10, ping.s())', "sched.add_job(job, 'date')"),
+    });
+    expect(rows).toEqual([]);
+  });
+
+  it('@periodic_task without run_every and @scheduled_job without an owner or on a date trigger are ignored', () => {
+    const rows = run({
+      'j.py': lines(
+        '@periodic_task',
+        'def a(): ...',
+        '',
+        '@periodic_task(expires=5)',
+        'def b(): ...',
+        '',
+        "@scheduled_job('interval', seconds=30)",
+        'def c(): ...',
+        '',
+        "@sched.scheduled_job('date')",
+        'def d(): ...',
+      ),
+    });
+    expect(rows).toEqual([]);
+  });
+
+  it('CRONJOBS: a differently named list of tuples is ignored', () => {
+    const rows = run({
+      'settings.py': lines('OTHER = [', "    ('*/5 * * * *', 'app.cron.sync'),", ']'),
+    });
+    expect(rows).toEqual([]);
+  });
+
+  it('include composition: an unresolvable include adds no prefix to the target urlconf', () => {
+    const rows = run({
+      'root.py': lines('from django.urls import include, path', "urlpatterns = [path('api/', include('missing.urls'))]"),
+      'app/urls.py': lines('from django.urls import path', "urlpatterns = [path('y/', v)]"),
+    });
+    expect(rowOf(rows, 'app/urls.py')?.endpoints).toEqual(['ANY /y/']);
+  });
+});
