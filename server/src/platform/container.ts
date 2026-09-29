@@ -40,6 +40,10 @@ import type { IntentRepositoryPort } from '../modules/intent/ports.js';
 import { SmartDiffRepository } from '../modules/smart-diff/repository.js';
 import { SmartDiffService } from '../modules/smart-diff/service.js';
 import type { SmartDiffRepositoryPort } from '../modules/smart-diff/ports.js';
+import { BlastRepository } from '../modules/blast/repository.js';
+import { BlastService } from '../modules/blast/service.js';
+import type { BlastRepositoryPort } from '../modules/blast/ports.js';
+import { MAX_CALLERS_PER_SYMBOL } from '../modules/repo-intel/constants.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
@@ -75,6 +79,8 @@ export interface ContainerOverrides {
   intentRepo?: IntentRepositoryPort;
   /** Smart-diff persistence port — tests swap the port, not the service. */
   smartDiffRepo?: SmartDiffRepositoryPort;
+  /** Blast-radius persistence port — tests swap the port, not the service. */
+  blastRepo?: BlastRepositoryPort;
 }
 
 export class Container {
@@ -102,6 +108,7 @@ export class Container {
   private _conventionsService?: ConventionsService;
   private _intentService?: IntentService;
   private _smartDiffService?: SmartDiffService;
+  private _blastService?: BlastService;
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
@@ -204,6 +211,16 @@ export class Container {
   get smartDiffService(): SmartDiffService {
     return (this._smartDiffService ??= new SmartDiffService({
       smartDiff: this.overrides.smartDiffRepo ?? new SmartDiffRepository(this.db),
+    }));
+  }
+
+  /** Blast radius — what else a PR can affect (docs/plans/blast-radius.md). */
+  get blastService(): BlastService {
+    return (this._blastService ??= new BlastService({
+      blast: this.overrides.blastRepo ?? new BlastRepository(this.db),
+      intel: this.repoIntel,
+      repoIntelEnabled: this.config.repoIntelEnabled,
+      maxCallersPerSymbol: MAX_CALLERS_PER_SYMBOL,
     }));
   }
 
