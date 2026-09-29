@@ -82,17 +82,30 @@ export function resolveModule(
     const init = `${stem}/${INIT}`;
     if (index.files.has(init)) return init;
   }
-  // Suffix fallback: accept only an unambiguous match.
-  const tailA = `/${asPath}.py`;
-  const tailB = `/${asPath}/${INIT}`;
-  let found: string | null = null;
+  // Suffix fallback: only for multi-segment names (a single segment is a top-level
+  // import: stdlib/third-party, never resolved relative to an arbitrary subdirectory),
+  // and only when exactly one file matches.
+  if (!asPath.includes('/')) return null;
+  return suffixLookup(index).get(dotted) ?? null;
+}
+
+/** Dotted tail (>= 2 segments, strictly shorter than the full path) -> unique file, or null if ambiguous. */
+const SUFFIX_CACHE = new WeakMap<PyModuleIndex, Map<string, string | null>>();
+
+function suffixLookup(index: PyModuleIndex): Map<string, string | null> {
+  const cached = SUFFIX_CACHE.get(index);
+  if (cached) return cached;
+  const map = new Map<string, string | null>();
   for (const f of index.files) {
-    if (f.endsWith(tailA) || f.endsWith(tailB)) {
-      if (found !== null) return null;
-      found = f;
+    const stem = f.endsWith(`/${INIT}`) ? f.slice(0, -(INIT.length + 1)) : f.slice(0, -3);
+    const segs = stem.split('/');
+    for (let i = 1; i <= segs.length - 2; i++) {
+      const key = segs.slice(i).join('.');
+      map.set(key, map.has(key) ? null : f);
     }
   }
-  return found;
+  SUFFIX_CACHE.set(index, map);
+  return map;
 }
 
 function subModule(

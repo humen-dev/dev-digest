@@ -125,14 +125,25 @@ describe('python imports', () => {
     expect(src.sourceRoots).toEqual(['src', '']);
     expect(resolveModule(src, 'z.py', 0, 'pkg.a')).toBe('src/pkg/a.py');
 
-    const amb = buildModuleIndex(['a/util.py', 'b/util.py', 'c/only.py']);
-    expect(resolveModule(amb, 'z.py', 0, 'util')).toBeNull();
-    expect(resolveModule(amb, 'z.py', 0, 'only')).toBe('c/only.py'); // unique suffix fallback
+    const amb = buildModuleIndex(['a/pkg/util.py', 'b/pkg/util.py', 'c/pkg/only.py', 'c/pkg/__init__.py']);
+    expect(resolveModule(amb, 'z.py', 0, 'pkg.util')).toBeNull(); // ambiguous suffix
+    expect(resolveModule(amb, 'z.py', 0, 'pkg.only')).toBe('c/pkg/only.py'); // unique multi-segment suffix
+    expect(resolveModule(amb, 'z.py', 0, 'only')).toBeNull(); // single segment never uses the fallback
 
     const rel = buildModuleIndex(['p/q/a.py', 'p/b.py', 'p/__init__.py', 'p/q/__init__.py']);
     expect(resolveModule(rel, 'p/q/a.py', 2, 'b')).toBe('p/b.py');
     expect(resolveModule(rel, 'p/q/a.py', 2, '')).toBe('p/__init__.py');
     expect(resolveModule(rel, 'p/q/a.py', 1, 'nope')).toBeNull();
+  });
+
+  it('never maps stdlib/third-party absolute imports onto same-named local files', () => {
+    const idx = buildModuleIndex(['manage.py', 'proj/celery.py', 'app/tasks.py', 'core/logging.py', 'core/use.py']);
+    const io: PyImportsOf = (f) =>
+      f === 'app/tasks.py' ? [from('celery', ['shared_task'])] : f === 'core/use.py' ? [imp('logging')] : [];
+    const edges = buildPythonEdges(idx, io);
+    expect(edges).toEqual([]);
+    expect(resolveNameToFile(idx, 'app/tasks.py', 'shared_task', io)).toBeNull();
+    expect(resolveImport(idx, 'core/use.py', imp('logging'), io)).toEqual([]);
   });
 
   it('follows a one-hop __init__ re-export', () => {

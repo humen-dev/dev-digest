@@ -15,10 +15,21 @@
  *
  * Full-DB persistence is covered by integration.test.ts (Docker-gated).
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
+const forcePyTruncate = vi.hoisted(() => ({ value: false }));
+vi.mock('../src/adapters/python/index.js', async (orig) => {
+  const m = await orig<typeof import('../src/adapters/python/index.js')>();
+  return {
+    ...m,
+    analyzePythonProject: (...args: Parameters<typeof m.analyzePythonProject>) =>
+      forcePyTruncate.value
+        ? Promise.resolve({ edges: [], facts: [], degraded: [], truncated: true })
+        : m.analyzePythonProject(...args),
+  };
+});
 import { runFullIndex } from '../src/modules/repo-intel/pipeline/full.js';
 import { runIncremental } from '../src/modules/repo-intel/pipeline/incremental.js';
 import type { RepoIntelRepository } from '../src/modules/repo-intel/repository.js';
@@ -456,6 +467,106 @@ describe('runIncremental', () => {
       fromFile: 'app/views.py',
       toFile: 'app/util.py',
     });
+  });
+
+  it('deleted .py file: its facts are cleared even though it is no longer on disk', async () => {
+    for (const [rel, src] of Object.entries(PY_MINI)) {
+      if (rel !== 'app/urls.py') await writeFileAt(root, rel, src);
+    }
+    const stub = makeRepoStub({
+      basics: { id: 'r1', owner: 'acme', name: 'app', clonePath: root },
+      initialState: makeInitialState({ status: 'full' }),
+    });
+    const container = makeContainer({
+      currentHead: async () => 'sha-new',
+      diffNameOnly: async () => ['app/urls.py'],
+    });
+    await runIncremental(container, stub.repo, { repoId: 'r1' });
+    const patch = stub.factCalls.find((c) => c.files?.includes('app/urls.py'));
+    expect(patch).toBeDefined();
+    expect(patch!.rows.find((r) => r.filePath === 'app/urls.py')).toBeUndefined();
+  });
+
+  it('last .py file deleted: facts of the removed file are still patched (rows = [])', async () => {
+    await writeFileAt(root, 'src/a.ts', 'export const a = 1;');
+    const stub = makeRepoStub({
+      basics: { id: 'r1', owner: 'acme', name: 'app', clonePath: root },
+      initialState: makeInitialState({ status: 'full' }),
+    });
+    const container = makeContainer({
+      currentHead: async () => 'sha-new',
+      diffNameOnly: async () => ['old/gone.py'],
+    });
+    await runIncremental(container, stub.repo, { repoId: 'r1' });
+    expect(stub.factCalls).toContainEqual({ files: ['old/gone.py'], rows: [] });
+  });
+
+  it('JS-only commit does not rewrite Python facts, but keeps Python edges', async () => {
+    for (const [rel, src] of Object.entries(PY_MINI)) await writeFileAt(root, rel, src);
+    await writeFileAt(root, 'src/a.ts', 'export function go() {}\n');
+    const stub = makeRepoStub({
+      basics: { id: 'r1', owner: 'acme', name: 'app', clonePath: root },
+      initialState: makeInitialState({ status: 'full' }),
+    });
+    const container = makeContainer({
+      currentHead: async () => 'sha-new',
+      diffNameOnly: async () => ['src/a.ts'],
+    });
+    await runIncremental(container, stub.repo, { repoId: 'r1' });
+    expect(stub.factCalls.some((c) => c.files?.some((f) => f.endsWith('.py')))).toBe(false);
+    expect(stub.edgeCalls.at(-1)).toContainEqual({
+      fromFile: 'app/views.py',
+      toFile: 'app/util.py',
+    });
+  });
+
+  it('depgraph failure does not skip Python facts; edges are not replaced', async () => {
+    for (const [rel, src] of Object.entries(PY_MINI)) await writeFileAt(root, rel, src);
+    const stub = makeRepoStub({
+      basics: { id: 'r1', owner: 'acme', name: 'app', clonePath: root },
+      initialState: makeInitialState({ status: 'full' }),
+    });
+    const container = {
+      git: { currentHead: async () => 'sha-new', diffNameOnly: async () => ['app/views.py'] },
+      depgraph: {
+        buildEdges: async () => {
+          throw new Error('depgraph boom');
+        },
+      },
+      tokenizer: { count: (t: string) => Math.ceil(t.length / 4) },
+    } as unknown as Container;
+    const result = await runIncremental(container, stub.repo, { repoId: 'r1' });
+    expect(result.status).toBe('partial');
+    expect(stub.edgeCalls).toHaveLength(0);
+    const patch = stub.factCalls.find((c) => c.files?.includes('app/urls.py'));
+    expect(patch?.rows.find((r) => r.filePath === 'app/urls.py')?.endpoints).toContain(
+      'ANY /home/',
+    );
+  });
+
+  it('truncated Python pass keeps existing facts (only deleted paths cleared) and stays partial', async () => {
+    for (const [rel, src] of Object.entries(PY_MINI)) {
+      if (rel !== 'app/util.py') await writeFileAt(root, rel, src);
+    }
+    const stub = makeRepoStub({
+      basics: { id: 'r1', owner: 'acme', name: 'app', clonePath: root },
+      initialState: makeInitialState({ status: 'full' }),
+    });
+    const container = makeContainer({
+      currentHead: async () => 'sha-new',
+      diffNameOnly: async () => ['app/views.py', 'app/util.py'],
+    });
+    forcePyTruncate.value = true;
+    try {
+      const result = await runIncremental(container, stub.repo, { repoId: 'r1' });
+      expect(result.status).toBe('partial');
+    } finally {
+      forcePyTruncate.value = false;
+    }
+    // No patch may carry the (partial) rows of surviving files.
+    // (the slice patch for non-.py paths is an empty call and is ignored here)
+    const pyCalls = stub.factCalls.filter((c) => (c.files?.length ?? 0) > 0);
+    expect(pyCalls).toEqual([{ files: ['app/util.py'], rows: [] }]);
   });
 
   it('large diff (> threshold) → delegates to runFullIndex', async () => {

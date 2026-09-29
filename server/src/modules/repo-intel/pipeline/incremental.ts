@@ -217,27 +217,60 @@ export async function runIncremental(
   let pyTruncated = false;
   try {
     const allFiles = (await walkClone(repo.clonePath)).files;
-    const edges = await container.depgraph.buildEdges(repo.clonePath, allFiles);
-    edgeRows = edges.map((e) => ({ fromFile: e.from, toFile: e.to }));
     const allPyFiles = allFiles.filter(isPythonFile);
+    const changedPy = changed.filter(isPythonFile);
+
+    // JS/TS edges. A failure here must not skip the Python facts below.
+    let jsOk = true;
+    try {
+      const edges = await container.depgraph.buildEdges(repo.clonePath, allFiles);
+      edgeRows = edges.map((e) => ({ fromFile: e.from, toFile: e.to }));
+    } catch (err) {
+      jsOk = false;
+      graphFailed = asMessage(err);
+    }
+
+    // Python pass: edges are needed on every run (replaceEdges replaces the whole
+    // set), but facts are rewritten only when a .py file actually changed.
+    let pyOk = true;
     let pyFactRows: IndexerFileFactsRow[] | null = null;
     if (allPyFiles.length > 0) {
-      const py = await analyzePythonProject(repo.clonePath, allFiles, {
-        deadlineAt: startedAt + INDEX_SOFT_BUDGET_MS,
-      });
-      const seen = new Set(edgeRows.map((e) => `${e.fromFile}\u0000${e.toFile}`));
-      for (const e of py.edges) {
-        const key = `${e.from}\u0000${e.to}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        edgeRows.push({ fromFile: e.from, toFile: e.to });
+      try {
+        const py = await analyzePythonProject(repo.clonePath, allFiles, {
+          deadlineAt: startedAt + INDEX_SOFT_BUDGET_MS,
+        });
+        const seen = new Set(edgeRows.map((e) => `${e.fromFile}\u0000${e.toFile}`));
+        for (const e of py.edges) {
+          const key = `${e.from}\u0000${e.to}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          edgeRows.push({ fromFile: e.from, toFile: e.to });
+        }
+        pyTruncated = py.truncated;
+        pyFactRows = py.facts;
+      } catch (err) {
+        pyOk = false;
+        graphFailed = graphFailed ?? asMessage(err);
       }
-      pyTruncated = py.truncated;
-      pyFactRows = py.facts;
     }
+
+    // Facts patch: union of the current .py files and the changed .py paths, so a
+    // deleted/renamed file's facts are cleared. A truncated (partial) pass must not
+    // overwrite facts of the files it never reached: only clear the deleted ones.
+    if (changedPy.length > 0) {
+      const current = new Set(allPyFiles);
+      const deleted = changedPy.filter((p) => !current.has(p));
+      if (pyTruncated || !pyOk) {
+        if (deleted.length > 0) await repository.patchFileFacts(repoId, deleted, []);
+      } else {
+        const paths = [...new Set([...allPyFiles, ...changedPy])];
+        await repository.patchFileFacts(repoId, paths, pyFactRows ?? []);
+      }
+    }
+
+    if (!jsOk || !pyOk) throw new Error(graphFailed ?? 'graph_failed');
     await repository.replaceEdges(repoId, edgeRows);
     // reset: a changed decl-file can invalidate a prior resolution.
-    if (pyFactRows) await repository.patchFileFacts(repoId, allPyFiles, pyFactRows);
     await repository.resolveReferences(repoId, { reset: true });
     const rankRows = computeFileRank(allFiles, edgeRows);
     await repository.replaceFileRank(repoId, rankRows);
