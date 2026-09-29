@@ -79,6 +79,21 @@ function placeColumn(raw: RawNode[], col: number): GraphNode[] {
   return nodes;
 }
 
+type CallerFacts = { endpoints: string[]; crons: string[] };
+
+/**
+ * Resolves a caller node's endpoints/crons. Prefers per-caller `caller_facts`
+ * (keyed by the caller node id); falls back to the raw per-file facts.
+ */
+function callerFactsLookup(data: BlastRadiusResponse): (c: { id: string; file: string }) => CallerFacts | undefined {
+  if (data.caller_facts) {
+    const byCaller = new Map(data.caller_facts.map((f) => [`caller:${f.name}|${f.file}`, f]));
+    return (c) => byCaller.get(c.id);
+  }
+  const byFile = data.caller_file_facts ?? {};
+  return (c) => byFile[c.file];
+}
+
 /** Pure layout of the direct blast radius: symbols → callers → endpoints/crons. */
 export function layoutBlastGraph(data: BlastRadiusResponse): GraphLayout {
   const symbols: RawNode[] = [];
@@ -95,12 +110,12 @@ export function layoutBlastGraph(data: BlastRadiusResponse): GraphLayout {
     }
   });
 
-  // Caller → endpoint/cron edges come only from per-caller-file facts.
-  const facts = data.caller_file_facts ?? {};
+  // Caller → endpoint/cron edges: per-caller `caller_facts` when present, else per-caller-file facts.
+  const factsFor = callerFactsLookup(data);
   const endpointSet = new Set<string>();
   const cronSet = new Set<string>();
   for (const c of callers.values()) {
-    const f = facts[c.file];
+    const f = factsFor(c);
     if (!f) continue;
     for (const e of f.endpoints) {
       endpointSet.add(e);

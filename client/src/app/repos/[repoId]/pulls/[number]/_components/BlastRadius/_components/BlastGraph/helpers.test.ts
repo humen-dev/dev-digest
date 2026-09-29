@@ -52,6 +52,37 @@ describe("layoutBlastGraph", () => {
     expect(noFacts.unattributed).toBe(1);
   });
 
+  it("prefers per-caller caller_facts over the raw per-file facts", () => {
+    const layout = layoutBlastGraph(
+      data({
+        downstream: [
+          {
+            symbol: "money",
+            callers: [
+              { name: "createInvoice", file: "src/routes/invoices.ts", line: 1 },
+              { name: "previewTax", file: "src/routes/invoices.ts", line: 2 },
+            ],
+            endpoints_affected: ["POST /api/invoices", "GET /api/invoices/tax"],
+            crons_affected: [],
+          },
+        ],
+        caller_file_facts: {
+          "src/routes/invoices.ts": { endpoints: ["POST /api/invoices", "GET /api/invoices/tax"], crons: [] },
+        },
+        caller_facts: [
+          { name: "createInvoice", file: "src/routes/invoices.ts", endpoints: ["POST /api/invoices"], crons: [] },
+          { name: "previewTax", file: "src/routes/invoices.ts", endpoints: ["GET /api/invoices/tax"], crons: [] },
+        ],
+      }),
+    );
+    const factEdges = layout.edges.filter((e) => e.to.startsWith("endpoint:")).map((e) => `${e.from} -> ${e.to}`);
+    expect(factEdges.sort()).toEqual([
+      "caller:createInvoice|src/routes/invoices.ts -> endpoint:POST /api/invoices",
+      "caller:previewTax|src/routes/invoices.ts -> endpoint:GET /api/invoices/tax",
+    ]);
+    expect(layout.unattributed).toBe(0);
+  });
+
   it("collapses overflow into a more node and drops edges to hidden nodes", () => {
     const many = Array.from({ length: MAX_NODES_PER_COLUMN + 3 }, (_, i) => ({
       name: `c${i}`,
