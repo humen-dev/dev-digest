@@ -189,7 +189,13 @@ export async function runIncremental(
       }
       // .py files yield no slice facts; the project pass below owns them.
       if (parsed.endpoints.length > 0 || parsed.crons.length > 0) {
-        factsBuf.push({ filePath: relPath, endpoints: parsed.endpoints, crons: parsed.crons });
+        factsBuf.push({
+          filePath: relPath,
+          endpoints: parsed.endpoints,
+          crons: parsed.crons,
+          endpointHandlers: parsed.endpointHandlers,
+          cronHandlers: parsed.cronHandlers,
+        });
       }
       filesIndexed += 1;
     } catch (err) {

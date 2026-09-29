@@ -54,7 +54,13 @@ function makeRepoStub(opts: {
 }) {
   const symbols: unknown[] = [];
   const references: unknown[] = [];
-  type FactRow = { filePath: string; endpoints: string[]; crons: string[] };
+  type FactRow = {
+    filePath: string;
+    endpoints: string[];
+    crons: string[];
+    endpointHandlers?: Record<string, string[]>;
+    cronHandlers?: Record<string, string[]>;
+  };
   const edgeCalls: Array<Array<{ fromFile: string; toFile: string }>> = [];
   const factCalls: Array<{ files?: string[]; rows: FactRow[] }> = [];
   let state: IndexState | null = opts.initialState ?? null;
@@ -263,6 +269,35 @@ describe('runFullIndex', () => {
     const rows = stub.factCalls.at(-1)!.rows;
     const urls = rows.find((r) => r.filePath === 'app/urls.py');
     expect(urls?.endpoints).toContain('ANY /home/');
+  });
+
+  it('carries the trailing-identifier handler of TS routes and crons on the facts row', async () => {
+    await writeFileAt(
+      root,
+      'src/routes.ts',
+      [
+        `export function listOrders() { return 1; }`,
+        `router.get('/api/orders', listOrders);`,
+        `router.get('/api/inline', async (req) => req);`,
+        `cron.schedule('0 2 * * *', listOrders);`,
+        '',
+      ].join('\n'),
+    );
+    const stub = makeRepoStub({
+      basics: { id: 'r1', owner: 'acme', name: 'app', clonePath: root },
+    });
+    const container = makeContainer({
+      currentHead: async () => 'sha-h',
+      diffNameOnly: async () => [],
+    });
+
+    await runFullIndex(container, stub.repo, { repoId: 'r1' });
+
+    const row = stub.factCalls.at(-1)!.rows.find((r) => r.filePath === 'src/routes.ts');
+    expect(row?.endpoints).toEqual(['GET /api/inline', 'GET /api/orders']);
+    // The inline-arrow route stays handler-unknown (no key).
+    expect(row?.endpointHandlers).toEqual({ 'GET /api/orders': ['listOrders'] });
+    expect(row?.cronHandlers).toEqual({ '0 2 * * *': ['listOrders'] });
   });
 
   it('returns degraded when the repo has no clonePath (writes a degraded state row)', async () => {

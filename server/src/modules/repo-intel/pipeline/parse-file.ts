@@ -5,7 +5,11 @@
  * regex path unchanged.
  */
 import { parseSymbols, parseReferences, langForFile } from '../../../adapters/astgrep/index.js';
-import { extractEndpoints, extractCrons } from '../../../adapters/codeindex/extract.js';
+import {
+  extractEndpointFacts,
+  extractCronFacts,
+  foldFactHandlers,
+} from '../../../adapters/codeindex/extract.js';
 import {
   isPythonFile,
   parsePythonReferences,
@@ -25,6 +29,9 @@ export interface ParsedSourceFile {
   references: Array<{ toSymbol: string; line: number }>;
   endpoints: string[];
   crons: string[];
+  /** fact string → handler names; a fact with no key has an unknown handler. */
+  endpointHandlers: Record<string, string[]>;
+  cronHandlers: Record<string, string[]>;
 }
 
 /** True when a file is parsed by either the JS/TS or the Python path. */
@@ -39,12 +46,18 @@ export function parseSourceFile(relPath: string, source: string): ParsedSourceFi
       references: parsePythonReferences(relPath, source),
       endpoints: [],
       crons: [],
+      endpointHandlers: {},
+      cronHandlers: {},
     };
   }
+  const endpoints = foldFactHandlers(extractEndpointFacts(source));
+  const crons = foldFactHandlers(extractCronFacts(source));
   return {
     symbols: parseSymbols(relPath, source),
     references: parseReferences(relPath, source),
-    endpoints: extractEndpoints(source),
-    crons: extractCrons(source),
+    endpoints: endpoints.facts,
+    crons: crons.facts,
+    endpointHandlers: endpoints.handlers,
+    cronHandlers: crons.handlers,
   };
 }

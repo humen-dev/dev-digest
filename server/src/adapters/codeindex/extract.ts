@@ -174,41 +174,123 @@ export function extractReferences(content: string, symbol: string): ExtractedRef
   return out;
 }
 
-/**
- * Heuristic endpoint detector: HTTP route registrations in a file.
- * Catches Fastify/Express style `app.get('/path', ...)`, `router.post(...)`,
- * `app.get<...>('/path')`, and `route({ method, url })`. Returns "METHOD /path".
- */
-export function extractEndpoints(content: string): string[] {
-  const out = new Set<string>();
-  const lines = content.split('\n');
-  const verbRe =
-    /\b(?:app|router|fastify|server|api)\.(get|post|put|patch|delete|options|head)\s*(?:<[^>]*>)?\s*\(\s*(['"`])([^'"`]+)\2/i;
-  const routeObjRe = /method\s*:\s*['"`](GET|POST|PUT|PATCH|DELETE)['"`][\s\S]*?url\s*:\s*['"`]([^'"`]+)['"`]/i;
-  for (const raw of lines) {
-    const m = raw.match(verbRe);
-    if (m) out.add(`${m[1]!.toUpperCase()} ${m[3]}`);
-    const r = raw.match(routeObjRe);
-    if (r) out.add(`${r[1]!.toUpperCase()} ${r[2]}`);
-  }
-  return [...out];
+/** One detected registration: the fact string plus the trailing plain-identifier handler, if any. */
+export interface ExtractedFact {
+  fact: string;
+  handler: string | null;
+}
+
+// Never a handler: JS keywords and literals that can end an argument list.
+const NON_HANDLERS = new Set(['true', 'false', 'null', 'undefined', 'this']);
+const TRAILING_HANDLER_RE = /,\s*([A-Za-z_$][\w$]*)\s*\)\s*;?\s*$/;
+const HANDLER_PROP_RE = /\bhandler\s*:\s*([A-Za-z_$][\w$]*)\s*[,}]/;
+
+function acceptHandler(name: string | undefined): string | null {
+  if (!name || KEYWORDS.has(name) || NON_HANDLERS.has(name)) return null;
+  return name;
+}
+
+/** Text of `raw` after `end`, with a trailing `// comment` stripped. */
+function tailAfter(raw: string, end: number): string {
+  return raw.slice(end).replace(/\s\/\/.*$/, '');
+}
+
+/** Handler = last argument of a call that closes on this line, when it is a plain identifier. */
+function trailingHandler(tail: string): string | null {
+  return acceptHandler(tail.match(TRAILING_HANDLER_RE)?.[1]);
 }
 
 /**
- * Heuristic cron/scheduled-job detector. Catches cron expressions in
- * `schedule('* * * * *')`, `cron.schedule(...)`, `CronJob(...)`, and
- * `jobs.register('kind')` / `enqueue(ws, 'kind')` style background work.
+ * Heuristic endpoint detector: HTTP route registrations in a file, one item per
+ * match in source order. Catches Fastify/Express style `app.get('/path', ...)`,
+ * `router.post(...)`, `app.get<...>('/path')`, and `route({ method, url })`.
+ * The fact is "METHOD /path"; the handler is captured only when it is a plain
+ * identifier closing the call on the same line (or `handler: name` in a route
+ * object) — inline arrows, member expressions and multi-line calls are `null`.
  */
-export function extractCrons(content: string): string[] {
-  const out = new Set<string>();
-  const lines = content.split('\n');
+export function extractEndpointFacts(content: string): ExtractedFact[] {
+  const out: ExtractedFact[] = [];
+  const verbRe =
+    /\b(?:app|router|fastify|server|api)\.(get|post|put|patch|delete|options|head)\s*(?:<[^>]*>)?\s*\(\s*(['"`])([^'"`]+)\2/i;
+  const routeObjRe = /method\s*:\s*['"`](GET|POST|PUT|PATCH|DELETE)['"`][\s\S]*?url\s*:\s*['"`]([^'"`]+)['"`]/i;
+  for (const raw of content.split('\n')) {
+    const m = raw.match(verbRe);
+    if (m) {
+      out.push({
+        fact: `${m[1]!.toUpperCase()} ${m[3]}`,
+        handler: trailingHandler(tailAfter(raw, m.index! + m[0].length)),
+      });
+    }
+    const r = raw.match(routeObjRe);
+    if (r) {
+      out.push({
+        fact: `${r[1]!.toUpperCase()} ${r[2]}`,
+        handler: acceptHandler(tailAfter(raw, 0).match(HANDLER_PROP_RE)?.[1]),
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Heuristic cron/scheduled-job detector, one item per match in source order.
+ * Catches cron expressions in `schedule('* * * * *')`, `cron.schedule(...)`,
+ * `CronJob(...)`, and `jobs.register('kind')` / `enqueue(ws, 'kind')` style
+ * background work. Handler capture follows the same rule as endpoints.
+ */
+export function extractCronFacts(content: string): ExtractedFact[] {
+  const out: ExtractedFact[] = [];
   const cronExprRe = /\b(?:cron|schedule|CronJob)\s*[.(]?\s*\(?\s*['"`]([^'"`]*(?:\*|\d+\s+\d+)[^'"`]*)['"`]/i;
   const jobKindRe = /\b(?:register|enqueue)\s*\(\s*(?:[A-Za-z0-9_$.]+\s*,\s*)?['"`]([a-z][a-z0-9_]*)['"`]/i;
-  for (const raw of lines) {
+  for (const raw of content.split('\n')) {
     const m = raw.match(cronExprRe);
-    if (m) out.add(m[1]!.trim());
+    if (m) {
+      out.push({
+        fact: m[1]!.trim(),
+        handler: trailingHandler(tailAfter(raw, m.index! + m[0].length)),
+      });
+    }
     const j = raw.match(jobKindRe);
-    if (j && /poll|index|clone|digest|cron|sync|schedule|job/i.test(raw)) out.add(`job:${j[1]}`);
+    if (j && /poll|index|clone|digest|cron|sync|schedule|job/i.test(raw)) {
+      out.push({
+        fact: `job:${j[1]}`,
+        handler: trailingHandler(tailAfter(raw, j.index! + j[0].length)),
+      });
+    }
   }
-  return [...out];
+  return out;
+}
+
+/**
+ * Folds items into sorted unique facts + a handler map. A fact with ANY
+ * null-handler item gets no key (absent key = handler unknown).
+ */
+export function foldFactHandlers(items: readonly ExtractedFact[]): {
+  facts: string[];
+  handlers: Record<string, string[]>;
+} {
+  const byFact = new Map<string, { names: Set<string>; unknown: boolean }>();
+  for (const { fact, handler } of items) {
+    let e = byFact.get(fact);
+    if (!e) byFact.set(fact, (e = { names: new Set(), unknown: false }));
+    if (handler === null) e.unknown = true;
+    else e.names.add(handler);
+  }
+  const facts = [...byFact.keys()].sort();
+  const handlers: Record<string, string[]> = {};
+  for (const fact of facts) {
+    const e = byFact.get(fact)!;
+    if (!e.unknown && e.names.size > 0) handlers[fact] = [...e.names].sort();
+  }
+  return { facts, handlers };
+}
+
+/** Distinct "METHOD /path" endpoints in first-seen order (see `extractEndpointFacts`). */
+export function extractEndpoints(content: string): string[] {
+  return [...new Set(extractEndpointFacts(content).map((i) => i.fact))];
+}
+
+/** Distinct cron expressions / job kinds in first-seen order (see `extractCronFacts`). */
+export function extractCrons(content: string): string[] {
+  return [...new Set(extractCronFacts(content).map((i) => i.fact))];
 }

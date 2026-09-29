@@ -180,7 +180,13 @@ export async function runFullIndex(
         // Per-file facts (endpoints/crons) so blast reads from file_facts
         // instead of re-parsing the clone (T3 blast migration).
         if (parsed.endpoints.length > 0 || parsed.crons.length > 0) {
-          factsBuf.push({ filePath: relPath, endpoints: parsed.endpoints, crons: parsed.crons });
+          factsBuf.push({
+            filePath: relPath,
+            endpoints: parsed.endpoints,
+            crons: parsed.crons,
+            endpointHandlers: parsed.endpointHandlers,
+            cronHandlers: parsed.cronHandlers,
+          });
         }
         filesIndexed += 1;
       } catch (err) {

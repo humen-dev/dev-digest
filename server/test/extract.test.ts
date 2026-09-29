@@ -4,6 +4,9 @@ import {
   extractReferences,
   extractEndpoints,
   extractCrons,
+  extractEndpointFacts,
+  extractCronFacts,
+  foldFactHandlers,
 } from '../src/adapters/codeindex/extract.js';
 
 /**
@@ -98,5 +101,59 @@ jobs.register('poll_repo', handler);
     const crons = extractCrons(src);
     expect(crons.some((c) => c.includes('*/5'))).toBe(true);
     expect(crons).toContain('job:poll_repo');
+  });
+});
+
+describe('handler capture (extractEndpointFacts / extractCronFacts)', () => {
+  it('captures a trailing plain-identifier handler', () => {
+    expect(extractEndpointFacts(`router.get('/api/orders', listOrders);`)).toEqual([
+      { fact: 'GET /api/orders', handler: 'listOrders' },
+    ]);
+    expect(extractEndpointFacts(`router.post('/x', auth, createInvoice)`)).toEqual([
+      { fact: 'POST /x', handler: 'createInvoice' },
+    ]);
+    expect(extractCronFacts(`cron.schedule('0 2 * * *', runNightlyReport);`)).toEqual([
+      { fact: '0 2 * * *', handler: 'runNightlyReport' },
+    ]);
+    expect(extractCronFacts(`jobs.register('poll_repo', handler)`)).toEqual([
+      { fact: 'job:poll_repo', handler: 'handler' },
+    ]);
+    expect(
+      extractEndpointFacts(`app.route({ method: 'GET', url: '/r', handler: getR, })`),
+    ).toEqual([{ fact: 'GET /r', handler: 'getR' }]);
+  });
+
+  it('leaves the handler null for inline arrows, wrappers, members, multi-line and literals', () => {
+    for (const line of [
+      `app.get('/x', async (req) => {`,
+      `app.get('/x', wrap(h));`,
+      `app.get('/x', ctrl.list);`,
+      `app.get('/x',`,
+      `app.get('/x', undefined);`,
+    ]) {
+      expect(extractEndpointFacts(line)).toEqual([{ fact: 'GET /x', handler: null }]);
+    }
+  });
+
+  it('ignores a trailing line comment when reading the handler', () => {
+    expect(extractEndpointFacts(`app.get('/x', h); // registers h`)[0]!.handler).toBe('h');
+  });
+});
+
+describe('foldFactHandlers', () => {
+  it('drops the key when any registration has an unknown handler; merges distinct handlers', () => {
+    expect(
+      foldFactHandlers([
+        { fact: 'GET /a', handler: 'x' },
+        { fact: 'GET /a', handler: null },
+      ]),
+    ).toEqual({ facts: ['GET /a'], handlers: {} });
+    expect(
+      foldFactHandlers([
+        { fact: 'GET /b', handler: 'y' },
+        { fact: 'GET /b', handler: 'x' },
+        { fact: 'GET /a', handler: 'z' },
+      ]),
+    ).toEqual({ facts: ['GET /a', 'GET /b'], handlers: { 'GET /a': ['z'], 'GET /b': ['x', 'y'] } });
   });
 });
