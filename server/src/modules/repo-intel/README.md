@@ -61,8 +61,27 @@ results rather than throwing).
 - **Jobs**: `job:<label>` is used only for Celery `@shared_task` / `@<x>.task` on
   a module-level function.
 - Arrays are sorted with the default JS string sort.
-- Urlconf attribution over-approximates: a changed view lists every endpoint of
-  its `urls.py` (consistent with per-file attribution for TS).
+
+### Per-handler attribution (`endpoint_handlers` / `cron_handlers`)
+
+Blast radius no longer lists every endpoint of a caller's file. `file_facts` has two
+jsonb columns, `endpoint_handlers` and `cron_handlers`, shaped
+`{ "<fact string>": ["<handler>", ...] }` (default `{}`). A handler is a symbol name
+(function, class or Celery task), or `Class.method` for a DRF `@action`.
+
+- **TS/JS** captures only a trailing plain identifier on a single-line registration
+  (`router.get('/x', listOrders);`, `cron.schedule('0 2 * * *', runNightlyReport);`).
+  Inline arrows, member expressions, wrapped handlers and multi-line calls are unknown.
+- **Python** stores the resolved view, viewset or task name. The fact is recorded in the
+  registering file and in the handler's file.
+- A fact whose handler is unknown for any registration has **no key**; it stays file-level.
+- For a changed symbol `S` and a caller in file `F` the kept facts are: the unknown ones,
+  those whose handler is `S` (or `S` is its head before the first `.`), and those of the
+  handlers the caller sits in (from symbol ranges). If the caller is in no handler and
+  nothing points directly at `S`, all of `F`'s facts are kept (file-level fallback).
+- DRF viewsets are attributed at class level: any reference inside `class X` matches `X`
+  and `X.m`.
+- Rows written before `INDEXER_VERSION` 5 have `{}` and behave as file-level until reindexed.
 
 ### Exclusions and source roots
 
@@ -82,9 +101,13 @@ results rather than throwing).
   the default branch.
 - Incremental reindex patches Python facts only for `.py` files still in the
   tree, so the facts of a deleted `.py` file linger until a full reindex.
-- `INDEXER_VERSION` is **4** (Python indexing). Repos indexed at an older version
-  are only rebuilt on the **next refresh/resync** (the version check runs before
-  the "sha unchanged" exit); until then they keep 0 Python files.
+- `INDEXER_VERSION` is **5** (v4 added Python indexing, v5 per-handler attribution).
+  Repos indexed at an older version are only rebuilt on the **next refresh/resync**
+  (the version check runs before the "sha unchanged" exit); until then they keep
+  0 Python files and file-level attribution.
+- Attribution limits: indirect impact (hop >= 2) stays file-level, and a caller that is a
+  helper or module-level code falls back to all facts of its file, because there is no
+  intra-file call graph.
 
 ## Facade (`repoIntel.*`)
 

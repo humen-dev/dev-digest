@@ -28,6 +28,7 @@ if (!hasDocker) {
 
 const FIXTURE = resolve(fileURLToPath(new URL('./fixtures/django-mini', import.meta.url)));
 const CHANGED = 'apps/tools/phone.py';
+const VIEWS = 'apps/contacts/views.py';
 const CALLER_FILES = ['apps/contacts/serializers.py', 'apps/contacts/views.py', 'apps/reports/tasks.py'];
 
 const config = () =>
@@ -68,7 +69,7 @@ d('repo-intel Python blast (Testcontainers pg, django-mini)', () => {
     expect(result.status).toBe('full');
     const state = await service.getIndexState(repoId);
     expect(state.indexerVersion).toBe(INDEXER_VERSION);
-    expect(INDEXER_VERSION).toBe(4);
+    expect(INDEXER_VERSION).toBe(5);
 
     const blast = await service.getBlastRadius(repoId, [CHANGED]);
     expect(blast.degraded).toBe(false);
@@ -129,6 +130,58 @@ d('repo-intel Python blast (Testcontainers pg, django-mini)', () => {
     const indirect = (body.indirect ?? []).find((i) => i.symbol === 'normalize_phone');
     expect(indirect).toBeDefined();
     expect(indirect!.files).toContain('apps/contacts/urls.py');
+
+    const phone = body.downstream.find((g) => g.symbol === 'normalize_phone');
+    expect(phone!.endpoints_affected).toEqual([
+      'ANY /api/contacts/',
+      'ANY /api/contacts/{pk}/',
+      'GET /lookup/',
+      'POST /api/contacts/import_csv/',
+      'POST /lookup/',
+    ]);
+    expect(phone!.endpoints_affected).not.toContain('ANY /');
+    expect(phone!.crons_affected).toEqual(['0 7 * * 1 (send_weekly_report)', 'job:send_weekly_report']);
+    await app.close();
+  });
+
+  it('attributes urls.py endpoints per view when views.py changes (contact-book #29 shape)', async () => {
+    const db = pg.handle.db;
+    const [pr] = await db
+      .insert(t.pullRequests)
+      .values({
+        workspaceId,
+        repoId,
+        number: 2,
+        title: 'Touch views',
+        author: 'dev',
+        branch: 'feat/views',
+        base: 'main',
+        headSha: 'fixture-sha',
+        additions: 1,
+        deletions: 0,
+        filesCount: 1,
+        status: 'open',
+      })
+      .returning();
+    await db.insert(t.prFiles).values({ prId: pr!.id, path: VIEWS, additions: 1, deletions: 0 });
+
+    const app = await buildApp({
+      config: config(),
+      db,
+      overrides: { git: new MockGitClient({ head: 'fixture-sha' }) },
+    });
+    const res = await app.inject({ method: 'GET', url: `/pulls/${pr!.id}/blast` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as BlastRadiusResponse;
+    const eps = (symbol: string) => body.downstream.find((g) => g.symbol === symbol)?.endpoints_affected;
+
+    expect(eps('contact_list')).toEqual(['ANY /']);
+    expect(eps('contact_lookup')).toEqual(['GET /lookup/', 'POST /lookup/']);
+    expect(eps('ContactViewSet')).toEqual([
+      'ANY /api/contacts/',
+      'ANY /api/contacts/{pk}/',
+      'POST /api/contacts/import_csv/',
+    ]);
     await app.close();
   });
 });

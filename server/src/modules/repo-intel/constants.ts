@@ -61,8 +61,9 @@ export const MAX_CALLERS_PER_SYMBOL = 20;
  * no file_edges, so no decl_file, so no blast-radius callers; rebuild them.
  * v4: Python (.py) indexing — symbols/refs, import edges, Django/Flask/FastAPI/Celery facts;
  * bump forces a full reindex on the next refresh/resync.
+ * v5: per-handler endpoint/cron attribution (file_facts.endpoint_handlers/cron_handlers); bump forces a full reindex.
  */
-export const INDEXER_VERSION = 4;
+export const INDEXER_VERSION = 5;
 
 // --- [T2] Full-index limits (documented now, enforced in the pipeline) ------
 export const MAX_INDEXED_FILES = 5000;
