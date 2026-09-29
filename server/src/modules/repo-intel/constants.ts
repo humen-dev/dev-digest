@@ -10,8 +10,20 @@ export const REFRESH_JOB_KIND = 'repo-intel-refresh';
 export const RESYNC_JOB_KIND = 'repo-intel-resync';
 
 // --- Walk / parse scope -----------------------------------------------------
-/** [T1] Files we parse (diff-scoped in T1; whole walk in T2). */
+/** [T1] JS/TS files parsed by ast-grep and dependency-cruiser (not the walk scope, see INDEXED_EXT). */
 export const SUPPORTED_EXT = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'] as const;
+
+/** Python source extensions (indexed by the in-process Python scanner). */
+export const PYTHON_EXT = ['.py'] as const;
+
+/** Every extension the walk returns: JS/TS plus Python. */
+export const INDEXED_EXT = [...SUPPORTED_EXT, ...PYTHON_EXT] as const;
+
+/** Directory names whose .py files are skipped (Django migrations are generated noise). */
+export const PYTHON_EXCLUDED_DIR_SEGMENTS = ['migrations'] as const;
+
+/** A directory containing this file is a virtualenv and is not walked. */
+export const VENV_MARKER_FILE = 'pyvenv.cfg';
 
 /** [T1] Directories never walked. `.gitignore` is layered on top in T2 walk. */
 export const EXCLUDED_DIRS = [
@@ -23,6 +35,16 @@ export const EXCLUDED_DIRS = [
   'out',
   'vendor',
   '.git',
+  '__pycache__',
+  '.venv',
+  'venv',
+  '.tox',
+  '.nox',
+  'site-packages',
+  '.mypy_cache',
+  '.pytest_cache',
+  '.ruff_cache',
+  '.eggs',
 ] as const;
 
 // --- Read-time limits -------------------------------------------------------
