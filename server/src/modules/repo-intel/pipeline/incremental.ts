@@ -268,14 +268,18 @@ export async function runIncremental(
       }
     }
 
+    if (!jsOk || !pyOk) throw new Error(graphFailed ?? 'graph_failed');
     // A truncated Python pass only has edges for the files it reached: replacing the
-    // whole edge set with them would drop the rest, so keep the previous graph.
-    if (!jsOk || !pyOk || pyTruncated) throw new Error(graphFailed ?? (pyTruncated ? 'python_truncated' : 'graph_failed'));
-    await repository.replaceEdges(repoId, edgeRows);
+    // whole edge set (and the rank derived from it) would drop the rest, so keep the
+    // previous graph. References and the repo-map are still refreshed against it;
+    // `clean` below keeps the run 'partial'.
+    if (!pyTruncated) await repository.replaceEdges(repoId, edgeRows);
     // reset: a changed decl-file can invalidate a prior resolution.
     await repository.resolveReferences(repoId, { reset: true });
-    const rankRows = computeFileRank(allFiles, edgeRows);
-    await repository.replaceFileRank(repoId, rankRows);
+    if (!pyTruncated) {
+      const rankRows = computeFileRank(allFiles, edgeRows);
+      await repository.replaceFileRank(repoId, rankRows);
+    }
     // The repo-map is keyed per commit_sha → prior entries are now stale.
     const candidates = await repository.getRepoMapCandidates(repoId);
     const map = renderRepoMap(candidates, container.tokenizer, DEFAULT_REPO_MAP_TOKEN_BUDGET);
