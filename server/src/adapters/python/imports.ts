@@ -223,8 +223,14 @@ export function resolveNameToFile(
   if (h === undefined) return null;
   const imports = importsOf(fromFile);
 
-  // 1. Last `from` import binding h.
-  const binding = findFromBinding(imports, h);
+  // 1. Last `from` import binding h — unless a later `import` statement rebinds h
+  //    (Python's last binding wins, whichever statement kind it is).
+  const found = findFromBinding(imports, h);
+  const lastImportLine = imports.reduce(
+    (max, imp) => (imp.kind === 'import' && importBinds(imp, h) ? Math.max(max, imp.line) : max),
+    -1,
+  );
+  const binding = found && found.imp.line >= lastImportLine ? found : null;
   if (binding) {
     const { imp, name } = binding;
     const sub = subModule(index, fromFile, imp.level, imp.module, name);
@@ -242,20 +248,18 @@ export function resolveNameToFile(
   // 2. An `import` statement binding h.
   for (let i = imports.length - 1; i >= 0; i--) {
     const imp = imports[i]!;
-    if (imp.kind !== 'import') continue;
-    let chain: string[];
-    if (imp.alias !== null) {
-      if (imp.alias !== h) continue;
-      chain = [...imp.module.split('.'), ...segs.slice(1)];
-    } else {
-      if (imp.module.split('.')[0] !== h) continue;
-      chain = segs;
-    }
+    if (imp.kind !== 'import' || !importBinds(imp, h)) continue;
+    const chain = imp.alias !== null ? [...imp.module.split('.'), ...segs.slice(1)] : segs;
     const hit = longestPrefix(index, chain);
     if (hit) return hit;
   }
 
   return null;
+}
+
+/** Whether `import m` / `import m as a` binds the local name `h`. */
+function importBinds(imp: PyImport, h: string): boolean {
+  return imp.alias !== null ? imp.alias === h : imp.module.split('.')[0] === h;
 }
 
 export function resolveDottedString(index: PyModuleIndex, dotted: string): PyResolved | null {

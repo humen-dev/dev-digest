@@ -567,6 +567,8 @@ describe('runIncremental', () => {
     // (the slice patch for non-.py paths is an empty call and is ignored here)
     const pyCalls = stub.factCalls.filter((c) => (c.files?.length ?? 0) > 0);
     expect(pyCalls).toEqual([{ files: ['app/util.py'], rows: [] }]);
+    // Partial Python edges must not replace the stored graph.
+    expect(stub.edgeCalls).toHaveLength(0);
   });
 
   it('large diff (> threshold) → delegates to runFullIndex', async () => {

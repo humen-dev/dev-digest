@@ -158,6 +158,10 @@ describe('python imports', () => {
   it('resolves names and dotted strings to files', () => {
     // A later third-party `from` binding shadows an earlier local `import`: no false local hit.
     const shadowed: PyImportsOf = (f) => (f === 'x.py' ? [imp('apps.tools.phone'), from('django', ['apps'])] : []);
+    // Reversed order: a later `import` rebinds the name, so the local module wins.
+    const rebound: PyImportsOf = (f) =>
+      f === 'x.py' ? [from('django', ['apps'], 0, 1), imp('apps.tools.phone', null, 2)] : [];
+    expect(resolveNameToFile(index, 'x.py', 'apps.tools.phone', rebound)?.file).toBe('apps/tools/phone.py');
     expect(resolveNameToFile(index, 'x.py', 'apps.tools.phone', shadowed)).toBeNull();
     expect(resolveNameToFile(index, 'apps/contacts/urls.py', 'views.ContactViewSet', importsOf)).toEqual({
       file: 'apps/contacts/views.py',

@@ -268,7 +268,9 @@ export async function runIncremental(
       }
     }
 
-    if (!jsOk || !pyOk) throw new Error(graphFailed ?? 'graph_failed');
+    // A truncated Python pass only has edges for the files it reached: replacing the
+    // whole edge set with them would drop the rest, so keep the previous graph.
+    if (!jsOk || !pyOk || pyTruncated) throw new Error(graphFailed ?? (pyTruncated ? 'python_truncated' : 'graph_failed'));
     await repository.replaceEdges(repoId, edgeRows);
     // reset: a changed decl-file can invalidate a prior resolution.
     await repository.resolveReferences(repoId, { reset: true });
