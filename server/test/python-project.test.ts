@@ -14,6 +14,14 @@ const CONTACT_ENDPOINTS = [
   'POST /api/contacts/import_csv/',
   'POST /lookup/',
 ];
+const CONTACT_HANDLERS = {
+  'ANY /': ['contact_list'],
+  'GET /lookup/': ['contact_lookup'],
+  'POST /lookup/': ['contact_lookup'],
+  'ANY /api/contacts/': ['ContactViewSet'],
+  'ANY /api/contacts/{pk}/': ['ContactViewSet'],
+  'POST /api/contacts/import_csv/': ['ContactViewSet.import_csv'],
+};
 const TASK_CRONS = [
   '0 7 * * 1 (send_weekly_report)',
   'every 300s (cleanup)',
@@ -46,20 +54,44 @@ describe('analyzePythonProject', () => {
       'config/urls.py',
     ]);
     for (const f of ['apps/contacts/urls.py', 'apps/contacts/views.py']) {
-      expect(byFile.get(f)).toEqual({ filePath: f, endpoints: CONTACT_ENDPOINTS, crons: [] });
+      expect(byFile.get(f)).toEqual({
+        filePath: f,
+        endpoints: CONTACT_ENDPOINTS,
+        crons: [],
+        endpointHandlers: CONTACT_HANDLERS,
+        cronHandlers: {},
+      });
     }
     for (const f of ['config/urls.py', 'apps/history/views.py']) {
-      expect(byFile.get(f)).toEqual({ filePath: f, endpoints: ['GET /api/history/'], crons: [] });
+      expect(byFile.get(f)).toEqual({
+        filePath: f,
+        endpoints: ['GET /api/history/'],
+        crons: [],
+        endpointHandlers: { 'GET /api/history/': ['HistoryListView'] },
+        cronHandlers: {},
+      });
     }
     expect(byFile.get('config/settings.py')).toEqual({
       filePath: 'config/settings.py',
       endpoints: [],
       crons: ['0 7 * * 1 (send_weekly_report)', 'every 300s (cleanup)'],
+      endpointHandlers: {},
+      cronHandlers: {
+        '0 7 * * 1 (send_weekly_report)': ['send_weekly_report'],
+        'every 300s (cleanup)': ['cleanup'],
+      },
     });
     expect(byFile.get('apps/reports/tasks.py')).toEqual({
       filePath: 'apps/reports/tasks.py',
       endpoints: [],
       crons: TASK_CRONS,
+      endpointHandlers: {},
+      cronHandlers: {
+        '0 7 * * 1 (send_weekly_report)': ['send_weekly_report'],
+        'every 300s (cleanup)': ['cleanup'],
+        'job:reports.cleanup': ['cleanup'],
+        'job:send_weekly_report': ['send_weekly_report'],
+      },
     });
 
     const edges = new Set(res.edges.map((e) => `${e.from} -> ${e.to}`));

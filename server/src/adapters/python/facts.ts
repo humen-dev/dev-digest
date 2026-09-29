@@ -381,7 +381,7 @@ function extractWebFrameworks(
 
 interface CronsAndJobs {
   crons: PyFileRegistrations['crons'];
-  jobs: string[];
+  jobs: PyFileRegistrations['jobs'];
 }
 
 function beatEntries(dict: PyExpr): Array<{ key: string; task: string | null; schedule: PyExpr | undefined; line: number }> {
@@ -407,7 +407,7 @@ function isBeatTarget(a: PyAssignment): boolean {
 
 function extractCrons(outline: PyOutline, locals: ReadonlySet<string>): CronsAndJobs {
   const crons: PyFileRegistrations['crons'] = [];
-  const jobs: string[] = [];
+  const jobs: PyFileRegistrations['jobs'] = [];
 
   const addBeat = (dict: PyExpr): void => {
     for (const e of beatEntries(dict)) {
@@ -498,7 +498,7 @@ function extractCrons(outline: PyOutline, locals: ReadonlySet<string>): CronsAnd
         }
       } else if (last === 'shared_task' || (d.callee.includes('.') && last === 'task')) {
         const label = (d.call ? strValue(kwArg(d.call, 'name')) : null) ?? fn.name;
-        jobs.push(`job:${label}`);
+        jobs.push({ fact: `job:${label}`, handler: fn.name });
       }
     }
   }
@@ -515,7 +515,9 @@ export function extractPythonRegistrations(file: string, outline: PyOutline): Py
   const routers = extractRouters(outline, routerVars, locals);
   extractWebFrameworks(outline, imports, endpoints);
   const { crons, jobs } = extractCrons(outline, locals);
-  return { file, endpoints, routers, includes, crons, jobs: [...new Set(jobs)] };
+  const uniqueJobs = new Map<string, PyFileRegistrations['jobs'][number]>();
+  for (const j of jobs) uniqueJobs.set(`${j.fact}\u0000${j.handler}`, j);
+  return { file, endpoints, routers, includes, crons, jobs: [...uniqueJobs.values()] };
 }
 
 // -------------------------------------------------------------- view info --
@@ -552,6 +554,7 @@ function actionsOf(methods: readonly PyFunction[]): PyViewAction[] {
       const call = d.call;
       const verbs = call ? verbList(kwArg(call, 'methods')) : [];
       out.push({
+        name: m.name,
         urlPath: (call ? strValue(kwArg(call, 'url_path')) : null) ?? m.name,
         detail: call ? isTrue(kwArg(call, 'detail')) : false,
         methods: verbs.length > 0 ? verbs : ['GET'],
@@ -579,9 +582,40 @@ export function collectViewInfo(outline: PyOutline): Record<string, PyViewInfo> 
 
 // ------------------------------------------------------------ attribution --
 
+/** fact → handler names; `null` = poisoned (some registration of the fact had no known handler). */
+type HandlerMap = Map<string, Set<string> | null>;
+
 interface RowBuilder {
   endpoints: Set<string>;
   crons: Set<string>;
+  endpointHandlers: HandlerMap;
+  cronHandlers: HandlerMap;
+}
+
+const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+function ident(name: string | undefined): string | null {
+  return name !== undefined && IDENT_RE.test(name) ? name : null;
+}
+
+function recordHandler(map: HandlerMap, fact: string, handler: string | null): void {
+  const cur = map.get(fact);
+  if (handler === null) {
+    map.set(fact, null);
+    return;
+  }
+  if (cur === null) return;
+  if (cur) cur.add(handler);
+  else map.set(fact, new Set([handler]));
+}
+
+function handlerRecord(map: HandlerMap): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const fact of [...map.keys()].sort()) {
+    const set = map.get(fact);
+    if (set && set.size > 0) out[fact] = [...set].sort();
+  }
+  return out;
 }
 
 function includeChains(
@@ -647,16 +681,43 @@ export function attributePythonFacts(
   const rows = new Map<string, RowBuilder>();
   const rowOf = (file: string): RowBuilder => {
     let row = rows.get(file);
-    if (!row) rows.set(file, (row = { endpoints: new Set(), crons: new Set() }));
+    if (!row) {
+      rows.set(
+        file,
+        (row = { endpoints: new Set(), crons: new Set(), endpointHandlers: new Map(), cronHandlers: new Map() }),
+      );
+    }
     return row;
   };
-  const addEndpoint = (fact: string, registering: string, resolved: PyResolved | null): void => {
-    rowOf(registering).endpoints.add(fact);
-    if (resolved && resolved.file !== registering) rowOf(resolved.file).endpoints.add(fact);
+  const addEndpoint = (
+    fact: string,
+    registering: string,
+    resolved: PyResolved | null,
+    handler: string | null,
+  ): void => {
+    const reg = rowOf(registering);
+    reg.endpoints.add(fact);
+    recordHandler(reg.endpointHandlers, fact, handler);
+    if (resolved && resolved.file !== registering) {
+      const other = rowOf(resolved.file);
+      other.endpoints.add(fact);
+      recordHandler(other.endpointHandlers, fact, handler);
+    }
   };
-  const addCron = (fact: string, registering: string, resolved: PyResolved | null): void => {
-    rowOf(registering).crons.add(fact);
-    if (resolved && resolved.file !== registering) rowOf(resolved.file).crons.add(fact);
+  const addCron = (
+    fact: string,
+    registering: string,
+    resolved: PyResolved | null,
+    handler: string | null,
+  ): void => {
+    const reg = rowOf(registering);
+    reg.crons.add(fact);
+    recordHandler(reg.cronHandlers, fact, handler);
+    if (resolved && resolved.file !== registering) {
+      const other = rowOf(resolved.file);
+      other.crons.add(fact);
+      recordHandler(other.cronHandlers, fact, handler);
+    }
   };
   const viewInfoOf = (r: PyResolved | null): PyViewInfo | undefined => {
     if (!r || r.name === '') return undefined;
@@ -675,41 +736,55 @@ export function attributePythonFacts(
       const resolved = resolve(reg.file, ep.target);
       const inferred = viewInfoOf(resolved)?.methods;
       const methods = ep.method !== null ? [ep.method] : inferred && inferred.length > 0 ? inferred : ['ANY'];
+      const handler = ident(resolved?.name);
       for (const chain of variants) {
         const path = joinRoute([...chain, ep.path]);
-        for (const m of methods) addEndpoint(`${m} ${path}`, reg.file, resolved);
+        for (const m of methods) addEndpoint(`${m} ${path}`, reg.file, resolved, handler);
       }
     }
 
     for (const router of reg.routers) {
       const resolved = resolve(reg.file, router.viewset);
       const actions = viewInfoOf(resolved)?.actions ?? [];
+      const viewset = ident(resolved?.name);
       const ownPrefixes = reg.includes
         .filter((i) => i.target.kind === 'router' && i.target.routerVar === router.routerVar)
         .map((i) => i.prefix);
       for (const own of ownPrefixes.length > 0 ? ownPrefixes : ['']) {
         for (const chain of variants) {
           const base = [...chain, own, router.prefix];
-          addEndpoint(`ANY ${joinRouteDir(base)}`, reg.file, resolved);
-          addEndpoint(`ANY ${joinRouteDir([...base, '{pk}'])}`, reg.file, resolved);
+          addEndpoint(`ANY ${joinRouteDir(base)}`, reg.file, resolved, viewset);
+          addEndpoint(`ANY ${joinRouteDir([...base, '{pk}'])}`, reg.file, resolved, viewset);
           for (const action of actions) {
             const route = joinRouteDir(action.detail ? [...base, '{pk}', action.urlPath] : [...base, action.urlPath]);
-            for (const m of action.methods) addEndpoint(`${m} ${route}`, reg.file, resolved);
+            const actionHandler = viewset !== null ? `${viewset}.${action.name}` : null;
+            for (const m of action.methods) addEndpoint(`${m} ${route}`, reg.file, resolved, actionHandler);
           }
         }
       }
     }
 
     for (const cron of reg.crons) {
-      addCron(`${cron.schedule} (${cron.label})`, reg.file, resolve(reg.file, cron.target));
+      const resolved = resolve(reg.file, cron.target);
+      addCron(`${cron.schedule} (${cron.label})`, reg.file, resolved, ident(resolved?.name));
     }
-    for (const job of reg.jobs) rowOf(reg.file).crons.add(job);
+    for (const job of reg.jobs) {
+      const row = rowOf(reg.file);
+      row.crons.add(job.fact);
+      recordHandler(row.cronHandlers, job.fact, ident(job.handler));
+    }
   }
 
   const out: PyFactsRow[] = [];
   for (const [filePath, row] of rows) {
     if (row.endpoints.size === 0 && row.crons.size === 0) continue;
-    out.push({ filePath, endpoints: [...row.endpoints].sort(), crons: [...row.crons].sort() });
+    out.push({
+      filePath,
+      endpoints: [...row.endpoints].sort(),
+      crons: [...row.crons].sort(),
+      endpointHandlers: handlerRecord(row.endpointHandlers),
+      cronHandlers: handlerRecord(row.cronHandlers),
+    });
   }
   return out.sort((a, b) => (a.filePath < b.filePath ? -1 : a.filePath > b.filePath ? 1 : 0));
 }

@@ -216,11 +216,13 @@ export interface PyFileRegistrations {
   routers: PyRouterReg[];
   includes: PyIncludeReg[];
   crons: PyCronReg[];
-  /** Fully rendered `job:<label>` facts declared in this file. */
-  jobs: string[];
+  /** Fully rendered `job:<label>` facts declared in this file, with the decorated function name. */
+  jobs: Array<{ fact: string; handler: string }>;
 }
 
 export interface PyViewAction {
+  /** The method name (the handler of the action route is `<Viewset>.<name>`). */
+  name: string;
   /** `url_path=` or the method name. */
   urlPath: string;
   detail: boolean;
@@ -245,6 +247,9 @@ export interface PyFactsRow {
   endpoints: string[];
   /** Sorted, unique. */
   crons: string[];
+  /** fact → sorted unique handler names (`name` or `Class.method`); a fact with no key = handler unknown. */
+  endpointHandlers: Record<string, string[]>;
+  cronHandlers: Record<string, string[]>;
 }
 
 // ---------------------------------------------------------------- project --

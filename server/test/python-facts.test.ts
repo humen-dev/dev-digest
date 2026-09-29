@@ -167,18 +167,149 @@ describe('django-mini fixture (plan 3.5)', () => {
       'POST /lookup/',
     ];
     const settingsCrons = ['0 7 * * 1 (send_weekly_report)', 'every 300s (cleanup)'];
+    const contactHandlers = {
+      'ANY /': ['contact_list'],
+      'ANY /api/contacts/': ['ContactViewSet'],
+      'ANY /api/contacts/{pk}/': ['ContactViewSet'],
+      'GET /lookup/': ['contact_lookup'],
+      'POST /api/contacts/import_csv/': ['ContactViewSet.import_csv'],
+      'POST /lookup/': ['contact_lookup'],
+    };
+    const historyHandlers = { 'GET /api/history/': ['HistoryListView'] };
+    const settingsHandlers = {
+      '0 7 * * 1 (send_weekly_report)': ['send_weekly_report'],
+      'every 300s (cleanup)': ['cleanup'],
+    };
     expect(rows).toEqual([
-      { filePath: 'apps/contacts/urls.py', endpoints: contacts, crons: [] },
-      { filePath: 'apps/contacts/views.py', endpoints: contacts, crons: [] },
-      { filePath: 'apps/history/views.py', endpoints: ['GET /api/history/'], crons: [] },
+      {
+        filePath: 'apps/contacts/urls.py',
+        endpoints: contacts,
+        crons: [],
+        endpointHandlers: contactHandlers,
+        cronHandlers: {},
+      },
+      {
+        filePath: 'apps/contacts/views.py',
+        endpoints: contacts,
+        crons: [],
+        endpointHandlers: contactHandlers,
+        cronHandlers: {},
+      },
+      {
+        filePath: 'apps/history/views.py',
+        endpoints: ['GET /api/history/'],
+        crons: [],
+        endpointHandlers: historyHandlers,
+        cronHandlers: {},
+      },
       {
         filePath: 'apps/reports/tasks.py',
         endpoints: [],
         crons: [...settingsCrons, 'job:reports.cleanup', 'job:send_weekly_report'],
+        endpointHandlers: {},
+        cronHandlers: {
+          ...settingsHandlers,
+          'job:reports.cleanup': ['cleanup'],
+          'job:send_weekly_report': ['send_weekly_report'],
+        },
       },
-      { filePath: 'config/settings.py', endpoints: [], crons: settingsCrons },
-      { filePath: 'config/urls.py', endpoints: ['GET /api/history/'], crons: [] },
+      {
+        filePath: 'config/settings.py',
+        endpoints: [],
+        crons: settingsCrons,
+        endpointHandlers: {},
+        cronHandlers: settingsHandlers,
+      },
+      {
+        filePath: 'config/urls.py',
+        endpoints: ['GET /api/history/'],
+        crons: [],
+        endpointHandlers: historyHandlers,
+        cronHandlers: {},
+      },
     ]);
+  });
+});
+
+describe('handler capture', () => {
+  it('contact-book shape: same handler map on urls.py and views.py (viewset, action, function)', () => {
+    const rows = run(
+      {
+        'apps/contacts/urls.py': lines(
+          'from django.urls import include, path',
+          'from rest_framework.routers import DefaultRouter',
+          'from . import views',
+          'router = DefaultRouter()',
+          'router.register(r"contacts", views.ContactsViewSet)',
+          'urlpatterns = [',
+          '    path("", views.contacts),',
+          '    path("api/", include(router.urls)),',
+          ']',
+        ),
+        'apps/contacts/views.py': lines(
+          'def contacts(request): ...',
+          'class ContactsViewSet:',
+          '    @action(detail=False)',
+          '    def export(self, request): ...',
+          '    @action(detail=False, methods=["post"])',
+          '    def import_csv(self, request): ...',
+          '    @action(detail=True, methods=["post"])',
+          '    def export_to_gsheet(self, request): ...',
+        ),
+      },
+      {
+        'apps/contacts/urls.py|views.contacts': { file: 'apps/contacts/views.py', name: 'contacts' },
+        'apps/contacts/urls.py|views.ContactsViewSet': { file: 'apps/contacts/views.py', name: 'ContactsViewSet' },
+      },
+    );
+    const expected = {
+      'ANY /': ['contacts'],
+      'ANY /api/contacts/': ['ContactsViewSet'],
+      'ANY /api/contacts/{pk}/': ['ContactsViewSet'],
+      'GET /api/contacts/export/': ['ContactsViewSet.export'],
+      'POST /api/contacts/import_csv/': ['ContactsViewSet.import_csv'],
+      'POST /api/contacts/{pk}/export_to_gsheet/': ['ContactsViewSet.export_to_gsheet'],
+    };
+    expect(rowOf(rows, 'apps/contacts/urls.py')?.endpointHandlers).toEqual(expected);
+    expect(rowOf(rows, 'apps/contacts/views.py')?.endpointHandlers).toEqual(expected);
+  });
+
+  it('an unresolvable target keeps the fact but has no handler key; mixed registrations are poisoned', () => {
+    const rows = run(
+      {
+        'u.py': lines(
+          'from django.urls import path',
+          'from thirdparty import views',
+          'urlpatterns = [',
+          '    path("x/", views.ext),',
+          '    path("y/", local_view),',
+          '    path("y/", views.ext2),',
+          ']',
+          'def local_view(request): ...',
+        ),
+      },
+      { 'u.py|local_view': { file: 'u.py', name: 'local_view' } },
+    );
+    const row = rowOf(rows, 'u.py');
+    expect(row?.endpoints).toEqual(['ANY /x/', 'ANY /y/']);
+    expect(row?.endpointHandlers).toEqual({});
+  });
+
+  it('flask/fastapi decorators and job tasks use the decorated function name', () => {
+    const rows = run({
+      'a.py': lines(
+        'from flask import Flask',
+        'from celery import shared_task',
+        'app = Flask(__name__)',
+        '@app.get("/h")',
+        'def health(): ...',
+        '@shared_task(name="pkg.nightly")',
+        'def nightly(): ...',
+      ),
+    });
+    const row = rowOf(rows, 'a.py');
+    expect(row?.endpointHandlers).toEqual({ 'GET /h': ['health'] });
+    expect(row?.cronHandlers).toEqual({ 'job:pkg.nightly': ['nightly'] });
   });
 });
 
