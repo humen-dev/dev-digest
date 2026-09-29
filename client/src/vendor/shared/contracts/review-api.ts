@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Finding, Verdict } from './findings.js';
-import { Intent, SmartDiff } from './brief.js';
+import { BlastRadius, Intent, SmartDiff } from './brief.js';
 
 /**
  * A2 — Review-Core API surface contracts. These extend the core
@@ -142,3 +142,33 @@ export type IntentForReview = z.infer<typeof IntentForReview>;
 /** Smart-diff response for a PR (the SmartDiff). */
 export const SmartDiffResponse = SmartDiff;
 export type SmartDiffResponse = z.infer<typeof SmartDiffResponse>;
+
+/** Why a blast-radius answer is incomplete (mirrors repo-intel `DegradedReason`). */
+export const BlastDegradedReason = z.enum([
+  'flag_off',
+  'index_failed',
+  'index_partial',
+  'repo_too_large',
+  'no_data',
+]);
+export type BlastDegradedReason = z.infer<typeof BlastDegradedReason>;
+
+/** Precomputed counts so every consumer shows the same numbers. */
+export const BlastStats = z.object({
+  symbols: z.number().int().nonnegative(),
+  callers: z.number().int().nonnegative(),
+  endpoints: z.number().int().nonnegative(),
+  crons: z.number().int().nonnegative(),
+});
+export type BlastStats = z.infer<typeof BlastStats>;
+
+/** GET /pulls/:id/blast — the BlastRadius map plus index health. Read-only, never calls a model. */
+export const BlastRadiusResponse = BlastRadius.extend({
+  stats: BlastStats,
+  /** Endpoints reached by the change that could not be attributed to one symbol (fallback path). */
+  unattributed_endpoints: z.array(z.string()),
+  degraded: z.boolean(),
+  /** null exactly when degraded === false. */
+  reason: BlastDegradedReason.nullable(),
+});
+export type BlastRadiusResponse = z.infer<typeof BlastRadiusResponse>;

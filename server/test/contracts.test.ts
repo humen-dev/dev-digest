@@ -3,6 +3,7 @@ import {
   Review,
   Finding,
   Intent,
+  BlastRadiusResponse,
   BlastRadius,
   Risks,
   PrHistory,
@@ -173,6 +174,29 @@ describe('AI contracts parse fixtures', () => {
       log: [{ t: '00.00', kind: 'info', msg: 'started' }],
     });
     expect(trace.tool_calls).toHaveLength(1);
+  });
+
+  it('BlastRadiusResponse accepts healthy and degraded answers, rejects unknown reasons', () => {
+    const healthy = {
+      changed_symbols: [{ name: 'rateLimit', file: 'src/middleware/ratelimit.ts', kind: 'function' }],
+      downstream: [
+        {
+          symbol: 'rateLimit',
+          callers: [{ name: 'publicRouter', file: 'src/api/public/index.ts', line: 23 }],
+          endpoints_affected: ['GET /api/public/items'],
+          crons_affected: ['reset-rate-buckets'],
+        },
+      ],
+      summary: '1 symbol · 1 caller · 1 endpoint · 1 cron job',
+      stats: { symbols: 1, callers: 1, endpoints: 1, crons: 1 },
+      unattributed_endpoints: [],
+      degraded: false,
+      reason: null,
+    };
+    expect(BlastRadiusResponse.parse(healthy).reason).toBeNull();
+    const degraded = { ...healthy, downstream: [], degraded: true, reason: 'no_data' };
+    expect(BlastRadiusResponse.parse(degraded).reason).toBe('no_data');
+    expect(BlastRadiusResponse.safeParse({ ...healthy, reason: 'bogus' }).success).toBe(false);
   });
 });
 
