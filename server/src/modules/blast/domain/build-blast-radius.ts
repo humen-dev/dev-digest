@@ -1,6 +1,7 @@
 import type { BlastRadiusResponse } from '@devdigest/shared';
 import type { BlastCallerRow, BlastResult } from '../../repo-intel/types.js';
 import type { BuildBlastOptions } from '../types.js';
+import { attributeFacts } from './handler-attribution.js';
 import { formatBlastSummary } from './summary.js';
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -25,7 +26,16 @@ export function buildBlastRadius(source: BlastResult, opts: BuildBlastOptions): 
   }
 
   const facts = source.factsByFile;
+  const callerFacts = new Map<string, { name: string; file: string; endpoints: Set<string>; crons: Set<string> }>();
+  const reachable = new Set<string>();
+  const withCallers = new Set<string>();
   const built = [...groups.entries()].map(([symbol, rows]) => {
+    for (const r of rows) {
+      const fx = facts?.[r.file];
+      if (!fx) continue;
+      withCallers.add(r.file);
+      for (const e of attributeFacts(fx.endpoints, fx.endpointHandlers, symbol, r)) reachable.add(e);
+    }
     const seen = new Set<string>();
     const kept: BlastCallerRow[] = [];
     for (const r of [...rows].sort(byRankThenPlace)) {
@@ -35,12 +45,20 @@ export function buildBlastRadius(source: BlastResult, opts: BuildBlastOptions): 
       kept.push(r);
       if (kept.length >= opts.maxCallersPerSymbol) break;
     }
-    const files = new Set(kept.map((r) => r.file));
     const endpoints: string[] = [];
     const crons: string[] = [];
-    for (const f of files) {
-      endpoints.push(...(facts?.[f]?.endpoints ?? []));
-      crons.push(...(facts?.[f]?.crons ?? []));
+    for (const r of kept) {
+      const fx = facts?.[r.file];
+      if (!fx) continue;
+      const eps = attributeFacts(fx.endpoints, fx.endpointHandlers, symbol, r);
+      const crs = attributeFacts(fx.crons, fx.cronHandlers, symbol, r);
+      endpoints.push(...eps);
+      crons.push(...crs);
+      const key = `${r.file}\u0000${r.symbol}`;
+      const entry = callerFacts.get(key) ?? { name: r.symbol, file: r.file, endpoints: new Set<string>(), crons: new Set<string>() };
+      for (const e of eps) entry.endpoints.add(e);
+      for (const c of crs) entry.crons.add(c);
+      callerFacts.set(key, entry);
     }
     return {
       topRank: kept[0]?.rank ?? 0,
@@ -62,7 +80,14 @@ export function buildBlastRadius(source: BlastResult, opts: BuildBlastOptions): 
   const downstream = built.filter((g) => g.impact.callers.length > 0).map((g) => g.impact);
 
   const attributed = new Set(downstream.flatMap((d) => d.endpoints_affected));
-  const unattributed = sortedUnique(source.impactedEndpoints).filter((e) => !attributed.has(e));
+  // Refuted: handler attribution ruled E out for every caller row of every file that holds it. Files whose
+  // rows were cut by the caller cap are not in `withCallers`, so their endpoints stay unattributed.
+  const refuted = (e: string): boolean => {
+    if (!facts || reachable.has(e)) return false;
+    const holders = Object.entries(facts).filter(([, fx]) => fx.endpoints.includes(e));
+    return holders.length > 0 && holders.every(([f]) => withCallers.has(f));
+  };
+  const unattributed = sortedUnique(source.impactedEndpoints).filter((e) => !attributed.has(e) && !refuted(e));
 
   const stats = {
     symbols: source.changedSymbols.length,
@@ -78,6 +103,12 @@ export function buildBlastRadius(source: BlastResult, opts: BuildBlastOptions): 
     if (fx) callerFileFacts[f] = { endpoints: [...fx.endpoints], crons: [...fx.crons] };
   }
 
+  const callerFactsOut = facts
+    ? [...callerFacts.values()]
+        .sort((a, b) => cmp(a.file, b.file) || cmp(a.name, b.name))
+        .map((c) => ({ name: c.name, file: c.file, endpoints: sortedUnique(c.endpoints), crons: sortedUnique(c.crons) }))
+    : undefined;
+
   return {
     changed_symbols: source.changedSymbols.map((s) => ({ name: s.name, file: s.file, kind: s.kind })),
     downstream,
@@ -90,5 +121,6 @@ export function buildBlastRadius(source: BlastResult, opts: BuildBlastOptions): 
     indirect: [],
     indirect_stats: { files: 0, endpoints: 0, crons: 0 },
     caller_file_facts: callerFileFacts,
+    ...(callerFactsOut ? { caller_facts: callerFactsOut } : {}),
   };
 }
