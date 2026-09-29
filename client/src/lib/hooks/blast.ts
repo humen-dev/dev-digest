@@ -17,6 +17,19 @@ export interface UseBlastRadiusOptions {
   pollUntil?: number;
 }
 
+/** refetchInterval rule: poll every `pollMs` only while the answer is degraded
+ *  and `pollUntil` (epoch ms) has not passed; otherwise stop. Pure, for tests. */
+export function blastPollInterval(
+  degraded: boolean | undefined,
+  pollMs: number | false,
+  pollUntil: number | undefined,
+  now: number,
+): number | false {
+  if (pollMs === false || !degraded) return false;
+  if (pollUntil !== undefined && now >= pollUntil) return false;
+  return pollMs;
+}
+
 /** Changed symbols, callers, affected endpoints/crons and index health for a PR. */
 export function useBlastRadius(prId: string | null | undefined, opts?: UseBlastRadiusOptions) {
   const pollMs = opts?.pollMs ?? false;
@@ -25,10 +38,6 @@ export function useBlastRadius(prId: string | null | undefined, opts?: UseBlastR
     queryKey: blastKey(prId ?? ""),
     queryFn: () => api.get<BlastRadiusResponse>(`/pulls/${prId}/blast`),
     enabled: !!prId,
-    refetchInterval: (query) => {
-      if (pollMs === false || !query.state.data?.degraded) return false;
-      if (pollUntil !== undefined && Date.now() >= pollUntil) return false;
-      return pollMs;
-    },
+    refetchInterval: (query) => blastPollInterval(query.state.data?.degraded, pollMs, pollUntil, Date.now()),
   });
 }

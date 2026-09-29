@@ -34,6 +34,31 @@ describe('formatBlastRadius', () => {
     expect(formatBlastRadius(base(), O).truncated).toBeUndefined();
   });
 
+  it('bounds downstream, per-symbol lists and other endpoints, naming every cut', () => {
+    const n = <T,>(k: number, f: (i: number) => T): T[] => Array.from({ length: k }, (_, i) => f(i));
+    const r = formatBlastRadius(base({
+      downstream: [
+        {
+          symbol: 'hot',
+          callers: n(25, (i) => `c${i}`).map((name, i) => ({ name, file: 'f.ts', line: i + 1 })),
+          endpoints_affected: n(21, (i) => `GET /e${i}`),
+          crons_affected: n(22, (i) => `cron${i}`),
+        },
+        ...n(55, (i) => ({ symbol: `s${i}`, callers: [], endpoints_affected: [], crons_affected: [] })),
+      ],
+      unattributed_endpoints: n(51, (i) => `GET /o${i}`),
+    }), O);
+    expect(r.downstream).toHaveLength(50);
+    expect(r.downstream[0]).toMatchObject({ callers: expect.any(Array), endpoints: expect.any(Array) });
+    expect(r.downstream[0]!.callers).toHaveLength(20);
+    expect(r.downstream[0]!.endpoints).toHaveLength(20);
+    expect(r.downstream[0]!.crons).toHaveLength(20);
+    expect(r.other_endpoints).toHaveLength(50);
+    for (const cut of ['50 of 56 symbols', '20 of 25 callers of hot', '20 of 21 endpoints of hot', '20 of 22 cron jobs of hot', '50 of 51 other endpoints']) {
+      expect(r.truncated).toContain(cut);
+    }
+  });
+
   it('other_endpoints only when non-empty; note when there are no callers', () => {
     expect(formatBlastRadius(base(), O)).not.toHaveProperty('other_endpoints');
     expect(formatBlastRadius(base(), O).note).toContain('No downstream callers');

@@ -48,7 +48,9 @@ export function BlastRadius({ prId, repoId, repoFullName, headSha }: BlastRadius
     );
   }
 
-  if (isError || !data) {
+  // A failed background refetch keeps the last good map on screen; the error
+  // card only replaces the content when there is nothing to show.
+  if (!data) {
     return (
       <Card>
         <ErrorState
@@ -101,7 +103,7 @@ export function BlastRadius({ prId, repoId, repoFullName, headSha }: BlastRadius
         <div style={s.rows}>
           {data.downstream.map((group, i) => (
             <SymbolRow
-              key={group.symbol}
+              key={`${group.symbol}-${i}`}
               group={group}
               defaultExpanded={i < DEFAULT_EXPANDED_ROWS}
               repoFullName={repoFullName}
@@ -114,7 +116,7 @@ export function BlastRadius({ prId, repoId, repoFullName, headSha }: BlastRadius
       {data.unattributed_endpoints.length > 0 && (
         <div style={s.other}>
           <div style={s.otherLabel}>{t("otherEndpoints")}</div>
-          <div style={s.chips} role="list" aria-label={t("endpointsLabel")}>
+          <div style={s.chips} role="list" aria-label={t("otherEndpoints")}>
             {data.unattributed_endpoints.map((e) => (
               <span key={e} role="listitem" className="mono" style={s.endpointChip}>
                 {e}
