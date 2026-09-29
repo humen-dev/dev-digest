@@ -57,11 +57,14 @@ function renderCard() {
 }
 
 describe("BlastRadius", () => {
-  it("shows stats, caller deep links and separate endpoint/cron chips, and collapses a symbol", () => {
+  it("shows stats, caller deep links and separate endpoint/cron chips, and collapses/expands a symbol", () => {
     renderCard();
 
     expect(screen.getByText("Blast radius")).toBeInTheDocument();
     expect(screen.getByText("cron/jobs")).toBeInTheDocument();
+    expect(screen.getByText("cron/jobs").closest("div")).toHaveTextContent(
+      "1 symbols·2 callers·1 endpoints·1 cron/jobs",
+    );
     expect(screen.getByText("2 callers")).toBeInTheDocument();
 
     const link = screen.getByRole("link", { name: /renderRow/ });
@@ -74,6 +77,9 @@ describe("BlastRadius", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /formatCost/ }));
     expect(screen.queryByRole("link", { name: /renderRow/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /formatCost/ }));
+    expect(screen.getByRole("link", { name: /renderRow/ })).toBeInTheDocument();
   });
 
   it("shows the no-callers text without rows", () => {

@@ -182,9 +182,10 @@ export interface BlastDeps {
 ```ts
 // client/src/lib/hooks/blast.ts
 export const blastKey = (prId: string) => ["blast", prId] as const;
-export function useBlastRadius(prId: string | null | undefined, opts?: { pollMs?: number | false }):
+export function useBlastRadius(prId: string | null | undefined, opts?: { pollMs?: number | false; pollUntil?: number }):
   UseQueryResult<BlastRadiusResponse>;   // GET /pulls/:id/blast, enabled: !!prId
 ```
+**Amendment (2026-09-29, after Wave 1):** `pollUntil` (epoch ms) was added during U2 and accepted by the orchestrator. The hook polls only while the answer is `degraded` and stops at `pollUntil`. The container sets `pollUntil = Date.now() + BLAST_RESYNC_POLL_MS * BLAST_RESYNC_POLL_MAX` in the resync mutation's `onSuccess`, not in an effect. This replaces the "count refetches" bound in U2 step 4 with an equivalent time bound.
 
 ### 3.5 MCP (U3)
 ```ts
