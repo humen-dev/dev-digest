@@ -17,6 +17,7 @@ import { and, asc, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import { clampIndexedName } from '../../db/schema/context.js';
+import { parseFactHandlers } from './mappers.js';
 import type { DegradedReason, FactHandlers, FileRankRow, IndexState, IndexStatus } from './types.js';
 
 /** Chunk size for batched inserts — same value blast already uses. */
@@ -380,6 +381,8 @@ export class RepoIntelRepository {
       filePath: r.filePath,
       endpoints: r.endpoints,
       crons: r.crons,
+      endpointHandlers: r.endpointHandlers ?? {},
+      cronHandlers: r.cronHandlers ?? {},
     }));
     for (let i = 0; i < values.length; i += INSERT_CHUNK_SIZE) {
       await this.db.insert(t.fileFacts).values(values.slice(i, i + INSERT_CHUNK_SIZE));
@@ -541,14 +544,22 @@ export class RepoIntelRepository {
         filePath: t.fileFacts.filePath,
         endpoints: t.fileFacts.endpoints,
         crons: t.fileFacts.crons,
+        endpointHandlers: t.fileFacts.endpointHandlers,
+        cronHandlers: t.fileFacts.cronHandlers,
       })
       .from(t.fileFacts)
       .where(and(eq(t.fileFacts.repoId, repoId), inArray(t.fileFacts.filePath, files)));
-    return rows.map((r) => ({
-      filePath: r.filePath,
-      endpoints: (r.endpoints as string[]) ?? [],
-      crons: (r.crons as string[]) ?? [],
-    }));
+    return rows.map((r) => {
+      const endpoints = (r.endpoints as string[]) ?? [];
+      const crons = (r.crons as string[]) ?? [];
+      return {
+        filePath: r.filePath,
+        endpoints,
+        crons,
+        endpointHandlers: parseFactHandlers(r.endpointHandlers, endpoints),
+        cronHandlers: parseFactHandlers(r.cronHandlers, crons),
+      };
+    });
   }
 
   /** Repo-map cache read by PK. */
@@ -613,6 +624,8 @@ export class RepoIntelRepository {
       filePath: r.filePath,
       endpoints: r.endpoints,
       crons: r.crons,
+      endpointHandlers: r.endpointHandlers ?? {},
+      cronHandlers: r.cronHandlers ?? {},
     }));
     for (let i = 0; i < values.length; i += INSERT_CHUNK_SIZE) {
       await this.db.insert(t.fileFacts).values(values.slice(i, i + INSERT_CHUNK_SIZE));
