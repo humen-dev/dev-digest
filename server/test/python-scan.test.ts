@@ -212,6 +212,20 @@ describe('scanPython imports', () => {
     expect(o.imports.filter((i) => i.kind === 'from')).toHaveLength(3);
     expect(o.imports[2]).toMatchObject({ kind: 'from', level: 1, module: '', names: [{ name: 'views', alias: null }] });
   });
+
+  it('records router.register with the viewset name and the three path() calls of the fixture urls.py', () => {
+    const o = scanPython(URLS);
+    const register = o.calls.find((c) => c.callee === 'router.register');
+    expect(register).toBeDefined();
+    expect(register!.args[1]).toMatchObject({ keyword: null, value: { kind: 'name', dotted: 'views.ContactViewSet' } });
+    const paths = o.calls.filter((c) => c.callee === 'path');
+    expect(paths).toHaveLength(3);
+    expect(paths.map((c) => c.args[1]?.value)).toEqual([
+      expect.objectContaining({ kind: 'name', dotted: 'views.contact_list' }),
+      expect.objectContaining({ kind: 'name', dotted: 'views.contact_lookup' }),
+      expect.objectContaining({ kind: 'call' }),
+    ]);
+  });
 });
 
 describe('scanPython defs, classes, decorators', () => {

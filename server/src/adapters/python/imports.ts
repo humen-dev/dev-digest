@@ -221,6 +221,9 @@ export function resolveNameToFile(
     }
     const m = resolveModule(index, fromFile, imp.level, imp.module);
     if (m) return { file: followReexport(index, m, name, importsOf), name };
+    // The last binding of h is an unresolvable (third-party) `from` import: it
+    // shadows any earlier `import h`, so never fall through to a local file.
+    return null;
   }
 
   // 2. An `import` statement binding h.
