@@ -1,0 +1,51 @@
+import type { CSSProperties } from "react";
+
+export const s = {
+  header: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    flexWrap: "wrap",
+    marginBottom: 12,
+  } satisfies CSSProperties,
+  label: {
+    fontSize: 11.5,
+    fontWeight: 700,
+    letterSpacing: "0.05em",
+    textTransform: "uppercase",
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
+  stats: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    fontSize: 13.5,
+    color: "var(--text-secondary)",
+    marginLeft: "auto",
+  } satisfies CSSProperties,
+  statNum: { color: "var(--text-primary)", fontWeight: 700 } satisfies CSSProperties,
+  sep: { color: "var(--text-muted)" } satisfies CSSProperties,
+  rows: { display: "flex", flexDirection: "column", gap: 8 } satisfies CSSProperties,
+  empty: { fontSize: 13.5, color: "var(--text-secondary)", margin: 0 } satisfies CSSProperties,
+  other: { marginTop: 14 } satisfies CSSProperties,
+  otherLabel: {
+    fontSize: 11.5,
+    fontWeight: 700,
+    letterSpacing: "0.05em",
+    textTransform: "uppercase",
+    color: "var(--text-muted)",
+    marginBottom: 8,
+  } satisfies CSSProperties,
+  chips: { display: "flex", flexWrap: "wrap", gap: 6 } satisfies CSSProperties,
+  endpointChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "2px 8px",
+    borderRadius: 6,
+    fontSize: 12,
+    background: "var(--accent-bg)",
+    color: "var(--accent-text)",
+  } satisfies CSSProperties,
+  loadingStack: { display: "flex", flexDirection: "column", gap: 10 } satisfies CSSProperties,
+} as const;
