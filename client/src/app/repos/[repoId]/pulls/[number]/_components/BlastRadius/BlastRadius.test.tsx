@@ -35,6 +35,13 @@ const resyncMutate = vi.fn();
 vi.mock("@/lib/hooks/blast", () => ({
   useBlastRadius: () => ({ ...state, refetch }),
 }));
+vi.mock("@/lib/hooks/pr-history", () => ({
+  usePrHistory: () => ({
+    data: { history: [], available: true, reason: null, files_considered: 0, files_total: 0 },
+    isLoading: false,
+    refetch: vi.fn(),
+  }),
+}));
 vi.mock("@/lib/hooks/repo-intel", () => ({
   useResyncRepoIntel: () => ({ mutate: resyncMutate, isPending: false, isSuccess: false }),
 }));
@@ -61,6 +68,7 @@ describe("BlastRadius", () => {
     renderCard();
 
     expect(screen.getByText("Blast radius")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Prior PRs touching these files/ })).toBeInTheDocument();
     expect(screen.getByText("cron").parentElement?.parentElement).toHaveTextContent(
       "1symbol2callers1endpoint1cronTreeGraph",
     );

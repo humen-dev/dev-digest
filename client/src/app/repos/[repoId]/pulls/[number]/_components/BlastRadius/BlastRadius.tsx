@@ -14,6 +14,7 @@ import { SymbolRow } from "./_components/SymbolRow";
 import { StatRow } from "./_components/StatRow";
 import { BlastGraph } from "./_components/BlastGraph";
 import { DegradedNotice } from "./_components/DegradedNotice";
+import { PriorPrs } from "./_components/PriorPrs";
 import {
   BLAST_RESYNC_POLL_MAX,
   BLAST_RESYNC_POLL_MS,
@@ -131,7 +132,7 @@ export function BlastRadius({ prId, repoId, repoFullName, headSha }: BlastRadius
           {t("limits", { max: data.limits.max_callers_per_symbol, depth: data.limits.bfs_depth })}
         </p>
       )}
-      {/* U4 mounts <PriorPrs /> here. */}
+      <PriorPrs prId={prId} repoFullName={repoFullName} />
     </Card>
   );
 }
