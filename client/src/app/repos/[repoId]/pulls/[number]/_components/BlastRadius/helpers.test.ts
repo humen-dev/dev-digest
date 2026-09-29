@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { callerHref, isKnownReason } from "./helpers";
+import type { BlastRadiusResponse } from "@devdigest/shared";
+import { callerHref, indirectBySymbol, isKnownReason } from "./helpers";
+
+describe("indirectBySymbol", () => {
+  it("keys indirect impact by symbol and tolerates a missing field", () => {
+    const base = { downstream: [] } as unknown as BlastRadiusResponse;
+    expect(indirectBySymbol(base).size).toBe(0);
+    const impact = { symbol: "a", files: ["f.ts"], endpoints: ["GET /x"], crons: [] };
+    expect(indirectBySymbol({ ...base, indirect: [impact] }).get("a")).toBe(impact);
+  });
+});
 
 describe("callerHref", () => {
   it("pins the link to the head sha and line, or returns null without repo/sha", () => {

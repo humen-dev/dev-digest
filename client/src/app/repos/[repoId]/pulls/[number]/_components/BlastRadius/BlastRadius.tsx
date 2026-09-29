@@ -11,8 +11,17 @@ import { ApiError } from "@/lib/api";
 import { useBlastRadius } from "@/lib/hooks/blast";
 import { useResyncRepoIntel } from "@/lib/hooks/repo-intel";
 import { SymbolRow } from "./_components/SymbolRow";
+import { StatRow } from "./_components/StatRow";
+import { BlastGraph } from "./_components/BlastGraph";
 import { DegradedNotice } from "./_components/DegradedNotice";
-import { BLAST_RESYNC_POLL_MAX, BLAST_RESYNC_POLL_MS, DEFAULT_EXPANDED_ROWS } from "./constants";
+import {
+  BLAST_RESYNC_POLL_MAX,
+  BLAST_RESYNC_POLL_MS,
+  DEFAULT_EXPANDED_ROWS,
+  DEFAULT_VIEW,
+  type BlastView,
+} from "./constants";
+import { indirectBySymbol } from "./helpers";
 import { s } from "./styles";
 
 export interface BlastRadiusProps {
@@ -24,6 +33,7 @@ export interface BlastRadiusProps {
 
 export function BlastRadius({ prId, repoId, repoFullName, headSha }: BlastRadiusProps) {
   const t = useTranslations("blast");
+  const [view, setView] = useState<BlastView>(DEFAULT_VIEW);
   const [pollUntil, setPollUntil] = useState<number | undefined>(undefined);
   const { data, isLoading, isError, error, refetch } = useBlastRadius(prId, {
     pollMs: pollUntil === undefined ? false : BLAST_RESYNC_POLL_MS,
@@ -63,27 +73,13 @@ export function BlastRadius({ prId, repoId, repoFullName, headSha }: BlastRadius
   }
 
   const { stats } = data;
-  const statItems = [
-    ["symbols", stats.symbols],
-    ["callers", stats.callers],
-    ["endpoints", stats.endpoints],
-    ["crons", stats.crons],
-  ] as const;
+  const indirect = indirectBySymbol(data);
 
   return (
     <Card>
       <div style={s.header}>
         <div style={s.label}>{t("title")}</div>
-        <div style={s.stats}>
-          {statItems.map(([key, n], i) => (
-            <React.Fragment key={key}>
-              {i > 0 && <span style={s.sep}>·</span>}
-              <span>
-                <span style={s.statNum}>{n}</span> {t(`stat.${key}`, { count: n })}
-              </span>
-            </React.Fragment>
-          ))}
-        </div>
+        <StatRow stats={stats} view={view} onViewChange={setView} />
       </div>
 
       {data.degraded && (
@@ -95,7 +91,9 @@ export function BlastRadius({ prId, repoId, repoFullName, headSha }: BlastRadius
         />
       )}
 
-      {stats.callers === 0 ? (
+      {view === "graph" ? (
+        <BlastGraph data={data} />
+      ) : stats.callers === 0 ? (
         <p style={s.empty}>
           {stats.symbols === 0 ? t("noChangedSymbols") : t("noDownstream", { count: stats.symbols })}
         </p>
@@ -108,12 +106,14 @@ export function BlastRadius({ prId, repoId, repoFullName, headSha }: BlastRadius
               defaultExpanded={i < DEFAULT_EXPANDED_ROWS}
               repoFullName={repoFullName}
               headSha={headSha}
+              indirect={indirect.get(group.symbol)}
+              bfsDepth={data.limits?.bfs_depth}
             />
           ))}
         </div>
       )}
 
-      {data.unattributed_endpoints.length > 0 && (
+      {view === "tree" && data.unattributed_endpoints.length > 0 && (
         <div style={s.other}>
           <div style={s.otherLabel}>{t("otherEndpoints")}</div>
           <div style={s.chips} role="list" aria-label={t("otherEndpoints")}>
@@ -125,6 +125,13 @@ export function BlastRadius({ prId, repoId, repoFullName, headSha }: BlastRadius
           </div>
         </div>
       )}
+
+      {data.limits && (
+        <p style={s.limits}>
+          {t("limits", { max: data.limits.max_callers_per_symbol, depth: data.limits.bfs_depth })}
+        </p>
+      )}
+      {/* U4 mounts <PriorPrs /> here. */}
     </Card>
   );
 }

@@ -1,3 +1,4 @@
+import type { BlastIndirectImpact, BlastRadiusResponse } from "@devdigest/shared";
 import { githubBlobUrl } from "@/lib/github-urls";
 import { BLAST_REASONS } from "./constants";
 
@@ -13,4 +14,9 @@ export function callerHref(
 
 export function isKnownReason(reason: string | null): reason is (typeof BLAST_REASONS)[number] {
   return reason !== null && (BLAST_REASONS as readonly string[]).includes(reason);
+}
+
+/** Indirect (via imports) impact keyed by changed-symbol name. */
+export function indirectBySymbol(data: BlastRadiusResponse): Map<string, BlastIndirectImpact> {
+  return new Map((data.indirect ?? []).map((i) => [i.symbol, i]));
 }

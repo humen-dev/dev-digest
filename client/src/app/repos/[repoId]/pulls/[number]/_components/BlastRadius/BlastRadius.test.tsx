@@ -61,9 +61,8 @@ describe("BlastRadius", () => {
     renderCard();
 
     expect(screen.getByText("Blast radius")).toBeInTheDocument();
-    expect(screen.getByText("cron")).toBeInTheDocument();
-    expect(screen.getByText("cron").closest("div")).toHaveTextContent(
-      "1 symbol·2 callers·1 endpoint·1 cron",
+    expect(screen.getByText("cron").parentElement?.parentElement).toHaveTextContent(
+      "1symbol2callers1endpoint1cronTreeGraph",
     );
     expect(screen.getByText("2 callers")).toBeInTheDocument();
 
@@ -80,6 +79,44 @@ describe("BlastRadius", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /formatCost/ }));
     expect(screen.getByRole("link", { name: /renderRow/ })).toBeInTheDocument();
+  });
+
+  it("toggles between the tree and the graph, and shows limits and indirect impact", () => {
+    state = {
+      data: {
+        ...HEALTHY,
+        limits: { max_callers_per_symbol: 20, bfs_depth: 2 },
+        indirect: [
+          { symbol: "formatCost", files: ["src/api/a.ts"], endpoints: ["POST /api/x"], crons: ["weekly"] },
+        ],
+        indirect_stats: { files: 1, endpoints: 1, crons: 1 },
+        caller_file_facts: { "src/ui/row.ts": { endpoints: ["GET /api/costs"], crons: [] } },
+      },
+      isLoading: false,
+      isError: false,
+    };
+    renderCard();
+
+    expect(screen.getByRole("radio", { name: "Tree" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByText("Up to 20 callers per symbol · import depth 2")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Endpoints reached via imports" })).toHaveTextContent(
+      "POST /api/x",
+    );
+    expect(screen.getByRole("list", { name: "Cron jobs reached via imports" })).toHaveTextContent("weekly");
+    expect(screen.getByText(/Via imports \(depth ≤ 2\)/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Graph" }));
+    expect(screen.getByRole("img", { name: "Blast radius graph" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /renderRow/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Tree" }));
+    expect(screen.getByRole("link", { name: /renderRow/ })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Blast radius graph" })).not.toBeInTheDocument();
+  });
+
+  it("omits the limits footnote when the server sent no limits", () => {
+    renderCard();
+    expect(screen.queryByText(/callers per symbol/)).not.toBeInTheDocument();
   });
 
   it("shows the no-callers text without rows", () => {

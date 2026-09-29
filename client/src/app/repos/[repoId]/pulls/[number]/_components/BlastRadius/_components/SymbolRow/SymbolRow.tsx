@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@devdigest/ui";
-import type { BlastRadiusResponse } from "@devdigest/shared";
+import type { BlastIndirectImpact, BlastRadiusResponse } from "@devdigest/shared";
 import { callerHref } from "../../helpers";
 import { s } from "./styles";
 
@@ -14,11 +14,14 @@ interface SymbolRowProps {
   defaultExpanded: boolean;
   repoFullName: string | null;
   headSha: string | null;
+  indirect?: BlastIndirectImpact;
+  bfsDepth?: number;
 }
 
-export function SymbolRow({ group, defaultExpanded, repoFullName, headSha }: SymbolRowProps) {
+export function SymbolRow({ group, defaultExpanded, repoFullName, headSha, indirect, bfsDepth }: SymbolRowProps) {
   const t = useTranslations("blast");
   const [open, setOpen] = useState(defaultExpanded);
+  const hasIndirect = !!indirect && (indirect.endpoints.length > 0 || indirect.crons.length > 0);
   const Chevron = open ? Icon.ChevronDown : Icon.ChevronRight;
 
   return (
@@ -81,6 +84,34 @@ export function SymbolRow({ group, defaultExpanded, repoFullName, headSha }: Sym
                   {c}
                 </span>
               ))}
+            </div>
+          )}
+          {indirect && hasIndirect && (
+            <div style={s.indirect}>
+              <div style={s.indirectLabel}>
+                {bfsDepth !== undefined && <span>{t("indirect.label", { depth: bfsDepth })} · </span>}
+                <span>{t("indirect.files", { count: indirect.files.length })}</span>
+              </div>
+              {indirect.endpoints.length > 0 && (
+                <div style={s.chipGroup} role="list" aria-label={t("indirect.endpointsLabel")}>
+                  {indirect.endpoints.map((e) => (
+                    <span key={e} role="listitem" className="mono" style={s.indirectEndpointChip}>
+                      <Icon.Globe size={12} />
+                      {e}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {indirect.crons.length > 0 && (
+                <div style={s.chipGroup} role="list" aria-label={t("indirect.cronsLabel")}>
+                  {indirect.crons.map((c) => (
+                    <span key={c} role="listitem" className="mono" style={s.indirectCronChip}>
+                      <Icon.Clock size={12} />
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -15,3 +15,8 @@ export const BLAST_REASONS = [
   "repo_too_large",
   "no_data",
 ] as const satisfies readonly BlastDegradedReason[];
+
+/** Card views: the expandable tree (default) or the SVG graph. */
+export const BLAST_VIEWS = ["tree", "graph"] as const;
+export type BlastView = (typeof BLAST_VIEWS)[number];
+export const DEFAULT_VIEW: BlastView = "tree";
