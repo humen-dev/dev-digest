@@ -80,8 +80,9 @@ export function buildBlastRadius(source: BlastResult, opts: BuildBlastOptions): 
   const downstream = built.filter((g) => g.impact.callers.length > 0).map((g) => g.impact);
 
   const attributed = new Set(downstream.flatMap((d) => d.endpoints_affected));
-  // Refuted: handler attribution ruled E out for every caller row of every file that holds it. Files whose
-  // rows were cut by the caller cap are not in `withCallers`, so their endpoints stay unattributed.
+  // Refuted: handler attribution ruled E out for every caller row of every file that holds it.
+  // `reachable` / `withCallers` are computed over ALL caller rows before the per-symbol cap, so an
+  // endpoint reachable only through a capped row is still in `reachable` and stays unattributed.
   const refuted = (e: string): boolean => {
     if (!facts || reachable.has(e)) return false;
     const holders = Object.entries(facts).filter(([, fx]) => fx.endpoints.includes(e));

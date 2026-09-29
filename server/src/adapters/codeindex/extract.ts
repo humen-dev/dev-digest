@@ -236,12 +236,14 @@ export function extractEndpointFacts(content: string): ExtractedFact[] {
  * Heuristic cron/scheduled-job detector, one item per match in source order.
  * Catches cron expressions in `schedule('* * * * *')`, `cron.schedule(...)`,
  * `CronJob(...)`, and `jobs.register('kind')` / `enqueue(ws, 'kind')` style
- * background work. Handler capture follows the same rule as endpoints.
+ * background work. Handler capture follows the same rule as endpoints, except that
+ * `enqueue(ws, 'kind', payload)` never captures one: its trailing argument is a
+ * payload, not a handler, so the job's handler stays unknown.
  */
 export function extractCronFacts(content: string): ExtractedFact[] {
   const out: ExtractedFact[] = [];
   const cronExprRe = /\b(?:cron|schedule|CronJob)\s*[.(]?\s*\(?\s*['"`]([^'"`]*(?:\*|\d+\s+\d+)[^'"`]*)['"`]/i;
-  const jobKindRe = /\b(?:register|enqueue)\s*\(\s*(?:[A-Za-z0-9_$.]+\s*,\s*)?['"`]([a-z][a-z0-9_]*)['"`]/i;
+  const jobKindRe = /\b(register|enqueue)\s*\(\s*(?:[A-Za-z0-9_$.]+\s*,\s*)?['"`]([a-z][a-z0-9_]*)['"`]/i;
   for (const raw of content.split('\n')) {
     const m = raw.match(cronExprRe);
     if (m) {
@@ -253,8 +255,8 @@ export function extractCronFacts(content: string): ExtractedFact[] {
     const j = raw.match(jobKindRe);
     if (j && /poll|index|clone|digest|cron|sync|schedule|job/i.test(raw)) {
       out.push({
-        fact: `job:${j[1]}`,
-        handler: trailingHandler(tailAfter(raw, j.index! + j[0].length)),
+        fact: `job:${j[2]}`,
+        handler: /^register$/i.test(j[1]!) ? trailingHandler(tailAfter(raw, j.index! + j[0].length)) : null,
       });
     }
   }

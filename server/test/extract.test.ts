@@ -118,6 +118,10 @@ describe('handler capture (extractEndpointFacts / extractCronFacts)', () => {
     expect(extractCronFacts(`jobs.register('poll_repo', handler)`)).toEqual([
       { fact: 'job:poll_repo', handler: 'handler' },
     ]);
+    // enqueue's trailing argument is a payload, not a handler → handler unknown.
+    expect(extractCronFacts(`this.jobs.enqueue(ws, 'index_repo', payload);`)).toEqual([
+      { fact: 'job:index_repo', handler: null },
+    ]);
     expect(
       extractEndpointFacts(`app.route({ method: 'GET', url: '/r', handler: getR, })`),
     ).toEqual([{ fact: 'GET /r', handler: 'getR' }]);
