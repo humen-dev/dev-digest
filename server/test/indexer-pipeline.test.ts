@@ -43,6 +43,9 @@ function makeRepoStub(opts: {
 }) {
   const symbols: unknown[] = [];
   const references: unknown[] = [];
+  type FactRow = { filePath: string; endpoints: string[]; crons: string[] };
+  const edgeCalls: Array<Array<{ fromFile: string; toFile: string }>> = [];
+  const factCalls: Array<{ files?: string[]; rows: FactRow[] }> = [];
   let state: IndexState | null = opts.initialState ?? null;
 
   const stub = {
@@ -98,10 +101,16 @@ function makeRepoStub(opts: {
       if (state) state = { ...state, lastIndexedSha: sha, updatedAt: new Date() };
     },
     // T3 writes/reads — no-op/in-memory; persistence is covered by integration.
-    replaceEdges: async () => {},
+    replaceEdges: async (_id: string, rows: Array<{ fromFile: string; toFile: string }>) => {
+      edgeCalls.push(rows);
+    },
     replaceFileRank: async () => {},
-    replaceFileFacts: async () => {},
-    patchFileFacts: async () => {},
+    replaceFileFacts: async (_id: string, rows: FactRow[]) => {
+      factCalls.push({ rows });
+    },
+    patchFileFacts: async (_id: string, files: string[], rows: FactRow[]) => {
+      factCalls.push({ files, rows });
+    },
     resolveReferences: async () => {},
     getRepoMapCandidates: async () => [],
     deleteRepoMapCache: async () => {},
@@ -115,6 +124,8 @@ function makeRepoStub(opts: {
     repo: stub as unknown as RepoIntelRepository,
     symbols,
     references,
+    edgeCalls,
+    factCalls,
     getState: () => state,
   };
 }
@@ -144,6 +155,15 @@ async function writeFileAt(root: string, rel: string, contents: string): Promise
   await mkdir(dirname(full), { recursive: true });
   await writeFile(full, contents);
 }
+
+const PY_MINI: Record<string, string> = {
+  'app/__init__.py': '',
+  'app/util.py': 'def helper(x):\n    return x\n',
+  'app/views.py':
+    'from django.http import HttpResponse\nfrom app.util import helper\n\n\ndef index(request):\n    helper(1)\n    return HttpResponse("ok")\n',
+  'app/urls.py':
+    'from django.urls import path\nfrom app import views\n\nurlpatterns = [\n    path("home/", views.index),\n]\n',
+};
 
 // ---------------------------------------------------------------------------
 // runFullIndex
@@ -205,6 +225,33 @@ describe('runFullIndex', () => {
     expect(state!.indexerVersion).toBe(INDEXER_VERSION);
     expect(state!.status).toBe('full');
     expect(state!.filesIndexed).toBe(2);
+  });
+
+  it('indexes a Python mini project: symbols, import edges and Django endpoint facts', async () => {
+    for (const [rel, src] of Object.entries(PY_MINI)) await writeFileAt(root, rel, src);
+
+    const stub = makeRepoStub({
+      basics: { id: 'r1', owner: 'acme', name: 'app', clonePath: root },
+    });
+    const container = makeContainer({
+      currentHead: async () => 'sha-py',
+      diffNameOnly: async () => [],
+    });
+
+    const result = await runFullIndex(container, stub.repo, { repoId: 'r1' });
+    expect(result.status).toBe('full');
+
+    const symbolNames = stub.symbols.map((s) => (s as { name: string }).name);
+    expect(symbolNames).toContain('helper');
+    expect(symbolNames).toContain('index');
+
+    const edges = stub.edgeCalls.at(-1)!;
+    expect(edges).toContainEqual({ fromFile: 'app/views.py', toFile: 'app/util.py' });
+    expect(edges).toContainEqual({ fromFile: 'app/urls.py', toFile: 'app/views.py' });
+
+    const rows = stub.factCalls.at(-1)!.rows;
+    const urls = rows.find((r) => r.filePath === 'app/urls.py');
+    expect(urls?.endpoints).toContain('ANY /home/');
   });
 
   it('returns degraded when the repo has no clonePath (writes a degraded state row)', async () => {
@@ -381,6 +428,34 @@ describe('runIncremental', () => {
     // counter is prior (5) + this slice's filesIndexed (1).
     expect(stub.getState()!.filesIndexed).toBe(6);
     expect(stub.getState()!.lastIndexedSha).toBe('sha-new');
+  });
+
+  it('changed .py file -> Python pass patches facts for all .py paths', async () => {
+    for (const [rel, src] of Object.entries(PY_MINI)) await writeFileAt(root, rel, src);
+
+    const stub = makeRepoStub({
+      basics: { id: 'r1', owner: 'acme', name: 'app', clonePath: root },
+      initialState: makeInitialState({ status: 'full' }),
+    });
+    const container = makeContainer({
+      currentHead: async () => 'sha-new',
+      diffNameOnly: async () => ['app/views.py'],
+    });
+
+    const result = await runIncremental(container, stub.repo, { repoId: 'r1' });
+    expect(result.reason).toBe('incremental');
+    expect(stub.symbols.map((s) => (s as { name: string }).name)).toContain('index');
+
+    const pyPatch = stub.factCalls.find((c) => c.files?.includes('app/urls.py'));
+    expect(pyPatch).toBeDefined();
+    expect([...pyPatch!.files!].sort()).toEqual(Object.keys(PY_MINI).sort());
+    expect(pyPatch!.rows.find((r) => r.filePath === 'app/urls.py')?.endpoints).toContain(
+      'ANY /home/',
+    );
+    expect(stub.edgeCalls.at(-1)).toContainEqual({
+      fromFile: 'app/views.py',
+      toFile: 'app/util.py',
+    });
   });
 
   it('large diff (> threshold) → delegates to runFullIndex', async () => {

@@ -59,8 +59,10 @@ export const MAX_CALLERS_PER_SYMBOL = 20;
  * T2 `partial` index must be rebuilt to gain the rank-driven data.
  * v3: depgraph edges are POSIX on Windows too — indexes built there before had
  * no file_edges, so no decl_file, so no blast-radius callers; rebuild them.
+ * v4: Python (.py) indexing — symbols/refs, import edges, Django/Flask/FastAPI/Celery facts;
+ * bump forces a full reindex on the next refresh/resync.
  */
-export const INDEXER_VERSION = 3;
+export const INDEXER_VERSION = 4;
 
 // --- [T2] Full-index limits (documented now, enforced in the pipeline) ------
 export const MAX_INDEXED_FILES = 5000;

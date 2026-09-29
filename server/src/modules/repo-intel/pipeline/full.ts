@@ -26,8 +26,7 @@ import PQueue from 'p-queue';
 import type { RepoRef } from '@devdigest/shared';
 import type { Container } from '../../../platform/container.js';
 import { withTimeout } from '../../../platform/resilience.js';
-import { parseSymbols, parseReferences, langForFile } from '../../../adapters/astgrep/index.js';
-import { extractEndpoints, extractCrons } from '../../../adapters/codeindex/extract.js';
+import { analyzePythonProject, isPythonFile } from '../../../adapters/python/index.js';
 import {
   DEFAULT_REPO_MAP_TOKEN_BUDGET,
   INDEX_SOFT_BUDGET_MS,
@@ -42,6 +41,7 @@ import type {
   RepoIntelRepository,
 } from '../repository.js';
 import type { IndexResult, IndexStatus } from '../types.js';
+import { isIndexable, parseSourceFile } from './parse-file.js';
 import { walkClone } from './walk.js';
 import { computeFileRank } from './rank.js';
 import { renderRepoMap } from './repo-map.js';
@@ -134,8 +134,7 @@ export async function runFullIndex(
     }
 
     void parseQ.add(async () => {
-      const lang = langForFile(relPath);
-      if (!lang) {
+      if (!isIndexable(relPath)) {
         filesSkipped += 1;
         return;
       }
@@ -153,10 +152,7 @@ export async function runFullIndex(
       // them in Promise.resolve and race the timeout.
       try {
         const parsed = await withTimeout(
-          Promise.resolve().then(() => ({
-            symbols: parseSymbols(relPath, source),
-            references: parseReferences(relPath, source),
-          })),
+          Promise.resolve().then(() => parseSourceFile(relPath, source)),
           MAX_PARSE_MS_PER_FILE,
         );
         for (const s of parsed.symbols) {
@@ -183,10 +179,8 @@ export async function runFullIndex(
         }
         // Per-file facts (endpoints/crons) so blast reads from file_facts
         // instead of re-parsing the clone (T3 blast migration).
-        const endpoints = extractEndpoints(source);
-        const crons = extractCrons(source);
-        if (endpoints.length > 0 || crons.length > 0) {
-          factsBuf.push({ filePath: relPath, endpoints, crons });
+        if (parsed.endpoints.length > 0 || parsed.crons.length > 0) {
+          factsBuf.push({ filePath: relPath, endpoints: parsed.endpoints, crons: parsed.crons });
         }
         filesIndexed += 1;
       } catch (err) {
@@ -211,12 +205,38 @@ export async function runFullIndex(
   let graphFailed: string | undefined;
   let edgeRows: IndexerEdgeRow[] = [];
   let rankCount = 0;
+  let pyFiles = 0;
+  let pyEdges = 0;
+  let pyFacts = 0;
+  let pyTruncated = false;
+  let pyDegraded: Array<{ file: string; reason: string }> = [];
   if (!softBudgetReached) {
     try {
       const edges = await container.depgraph.buildEdges(repo.clonePath, walk.files);
       edgeRows = edges.map((e) => ({ fromFile: e.from, toFile: e.to }));
     } catch (err) {
       graphFailed = asMessage(err);
+    }
+
+    // Python has no dependency-cruiser support: resolve imports ourselves.
+    let pyFactRows: IndexerFileFactsRow[] = [];
+    pyFiles = walk.files.filter(isPythonFile).length;
+    if (pyFiles > 0) {
+      const py = await analyzePythonProject(repo.clonePath, walk.files, {
+        deadlineAt: startedAt + INDEX_SOFT_BUDGET_MS,
+      });
+      const seen = new Set(edgeRows.map((e) => `${e.fromFile}\u0000${e.toFile}`));
+      for (const e of py.edges) {
+        const key = `${e.from}\u0000${e.to}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        edgeRows.push({ fromFile: e.from, toFile: e.to });
+        pyEdges += 1;
+      }
+      pyFactRows = py.facts;
+      pyFacts = py.facts.length;
+      pyTruncated = py.truncated;
+      pyDegraded = py.degraded.slice(0, PARSE_DEGRADED_CAP);
     }
     await repository.replaceEdges(repoId, edgeRows);
 
@@ -244,12 +264,13 @@ export async function runFullIndex(
     }
 
     // Per-file facts (endpoints/crons) for the blast facade.
-    await repository.replaceFileFacts(repoId, factsBuf);
+    await repository.replaceFileFacts(repoId, [...factsBuf, ...pyFactRows]);
   }
 
   // Clean pass → 'full'. Any degradation (soft budget, graph failure, or a
   // parse error) keeps it honestly 'partial'.
-  const clean = !softBudgetReached && !graphFailed && parseDegraded.length === 0;
+  const clean =
+    !softBudgetReached && !graphFailed && !pyTruncated && parseDegraded.length === 0;
   const status: IndexStatus = clean ? 'full' : 'partial';
   const stats: Record<string, unknown> = {
     ...walk.stats,
@@ -258,7 +279,11 @@ export async function runFullIndex(
     referencesWritten: refsBuf.length,
     edgesWritten: edgeRows.length,
     ranked: rankCount,
-    factsWritten: factsBuf.length,
+    factsWritten: factsBuf.length + pyFacts,
+    pythonFiles: pyFiles,
+    pythonEdges: pyEdges,
+    pythonFacts: pyFacts,
+    pythonDegraded: pyDegraded,
     hotnessAvailable: false, // Option B — rank = pagerank only
     ...(graphFailed ? { graphFailed } : {}),
     softBudgetReached,
@@ -281,7 +306,13 @@ export async function runFullIndex(
     filesIndexed,
     filesSkipped,
     durationMs: Date.now() - startedAt,
-    reason: softBudgetReached ? 'soft_budget' : graphFailed ? 'graph_failed' : undefined,
+    reason: softBudgetReached
+      ? 'soft_budget'
+      : graphFailed
+        ? 'graph_failed'
+        : pyTruncated
+          ? 'python_truncated'
+          : undefined,
   };
 }
 

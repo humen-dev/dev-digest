@@ -4,7 +4,7 @@
  * Cheap path the polling/refresh hook takes. Flow:
  *   1. No state row OR indexer-version mismatch → delegate to runFullIndex.
  *   2. `currentSha === lastIndexedSha`            → touch updated_at, exit.
- *   3. `git diff --name-only base..head` ∩ SUPPORTED_EXT
+ *   3. `git diff --name-only base..head` ∩ INDEXED_EXT
  *        - 0 files → bump lastIndexedSha, exit (code didn't move in a parsed ext).
  *        - >INCREMENTAL_FULL_THRESHOLD → delegate to runFullIndex (cheaper than the slice).
  *      Else: delete the slice's rows + reparse + persist.
@@ -19,13 +19,13 @@ import { extname, join } from 'node:path';
 import type { RepoRef } from '@devdigest/shared';
 import type { Container } from '../../../platform/container.js';
 import { withTimeout } from '../../../platform/resilience.js';
-import { parseSymbols, parseReferences, langForFile } from '../../../adapters/astgrep/index.js';
-import { extractEndpoints, extractCrons } from '../../../adapters/codeindex/extract.js';
+import { analyzePythonProject, isPythonFile } from '../../../adapters/python/index.js';
 import {
   DEFAULT_REPO_MAP_TOKEN_BUDGET,
+  INDEX_SOFT_BUDGET_MS,
+  INDEXED_EXT,
   INDEXER_VERSION,
   MAX_PARSE_MS_PER_FILE,
-  SUPPORTED_EXT,
 } from '../constants.js';
 import type {
   IndexerEdgeRow,
@@ -36,6 +36,7 @@ import type {
 } from '../repository.js';
 import type { IndexResult, IndexStatus } from '../types.js';
 import { runFullIndex, type IndexPayload } from './full.js';
+import { isIndexable, parseSourceFile } from './parse-file.js';
 import { walkClone } from './walk.js';
 import { computeFileRank } from './rank.js';
 import { renderRepoMap } from './repo-map.js';
@@ -47,7 +48,7 @@ import { renderRepoMap } from './repo-map.js';
  */
 const INCREMENTAL_FULL_THRESHOLD = 300;
 
-const SUPPORTED_SET: ReadonlySet<string> = new Set(SUPPORTED_EXT);
+const INDEXED_SET: ReadonlySet<string> = new Set(INDEXED_EXT);
 
 export async function runIncremental(
   container: Container,
@@ -115,7 +116,7 @@ export async function runIncremental(
     // leave the index drifted from HEAD.
     return runFullIndex(container, repository, payload);
   }
-  const changed = changedAll.filter((p) => SUPPORTED_SET.has(extname(p).toLowerCase()));
+  const changed = changedAll.filter((p) => INDEXED_SET.has(extname(p).toLowerCase()));
 
   if (changed.length === 0) {
     // Code didn't move in a parsed extension — just bump the sha so the next
@@ -144,8 +145,7 @@ export async function runIncremental(
   const parseDegraded: Array<{ file: string; reason: string }> = [];
 
   for (const relPath of changed) {
-    const lang = langForFile(relPath);
-    if (!lang) {
+    if (!isIndexable(relPath)) {
       filesSkipped += 1;
       continue;
     }
@@ -162,10 +162,7 @@ export async function runIncremental(
     const contentHash = sha1(source);
     try {
       const parsed = await withTimeout(
-        Promise.resolve().then(() => ({
-          symbols: parseSymbols(relPath, source),
-          references: parseReferences(relPath, source),
-        })),
+        Promise.resolve().then(() => parseSourceFile(relPath, source)),
         MAX_PARSE_MS_PER_FILE,
       );
       for (const s of parsed.symbols) {
@@ -190,10 +187,9 @@ export async function runIncremental(
           contentHash,
         });
       }
-      const endpoints = extractEndpoints(source);
-      const crons = extractCrons(source);
-      if (endpoints.length > 0 || crons.length > 0) {
-        factsBuf.push({ filePath: relPath, endpoints, crons });
+      // .py files yield no slice facts; the project pass below owns them.
+      if (parsed.endpoints.length > 0 || parsed.crons.length > 0) {
+        factsBuf.push({ filePath: relPath, endpoints: parsed.endpoints, crons: parsed.crons });
       }
       filesIndexed += 1;
     } catch (err) {
@@ -205,7 +201,11 @@ export async function runIncremental(
   await repository.deleteForFiles(repoId, changed);
   await repository.insertSymbols(symbolsBuf);
   await repository.insertReferences(refsBuf);
-  await repository.patchFileFacts(repoId, changed, factsBuf);
+  await repository.patchFileFacts(
+    repoId,
+    changed.filter((p) => !isPythonFile(p)),
+    factsBuf,
+  );
 
   // --- T3: rebuild graph + rank, re-resolve, invalidate the repo-map -----
   // The symbol reparse above is sliced, but the graph + rank are global, so we
@@ -214,12 +214,30 @@ export async function runIncremental(
   // v1 favours simple correctness.
   let graphFailed: string | undefined;
   let edgeRows: IndexerEdgeRow[] = [];
+  let pyTruncated = false;
   try {
     const allFiles = (await walkClone(repo.clonePath)).files;
     const edges = await container.depgraph.buildEdges(repo.clonePath, allFiles);
     edgeRows = edges.map((e) => ({ fromFile: e.from, toFile: e.to }));
+    const allPyFiles = allFiles.filter(isPythonFile);
+    let pyFactRows: IndexerFileFactsRow[] | null = null;
+    if (allPyFiles.length > 0) {
+      const py = await analyzePythonProject(repo.clonePath, allFiles, {
+        deadlineAt: startedAt + INDEX_SOFT_BUDGET_MS,
+      });
+      const seen = new Set(edgeRows.map((e) => `${e.fromFile}\u0000${e.toFile}`));
+      for (const e of py.edges) {
+        const key = `${e.from}\u0000${e.to}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        edgeRows.push({ fromFile: e.from, toFile: e.to });
+      }
+      pyTruncated = py.truncated;
+      pyFactRows = py.facts;
+    }
     await repository.replaceEdges(repoId, edgeRows);
     // reset: a changed decl-file can invalidate a prior resolution.
+    if (pyFactRows) await repository.patchFileFacts(repoId, allPyFiles, pyFactRows);
     await repository.resolveReferences(repoId, { reset: true });
     const rankRows = computeFileRank(allFiles, edgeRows);
     await repository.replaceFileRank(repoId, rankRows);
@@ -239,7 +257,7 @@ export async function runIncremental(
   }
 
   // Keep 'full' only if the prior index was full AND this slice stayed clean.
-  const clean = parseDegraded.length === 0 && !graphFailed;
+  const clean = parseDegraded.length === 0 && !graphFailed && !pyTruncated;
   const status: IndexStatus = clean && state.status === 'full' ? 'full' : 'partial';
 
   const stats: Record<string, unknown> = {
@@ -250,6 +268,7 @@ export async function runIncremental(
     edgesWritten: edgeRows.length,
     hotnessAvailable: false,
     ...(graphFailed ? { graphFailed } : {}),
+    ...(pyTruncated ? { pythonTruncated: true } : {}),
     parseDegraded,
     durationMs: Date.now() - startedAt,
   };
