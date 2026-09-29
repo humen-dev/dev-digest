@@ -4,6 +4,7 @@ import {
   Finding,
   Intent,
   BlastRadiusResponse,
+  PrHistoryResponse,
   BlastRadius,
   Risks,
   PrHistory,
@@ -197,6 +198,35 @@ describe('AI contracts parse fixtures', () => {
     const degraded = { ...healthy, downstream: [], degraded: true, reason: 'no_data' };
     expect(BlastRadiusResponse.parse(degraded).reason).toBe('no_data');
     expect(BlastRadiusResponse.safeParse({ ...healthy, reason: 'bogus' }).success).toBe(false);
+  });
+
+  it('BlastRadiusResponse accepts the optional limits/indirect/caller_file_facts fields and rejects depth 0', () => {
+    const base = {
+      changed_symbols: [], downstream: [], summary: '0 symbols · 0 callers · 0 endpoints · 0 cron jobs',
+      stats: { symbols: 0, callers: 0, endpoints: 0, crons: 0 }, unattributed_endpoints: [],
+      degraded: false, reason: null,
+    };
+    const full = {
+      ...base,
+      limits: { max_callers_per_symbol: 20, bfs_depth: 2 },
+      indirect: [{ symbol: 'formatMoney', files: ['src/server.ts'], endpoints: ['GET /health'], crons: [] }],
+      indirect_stats: { files: 1, endpoints: 1, crons: 0 },
+      caller_file_facts: { 'src/routes/orders.ts': { endpoints: ['GET /api/orders'], crons: [] } },
+    };
+    expect(BlastRadiusResponse.parse(base).limits).toBeUndefined();
+    expect(BlastRadiusResponse.parse(full).limits?.bfs_depth).toBe(2);
+    expect(BlastRadiusResponse.safeParse({ ...full, limits: { max_callers_per_symbol: 20, bfs_depth: 0 } }).success).toBe(false);
+  });
+
+  it('PrHistoryResponse accepts available and unavailable answers, rejects unknown reasons', () => {
+    const ok = {
+      history: [{ pr_number: 2, title: 't', merged_at: '2026-09-01T00:00:00Z', author: 'a', files_overlap: ['src/lib/money.ts'], notes: '' }],
+      available: true, reason: null, files_considered: 1, files_total: 1,
+    };
+    expect(PrHistoryResponse.parse(ok).history).toHaveLength(1);
+    const down = { history: [], available: false, reason: 'rate_limited', files_considered: 0, files_total: 3 };
+    expect(PrHistoryResponse.parse(down).reason).toBe('rate_limited');
+    expect(PrHistoryResponse.safeParse({ ...down, reason: 'bogus' }).success).toBe(false);
   });
 });
 

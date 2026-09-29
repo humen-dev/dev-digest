@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Finding, Verdict } from './findings.js';
-import { BlastRadius, Intent, SmartDiff } from './brief.js';
+import { BlastRadius, Intent, PrHistory, SmartDiff } from './brief.js';
 
 /**
  * A2 — Review-Core API surface contracts. These extend the core
@@ -162,6 +162,38 @@ export const BlastStats = z.object({
 });
 export type BlastStats = z.infer<typeof BlastStats>;
 
+/** Limits the server applied (repo-intel constants.ts) — consumers display them, never hardcode them. */
+export const BlastLimits = z.object({
+  max_callers_per_symbol: z.number().int().positive(),
+  bfs_depth: z.number().int().positive(),
+});
+export type BlastLimits = z.infer<typeof BlastLimits>;
+
+/** Endpoints/crons reached from a changed symbol only through the import graph (hops 2..bfs_depth). */
+export const BlastIndirectImpact = z.object({
+  symbol: z.string(),
+  /** Importing files reached at hops 2..bfs_depth — sorted ASC, capped. */
+  files: z.array(z.string()),
+  /** Sorted, deduplicated; excludes this symbol's direct endpoints_affected. */
+  endpoints: z.array(z.string()),
+  /** Sorted, deduplicated; excludes this symbol's direct crons_affected. */
+  crons: z.array(z.string()),
+});
+export type BlastIndirectImpact = z.infer<typeof BlastIndirectImpact>;
+
+export const BlastIndirectStats = z.object({
+  files: z.number().int().nonnegative(),
+  endpoints: z.number().int().nonnegative(),
+  crons: z.number().int().nonnegative(),
+});
+export type BlastIndirectStats = z.infer<typeof BlastIndirectStats>;
+
+export const BlastFileFacts = z.object({
+  endpoints: z.array(z.string()),
+  crons: z.array(z.string()),
+});
+export type BlastFileFacts = z.infer<typeof BlastFileFacts>;
+
 /** GET /pulls/:id/blast — the BlastRadius map plus index health. Read-only, never calls a model. */
 export const BlastRadiusResponse = BlastRadius.extend({
   stats: BlastStats,
@@ -170,5 +202,27 @@ export const BlastRadiusResponse = BlastRadius.extend({
   degraded: z.boolean(),
   /** null exactly when degraded === false. */
   reason: BlastDegradedReason.nullable(),
+  // --- Additive (docs/plans/blast-radius-p3.md). Optional for wire compatibility; the server always sets them.
+  limits: BlastLimits.optional(),
+  indirect: z.array(BlastIndirectImpact).optional(),
+  indirect_stats: BlastIndirectStats.optional(),
+  /** Facts of each kept caller file (persistent index only; {} otherwise) — graph caller → endpoint edges. */
+  caller_file_facts: z.record(z.string(), BlastFileFacts).optional(),
 });
 export type BlastRadiusResponse = z.infer<typeof BlastRadiusResponse>;
+
+/** Why prior-PR history could not be fetched from GitHub. */
+export const PrHistoryUnavailableReason = z.enum(['no_token', 'rate_limited', 'github_error']);
+export type PrHistoryUnavailableReason = z.infer<typeof PrHistoryUnavailableReason>;
+
+/** GET /pulls/:id/history — merged PRs that touched this PR's changed files. Never calls a model. */
+export const PrHistoryResponse = PrHistory.extend({
+  /** false when GitHub could not be asked/answered; history is then []. */
+  available: z.boolean(),
+  /** null exactly when available === true. */
+  reason: PrHistoryUnavailableReason.nullable(),
+  /** Changed files actually looked up (≤ MAX_HISTORY_FILES). */
+  files_considered: z.number().int().nonnegative(),
+  files_total: z.number().int().nonnegative(),
+});
+export type PrHistoryResponse = z.infer<typeof PrHistoryResponse>;
