@@ -3,11 +3,12 @@ import type { McpConfig } from '../config.js';
 import { ApiError, ApiUnreachableError } from '../errors.js';
 import type { DevDigestApi } from '../ports.js';
 import type {
-  ApiActiveRun, ApiAgent, ApiConventionBoard, ApiPull, ApiRepo, ApiReview, ApiRun, ApiStartedRun,
+  ApiActiveRun, ApiAgent, ApiBlastRadius, ApiConventionBoard, ApiPull, ApiRepo, ApiReview, ApiRun, ApiStartedRun,
 } from '../domain/types.js';
 import {
   ApiActiveRunListSchema,
   ApiAgentListSchema,
+  ApiBlastRadiusSchema,
   ApiConventionBoardSchema,
   ApiErrorEnvelopeSchema,
   ApiPullListSchema,
@@ -120,6 +121,10 @@ export class HttpDevDigestApi implements DevDigestApi {
       `/repos/${encodeURIComponent(repoId)}/conventions`,
       ApiConventionBoardSchema,
     );
+  }
+
+  async getBlastRadius(prId: string): Promise<ApiBlastRadius> {
+    return this.request('GET', `/pulls/${encodeURIComponent(prId)}/blast`, ApiBlastRadiusSchema);
   }
 
   private async request<T>(

@@ -1,6 +1,6 @@
 // src/ports.ts — ring 2: the ONLY way tools reach DevDigest. Implemented by api/http-client.ts (ring 3).
 import type {
-  ApiRepo, ApiPull, ApiAgent, ApiStartedRun, ApiRun, ApiActiveRun, ApiReview, ApiConventionBoard,
+  ApiRepo, ApiPull, ApiAgent, ApiStartedRun, ApiRun, ApiActiveRun, ApiReview, ApiConventionBoard, ApiBlastRadius,
 } from './domain/types.js';
 
 export interface DevDigestApi {
@@ -13,6 +13,7 @@ export interface DevDigestApi {
   listActiveRuns(prId: string): Promise<ApiActiveRun[]>; //                  GET  /pulls/:id/runs/active
   listReviews(prId: string): Promise<ApiReview[]>; //                        GET  /pulls/:id/reviews
   getConventions(repoId: string): Promise<ApiConventionBoard>; //            GET  /repos/:id/conventions
+  getBlastRadius(prId: string): Promise<ApiBlastRadius>; //                  GET  /pulls/:id/blast
   /** Optional: a view whose requests also abort when `signal` does (the tool
    *  call was cancelled). Adapters without it just ignore cancellation. */
   withSignal?(signal: AbortSignal): DevDigestApi;

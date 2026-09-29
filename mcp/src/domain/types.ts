@@ -37,3 +37,28 @@ export interface ConventionsResult {
   total_matching: number; returned: number; last_scan_at: string | null;
   conventions: CompactConvention[]; note?: string; truncated?: string;
 }
+
+// Blast radius (GET /pulls/:id/blast) —
+export interface ApiBlastCaller { name: string; file: string; line: number }
+export interface ApiBlastDownstream { symbol: string; callers: ApiBlastCaller[]; endpoints_affected: string[]; crons_affected: string[] }
+export interface ApiBlastRadius {
+  changed_symbols: { name: string; file: string; kind: string }[];
+  downstream: ApiBlastDownstream[];
+  summary: string;
+  stats: { symbols: number; callers: number; endpoints: number; crons: number };
+  unattributed_endpoints: string[];
+  degraded: boolean;
+  reason: string | null;
+}
+export interface BlastRadiusResult {
+  repo: string; pr: number;
+  summary: string;
+  stats: { symbols: number; callers: number; endpoints: number; crons: number };
+  degraded: boolean; reason: string | null;
+  changed_symbols: string[]; // "name (file)", <= 50, clipped
+  downstream: { symbol: string; callers: string[]; endpoints: string[]; crons: string[] }[]; // callers: "name @ file:line"
+  other_endpoints?: string[]; // = unattributed_endpoints, only when non-empty
+  note?: string; // degraded explanation or "no downstream callers"
+  truncated?: string; // only when changed_symbols was cut to 50
+  next?: string; // set when degraded
+}

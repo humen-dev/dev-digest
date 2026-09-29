@@ -5,7 +5,7 @@ export type ToolErrorCode =
   | 'repo_not_found' | 'pr_not_found'
   | 'agent_not_found' | 'agent_ambiguous' | 'agent_disabled'
   | 'run_not_found' | 'run_failed' | 'run_cancelled' | 'no_review'
-  | 'no_conventions' | 'not_implemented';
+  | 'no_conventions';
 
 /** A failure a tool reports to the calling agent. `next` names the concrete next step. */
 export class ToolError extends Error {

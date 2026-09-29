@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import type {
   Repo, PrMeta, Agent, RunSummary, ConventionCandidate, ConventionBoard, Finding, Verdict,
-  FindingRecord, ReviewRecord, ReviewRunTarget,
+  FindingRecord, ReviewRecord, ReviewRunTarget, BlastRadiusResponse,
 } from '@devdigest/shared';
 
 // ---- drift check helper (pure type-level; never used at runtime) ----------
@@ -170,6 +170,38 @@ export type ApiConventionBoardParsed = z.infer<typeof ApiConventionBoardSchema>;
 type _ConventionBoardOk = AssertAssignable<
   Pick<ConventionBoard, 'candidates' | 'last_scan'>,
   ApiConventionBoardParsed
+>;
+
+// ---- Blast radius -------------------------------------------------------
+// `reason` stays a plain string so a reason added by a newer server does not break the client.
+export const ApiBlastRadiusSchema = z.object({
+  changed_symbols: z.array(z.object({ name: z.string(), file: z.string(), kind: z.string() })),
+  downstream: z.array(
+    z.object({
+      symbol: z.string(),
+      callers: z.array(z.object({ name: z.string(), file: z.string(), line: z.number().int() })),
+      endpoints_affected: z.array(z.string()),
+      crons_affected: z.array(z.string()),
+    }),
+  ),
+  summary: z.string(),
+  stats: z.object({
+    symbols: z.number().int(),
+    callers: z.number().int(),
+    endpoints: z.number().int(),
+    crons: z.number().int(),
+  }),
+  unattributed_endpoints: z.array(z.string()),
+  degraded: z.boolean(),
+  reason: z.string().nullable(),
+});
+export type ApiBlastRadiusParsed = z.infer<typeof ApiBlastRadiusSchema>;
+type _BlastOk = AssertAssignable<
+  Pick<
+    BlastRadiusResponse,
+    'changed_symbols' | 'downstream' | 'summary' | 'stats' | 'unattributed_endpoints' | 'degraded' | 'reason'
+  >,
+  ApiBlastRadiusParsed
 >;
 
 // ---- list schemas -------------------------------------------------------

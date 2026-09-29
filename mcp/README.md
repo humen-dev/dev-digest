@@ -25,7 +25,7 @@ The DevDigest API must be running (`./scripts/dev.sh` from the repo root, or
 | `run_agent_on_pr` | `repo`, `pr`, `agent`, `min_severity?`, `limit?` | Runs a review, waits up to the wait budget, and returns the verdict, score, gate and top findings — or `status:"running"` with a `run_id` if it is still going. |
 | `get_findings` | `repo`, `pr`, `run_id?`, `agent?`, `min_severity?`, `limit?` | The verdict/findings of a finished review: the latest one (by `created_at`), or a specific run/agent. If a newer run of the same agent is still in progress, the result also carries `newer_run: {run_id, status: "running"}` and a `next` hint. Never starts a review. |
 | `get_conventions` | `repo`, `status?`, `category?`, `limit?` | The repo's extracted coding conventions, each with `path:line` evidence. |
-| `get_blast_radius` | `repo`, `pr` | **Not implemented yet** — always returns a `not_implemented` error naming `get_findings`/`get_conventions` as alternatives. |
+| `get_blast_radius` | `repo`, `pr` | What else the PR can affect, read from the repo index (no LLM): stats, changed symbols, callers as `name @ file:line` per symbol, affected HTTP endpoints and cron jobs. Carries `degraded`/`reason` and a `next` hint when the index is incomplete. |
 
 Example `run_agent_on_pr` result:
 
@@ -49,10 +49,21 @@ Example `run_agent_on_pr` result:
 }
 ```
 
-`get_blast_radius` returns an error, never a fake success:
+Example `get_blast_radius` result:
 
 ```json
-{ "isError": true, "content": [{ "type": "text", "text": "{\"error\":\"not_implemented\",\"message\":\"get_blast_radius is not implemented yet in DevDigest (planned: impact map from repo-intel).\",\"next\":\"Use get_findings(repo, pr) for review results or get_conventions(repo) for repo rules.\"}" }] }
+{
+  "repo": "acme/payments-api",
+  "pr": 482,
+  "summary": "1 symbol · 2 callers · 1 endpoint · 0 cron jobs",
+  "stats": { "symbols": 1, "callers": 2, "endpoints": 1, "crons": 0 },
+  "degraded": false,
+  "reason": null,
+  "changed_symbols": ["refund (src/refund.ts)"],
+  "downstream": [
+    { "symbol": "refund", "callers": ["handler @ src/routes.ts:23", "retry @ src/jobs.ts:8"], "endpoints": ["POST /refunds"], "crons": [] }
+  ]
+}
 ```
 
 ## Registration (`.mcp.json`)

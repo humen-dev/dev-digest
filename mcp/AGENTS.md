@@ -51,8 +51,8 @@ build step). **npm**, standalone package (not a pnpm workspace member).
   some Node/Windows setups.
 - After changing tool schemas/descriptions/handlers, **restart the MCP server**
   in the client (`claude` caches the `tools/list` result for the session).
-- The `get_blast_radius` stub's input contract is frozen — it is homework for a
-  later lesson; it must keep throwing `not_implemented`, never a fake success.
+- `get_blast_radius` reads `GET /pulls/:id/blast`; its input contract `{repo, pr}`
+  stays frozen.
 - `run_agent_on_pr`'s default wait budget is 55 s (`DEVDIGEST_MCP_WAIT_MS`
   overrides it, clamped 5 000–600 000 ms) — see `mcp/README.md` for how to raise
   it together with the calling client's own tool timeout.

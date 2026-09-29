@@ -99,14 +99,14 @@ describe('index.smoke — real stdio launcher, API down', () => {
     expect(deadApi.connections()).toBeGreaterThan(0); // it really tried the API
   }, CALL_TIMEOUT_MS);
 
-  it('get_blast_radius is not_implemented and makes no API call', async () => {
+  it('get_blast_radius reaches the API (api_unreachable when it is down)', async () => {
     const before = deadApi.connections();
     const result = await client.callTool({ name: 'get_blast_radius', arguments: { repo: 'a/b', pr: 1 } });
     expect(result.isError).toBe(true);
     const content = result.content as { type: string; text: string }[];
     const payload = JSON.parse(content[0]!.text) as { error: string; next: string };
-    expect(payload.error).toBe('not_implemented');
-    expect(deadApi.connections()).toBe(before); // not a single connection was opened
+    expect(payload.error).toBe('api_unreachable');
+    expect(deadApi.connections()).toBeGreaterThan(before); // it really tried the API
   }, CALL_TIMEOUT_MS);
 
   it('the server process stays alive after the calls above (it started with the API down)', async () => {

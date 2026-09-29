@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { DEFAULT_API_URL, DEFAULTS, type McpConfig } from '../src/config.js';
 import { ApiUnreachableError } from '../src/errors.js';
 import type {
-  ApiActiveRun, ApiAgent, ApiConventionBoard, ApiPull, ApiRepo, ApiReview, ApiRun,
+  ApiActiveRun, ApiAgent, ApiBlastRadius, ApiConventionBoard, ApiPull, ApiRepo, ApiReview, ApiRun,
 } from '../src/domain/types.js';
 import type { DevDigestApi } from '../src/ports.js';
 import type { ToolContext } from '../src/tools/types.js';
@@ -16,6 +16,7 @@ export interface FakeData {
   active: Record<string, ApiActiveRun[]>; // prId → active runs
   reviews: Record<string, ApiReview[]>; // prId → reviews (newest first)
   conventions: Record<string, ApiConventionBoard>; // repoId → board
+  blast: Record<string, ApiBlastRadius>; // prId → blast radius
 }
 
 export interface FakeApiOptions {
@@ -50,6 +51,7 @@ export function defaultData(): FakeData {
     active: {},
     reviews: {},
     conventions: {},
+    blast: {},
   };
 }
 
@@ -115,6 +117,13 @@ export function createFakeApi(seed?: Partial<FakeData>, opts: FakeApiOptions = {
     async getConventions(repoId) {
       await enter('getConventions', [repoId]);
       return data.conventions[repoId] ?? { candidates: [], last_scan: null };
+    },
+    async getBlastRadius(prId) {
+      await enter('getBlastRadius', [prId]);
+      return data.blast[prId] ?? {
+        changed_symbols: [], downstream: [], summary: '0 symbols · 0 callers · 0 endpoints · 0 cron jobs',
+        stats: { symbols: 0, callers: 0, endpoints: 0, crons: 0 }, unattributed_endpoints: [], degraded: false, reason: null,
+      };
     },
   };
 

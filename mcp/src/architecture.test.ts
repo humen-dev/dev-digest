@@ -70,6 +70,7 @@ const RING1 = new Set([
   'domain/types',
   'domain/tool-definitions',
   'format/agents',
+  'format/blast',
   'format/conventions',
   'format/review',
   'format/text',

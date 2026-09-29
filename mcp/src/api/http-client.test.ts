@@ -32,6 +32,7 @@ describe('HttpDevDigestApi', () => {
       if (url.endsWith('/pulls/p1/runs/active')) return jsonResponse([{ run_id: 'run1', agent_id: 'a1', agent_name: 'General' }]);
       if (url.endsWith('/pulls/p1/reviews')) return jsonResponse([{ id: 'rev1', run_id: 'run1', agent_id: 'a1', agent_name: 'General', kind: 'review', verdict: 'approve', summary: 's', score: 80, created_at: '2026-01-01T00:00:00Z', findings: [] }]);
       if (url.endsWith('/repos/r1/conventions')) return jsonResponse({ candidates: [], last_scan: null });
+      if (url.endsWith('/pulls/p1/blast')) return jsonResponse({ changed_symbols: [], downstream: [], summary: '0 symbols', stats: { symbols: 0, callers: 0, endpoints: 0, crons: 0 }, unattributed_endpoints: [], degraded: false, reason: null });
       throw new Error(`unexpected url in test: ${url}`);
     });
 
@@ -46,6 +47,7 @@ describe('HttpDevDigestApi', () => {
     await api.listActiveRuns('p1');
     await api.listReviews('p1');
     await api.getConventions('r1');
+    await api.getBlastRadius('p1');
 
     expect(calls).toEqual([
       { method: 'GET', url: `${DEFAULT_API_URL}/repos` },
@@ -57,6 +59,7 @@ describe('HttpDevDigestApi', () => {
       { method: 'GET', url: `${DEFAULT_API_URL}/pulls/p1/runs/active` },
       { method: 'GET', url: `${DEFAULT_API_URL}/pulls/p1/reviews` },
       { method: 'GET', url: `${DEFAULT_API_URL}/repos/r1/conventions` },
+      { method: 'GET', url: `${DEFAULT_API_URL}/pulls/p1/blast` },
     ]);
   });
 
