@@ -17,7 +17,7 @@ import { and, asc, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import { clampIndexedName } from '../../db/schema/context.js';
-import type { DegradedReason, FileRankRow, IndexState, IndexStatus } from './types.js';
+import type { DegradedReason, FactHandlers, FileRankRow, IndexState, IndexStatus } from './types.js';
 
 /** Chunk size for batched inserts — same value blast already uses. */
 const INSERT_CHUNK_SIZE = 500;
@@ -100,6 +100,9 @@ export interface IndexerFileFactsRow {
   filePath: string;
   endpoints: string[];
   crons: string[];
+  /** Absent or {} = every fact's handler unknown. */
+  endpointHandlers?: FactHandlers;
+  cronHandlers?: FactHandlers;
 }
 
 /** Candidate row for the repo-map renderer (symbols × file_rank). */

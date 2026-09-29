@@ -194,6 +194,15 @@ export const BlastFileFacts = z.object({
 });
 export type BlastFileFacts = z.infer<typeof BlastFileFacts>;
 
+/** One kept caller's file facts after handler attribution (docs/plans/blast-endpoint-attribution.md). */
+export const BlastCallerFacts = z.object({
+  name: z.string(),
+  file: z.string(),
+  endpoints: z.array(z.string()),
+  crons: z.array(z.string()),
+});
+export type BlastCallerFacts = z.infer<typeof BlastCallerFacts>;
+
 /** GET /pulls/:id/blast — the BlastRadius map plus index health. Read-only, never calls a model. */
 export const BlastRadiusResponse = BlastRadius.extend({
   stats: BlastStats,
@@ -208,6 +217,9 @@ export const BlastRadiusResponse = BlastRadius.extend({
   indirect_stats: BlastIndirectStats.optional(),
   /** Facts of each kept caller file (persistent index only; {} otherwise) — graph caller → endpoint edges. */
   caller_file_facts: z.record(z.string(), BlastFileFacts).optional(),
+  /** Per kept caller (name + file), sorted by file then name: the union, over the downstream groups the
+   *  caller appears in, of its file's facts kept by handler attribution. Graph edges prefer this. */
+  caller_facts: z.array(BlastCallerFacts).optional(),
 });
 export type BlastRadiusResponse = z.infer<typeof BlastRadiusResponse>;
 
