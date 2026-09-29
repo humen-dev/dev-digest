@@ -81,17 +81,18 @@ function placeColumn(raw: RawNode[], col: number): GraphNode[] {
 
 type CallerFacts = { endpoints: string[]; crons: string[] };
 
+/** Graph node id of a caller — shared by the node builder and the facts lookup. */
+export const callerNodeId = (name: string, file: string) => `caller:${name}|${file}`;
+
 /**
- * Resolves a caller node's endpoints/crons. Prefers per-caller `caller_facts`
- * (keyed by the caller node id); falls back to the raw per-file facts.
+ * Resolves a caller node's endpoints/crons. Prefers its per-caller `caller_facts`
+ * entry; a caller without one (or an older response without `caller_facts`)
+ * falls back to the raw facts of its file.
  */
 function callerFactsLookup(data: BlastRadiusResponse): (c: { id: string; file: string }) => CallerFacts | undefined {
-  if (data.caller_facts) {
-    const byCaller = new Map(data.caller_facts.map((f) => [`caller:${f.name}|${f.file}`, f]));
-    return (c) => byCaller.get(c.id);
-  }
+  const byCaller = new Map((data.caller_facts ?? []).map((f) => [callerNodeId(f.name, f.file), f]));
   const byFile = data.caller_file_facts ?? {};
-  return (c) => byFile[c.file];
+  return (c) => byCaller.get(c.id) ?? byFile[c.file];
 }
 
 /** Pure layout of the direct blast radius: symbols → callers → endpoints/crons. */
@@ -104,7 +105,7 @@ export function layoutBlastGraph(data: BlastRadiusResponse): GraphLayout {
     const symbolId = `symbol:${i}`;
     symbols.push({ id: symbolId, kind: "symbol", text: group.symbol });
     for (const c of group.callers) {
-      const id = `caller:${c.name}|${c.file}`;
+      const id = callerNodeId(c.name, c.file);
       if (!callers.has(id)) callers.set(id, { id, kind: "caller", text: c.name, file: c.file });
       links.push([symbolId, id]);
     }
