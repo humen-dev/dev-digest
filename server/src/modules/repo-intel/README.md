@@ -44,27 +44,44 @@ results rather than throwing).
 
 - **Endpoints** are `METHOD /path` strings from Django (`urls.py`, DRF routers and
   `@action`), Flask and FastAPI routes. `ANY` means the method is not known
-  (e.g. a plain Django `path()`); path params render as `{pk}`.
-- **Crons** are: `<cron expr> (<task>)` for Celery beat schedules and
-  `every <N>s (<task>)` for interval schedules; `job:<name>` for Celery
-  `@shared_task`/`@app.task` and APScheduler jobs. Arrays are sorted with the
-  default JS string sort.
+  (for example, a plain Django `path()`).
+  - Django path converters are kept verbatim (`/contacts/<int:pk>/`).
+  - `{pk}` appears only in DRF router routes (`ANY /api/contacts/{pk}/`).
+  - `include()` prefixes are normalised and joined with `/`.
+- **Crons** are strings of the form `"<schedule> (<label>)"`. The schedule is:
+  - a 5-field cron expression, from Celery `crontab(...)`, APScheduler
+    `add_job(..., 'cron')` / `@scheduled_job('cron', ...)`, or django-crontab
+    `CRONJOBS`;
+  - `every N<s|m|h|d>` for a number, a single-unit `timedelta` or an APScheduler
+    `'interval'`; `every ?` for any other `timedelta`;
+  - `schedule` for anything else.
+
+  They come from Celery beat dicts (`*beat_schedule`, `*.update(beat_schedule=...)`),
+  `add_periodic_task`, `@periodic_task(run_every=...)`, APScheduler and `CRONJOBS`.
+- **Jobs**: `job:<label>` is used only for Celery `@shared_task` / `@<x>.task` on
+  a module-level function.
+- Arrays are sorted with the default JS string sort.
 - Urlconf attribution over-approximates: a changed view lists every endpoint of
   its `urls.py` (consistent with per-file attribution for TS).
 
 ### Exclusions and source roots
 
-- `migrations/` directories are not walked at all; virtualenvs (a directory with
-  `pyvenv.cfg`), `__pycache__`, `.venv`, `venv`, `.tox`, `site-packages` and the
-  other `EXCLUDED_DIRS` are skipped.
+- `.py` files with a `migrations` path segment are skipped. This rule is
+  Python-only: TS/JS files under a `migrations/` directory stay indexed.
+- Virtualenvs (a non-root directory with `pyvenv.cfg`), `__pycache__`, `.venv`,
+  `venv`, `.tox`, `site-packages` and the other `EXCLUDED_DIRS` are skipped.
 - Import resolution tries source roots in order: the directory of each
   `manage.py` (shallowest first), then `src/` when present, then the repo root.
   An import that resolves to no indexed file creates no edge.
 
 ### Limitations
 
-- Files **added by a PR** are invisible: the index reflects the indexed head, so
-  a new `.py` file has no symbols or edges until the next refresh/resync.
+- Files **added by a PR** are invisible. The index is built from the clone of
+  the **default branch**, so a file that exists only on the PR branch has no
+  symbols or edges. A resync does not change that until the file is merged into
+  the default branch.
+- Incremental reindex patches Python facts only for `.py` files still in the
+  tree, so the facts of a deleted `.py` file linger until a full reindex.
 - `INDEXER_VERSION` is **4** (Python indexing). Repos indexed at an older version
   are only rebuilt on the **next refresh/resync** (the version check runs before
   the "sha unchanged" exit); until then they keep 0 Python files.
