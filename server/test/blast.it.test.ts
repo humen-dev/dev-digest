@@ -66,4 +66,32 @@ d('BlastRepository (Testcontainers pg)', () => {
     expect((await repo.listChangedFiles(pr!.id)).sort()).toEqual(['src/a.ts', 'src/b.ts']);
     expect(await repo.listChangedFiles('00000000-0000-4000-8000-000000000099')).toEqual([]);
   });
+
+  it('listImporters / getFileFacts are repo-scoped and return plain arrays', async () => {
+    const db = pg.handle.db;
+    const mk = async (name: string) => {
+      const [row] = await db
+        .insert(t.repos)
+        .values({ workspaceId, owner: 'acme', name, fullName: `acme/${name}` })
+        .returning();
+      return row!;
+    };
+    const r1 = await mk('graph-1');
+    const r2 = await mk('graph-2');
+    await db.insert(t.fileEdges).values([
+      { repoId: r1.id, fromFile: 'src/b.ts', toFile: 'src/a.ts' },
+      { repoId: r1.id, fromFile: 'src/c.ts', toFile: 'src/x.ts' },
+      { repoId: r2.id, fromFile: 'src/other.ts', toFile: 'src/a.ts' },
+    ]);
+    await db.insert(t.fileFacts).values([
+      { repoId: r1.id, filePath: 'src/b.ts', endpoints: ['GET /b'], crons: [] },
+      { repoId: r2.id, filePath: 'src/b.ts', endpoints: ['GET /other'], crons: [] },
+    ]);
+    expect(await repo.listImporters(r1.id, ['src/a.ts'])).toEqual([{ fromFile: 'src/b.ts', toFile: 'src/a.ts' }]);
+    expect(await repo.listImporters(r1.id, [])).toEqual([]);
+    expect(await repo.getFileFacts(r1.id, ['src/b.ts', 'src/zzz.ts'])).toEqual([
+      { filePath: 'src/b.ts', endpoints: ['GET /b'], crons: [] },
+    ]);
+    expect(await repo.getFileFacts(r1.id, [])).toEqual([]);
+  });
 });

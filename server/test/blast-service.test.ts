@@ -18,9 +18,27 @@ function setup(files: string[], enabled = true, status: 'full' | 'partial' = 'fu
     },
     status,
   );
-  const service = new BlastService({ blast: repo, intel, repoIntelEnabled: enabled, maxCallersPerSymbol: 20 });
-  return { service, intel, prId, repoId };
+  const service = new BlastService({
+    blast: repo,
+    intel,
+    repoIntelEnabled: enabled,
+    maxCallersPerSymbol: 20,
+    bfsDepth: 2,
+    now: () => 1000,
+  });
+  return { service, intel, prId, repoId, repo };
 }
+
+const recorder = () => {
+  const calls: { level: 'info' | 'warn'; obj: Record<string, unknown> }[] = [];
+  return {
+    calls,
+    logger: {
+      info: (obj: unknown) => void calls.push({ level: 'info', obj: obj as Record<string, unknown> }),
+      warn: (obj: unknown) => void calls.push({ level: 'warn', obj: obj as Record<string, unknown> }),
+    },
+  };
+};
 
 describe('BlastService', () => {
   it('throws NotFoundError for an unknown or other-workspace PR', async () => {
@@ -52,5 +70,69 @@ describe('BlastService', () => {
     const out = await partial.service.get(WS, partial.prId);
     expect(out).toMatchObject({ degraded: true, reason: 'index_partial' });
     expect(out.summary).toContain('(index degraded: index_partial)');
+  });
+
+  it('logs one persistent_index record, walks imports once and returns indirect endpoints', async () => {
+    const { service, intel, prId, repo } = setup(['src/lib.ts']);
+    repo.seedEdges([{ fromFile: 'src/route.ts', toFile: 'src/a.ts' }]);
+    repo.seedFacts([{ filePath: 'src/route.ts', endpoints: ['GET /r'], crons: [] }]);
+    const rec = recorder();
+    const out = await service.get(WS, prId, { logger: rec.logger });
+    expect(rec.calls).toHaveLength(1);
+    expect(rec.calls[0]!.level).toBe('info');
+    expect(rec.calls[0]!.obj).toMatchObject({
+      event: 'blast.served',
+      source: 'persistent_index',
+      indexerVersion: 1,
+      lastIndexedSha: 'abc',
+      edgeQueries: 1,
+      astParsed: false,
+      graphBuilt: false,
+      cloneScanned: false,
+      durationMs: 0,
+      counts: { symbols: 1, callers: 1, indirectFiles: 1, indirectEndpoints: 1 },
+    });
+    expect(intel.blastCalls).toHaveLength(1);
+    expect(intel.indexRepoCalls).toBe(0);
+    expect(intel.refreshCalls).toBe(0);
+    expect(out.indirect).toEqual([{ symbol: 'helper', files: ['src/route.ts'], endpoints: ['GET /r'], crons: [] }]);
+    expect(out.limits).toEqual({ max_callers_per_symbol: 20, bfs_depth: 2 });
+  });
+
+  it('degraded facade result logs warn ripgrep_fallback, no edge queries, no indirect', async () => {
+    const repo = new InMemoryBlastRepo();
+    const prId = newId();
+    repo.seedPull(WS, prId, newId(), ['src/lib.ts']);
+    const intel = new FakeRepoIntel(
+      {
+        changedSymbols: [{ file: 'src/lib.ts', name: 'helper', kind: 'function' }],
+        callers: [{ file: 'src/a.ts', symbol: 'a', viaSymbol: 'helper', line: 3, rank: 0 }],
+        impactedEndpoints: [],
+        degraded: true,
+        reason: 'no_data',
+      },
+      'full',
+    );
+    const service = new BlastService({
+      blast: repo,
+      intel,
+      repoIntelEnabled: true,
+      maxCallersPerSymbol: 20,
+      bfsDepth: 2,
+    });
+    const rec = recorder();
+    const out = await service.get(WS, prId, { logger: rec.logger });
+    expect(rec.calls).toHaveLength(1);
+    expect(rec.calls[0]!.level).toBe('warn');
+    expect(rec.calls[0]!.obj).toMatchObject({ source: 'ripgrep_fallback', cloneScanned: true, edgeQueries: 0 });
+    expect(repo.importerCalls).toHaveLength(0);
+    expect(out.indirect).toEqual([]);
+  });
+
+  it('logs skipped_no_files for an empty PR', async () => {
+    const { service, prId } = setup([]);
+    const rec = recorder();
+    await service.get(WS, prId, { logger: rec.logger });
+    expect(rec.calls[0]!.obj).toMatchObject({ source: 'skipped_no_files', changedFiles: 0 });
   });
 });

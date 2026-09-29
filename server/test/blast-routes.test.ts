@@ -39,6 +39,7 @@ describe('blast routes (no DB)', () => {
     const body = BlastRadiusResponse.parse(res.json());
     expect(body.degraded).toBe(false);
     expect(body.stats).toEqual({ symbols: 1, callers: 1, endpoints: 1, crons: 1 });
+    expect(body.limits).toEqual({ max_callers_per_symbol: 20, bfs_depth: 2 });
   });
 
   it('GET /pulls/:id/blast → 404 for a PR outside the workspace', async () => {

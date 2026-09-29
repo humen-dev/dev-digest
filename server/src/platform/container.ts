@@ -43,7 +43,7 @@ import type { SmartDiffRepositoryPort } from '../modules/smart-diff/ports.js';
 import { BlastRepository } from '../modules/blast/repository.js';
 import { BlastService } from '../modules/blast/service.js';
 import type { BlastRepositoryPort } from '../modules/blast/ports.js';
-import { MAX_CALLERS_PER_SYMBOL } from '../modules/repo-intel/constants.js';
+import { BFS_DEPTH, MAX_CALLERS_PER_SYMBOL } from '../modules/repo-intel/constants.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
@@ -221,6 +221,7 @@ export class Container {
       intel: this.repoIntel,
       repoIntelEnabled: this.config.repoIntelEnabled,
       maxCallersPerSymbol: MAX_CALLERS_PER_SYMBOL,
+      bfsDepth: BFS_DEPTH,
     }));
   }
 

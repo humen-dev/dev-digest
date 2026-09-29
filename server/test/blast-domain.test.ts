@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { BlastRadiusResponse } from '@devdigest/shared';
 import { buildBlastRadius } from '../src/modules/blast/domain/build-blast-radius.js';
 import { resolveDegradation } from '../src/modules/blast/domain/degradation.js';
+import { buildBlastLogRecord, resolveBlastSource } from '../src/modules/blast/domain/blast-log.js';
 import { formatBlastSummary } from '../src/modules/blast/domain/summary.js';
 import type { BlastCallerRow, BlastResult } from '../src/modules/repo-intel/types.js';
 
-const OPTS = { maxCallersPerSymbol: 20, degraded: false, reason: null } as const;
+const OPTS = { maxCallersPerSymbol: 20, bfsDepth: 2, degraded: false, reason: null } as const;
 const caller = (file: string, symbol: string, via: string, line: number, rank = 0): BlastCallerRow => ({
   file,
   symbol,
@@ -18,6 +19,69 @@ const base = (over: Partial<BlastResult>): BlastResult => ({
   callers: [],
   impactedEndpoints: [],
   ...over,
+});
+
+describe('buildBlastRadius limits + caller_file_facts', () => {
+  it('echoes limits and keeps facts only for kept caller files', () => {
+    const out = buildBlastRadius(
+      base({
+        callers: [caller('src/a.ts', 'a', 'helper', 3)],
+        factsByFile: {
+          'src/a.ts': { endpoints: ['GET /a'], crons: [] },
+          'src/unrelated.ts': { endpoints: ['GET /u'], crons: [] },
+        },
+      }),
+      OPTS,
+    );
+    expect(out.limits).toEqual({ max_callers_per_symbol: 20, bfs_depth: 2 });
+    expect(out.caller_file_facts).toEqual({ 'src/a.ts': { endpoints: ['GET /a'], crons: [] } });
+    expect(out.indirect).toEqual([]);
+    expect(out.indirect_stats).toEqual({ files: 0, endpoints: 0, crons: 0 });
+    const noFacts = buildBlastRadius(base({ callers: [caller('src/a.ts', 'a', 'helper', 3)] }), OPTS);
+    expect(noFacts.caller_file_facts).toEqual({});
+  });
+});
+
+describe('buildBlastLogRecord', () => {
+  const response = buildBlastRadius(base({ callers: [caller('src/a.ts', 'a', 'helper', 3)] }), OPTS);
+  const input = {
+    prId: 'p',
+    repoId: 'r',
+    index: { status: 'full', indexerVersion: 3, lastIndexedSha: 'abc' },
+    changedFiles: 1,
+    edgeQueries: 1,
+    bfsDepth: 2,
+    maxCallersPerSymbol: 20,
+    response,
+    durationMs: 5,
+  };
+
+  it.each([
+    ['persistent_index', 'info', false, 'no AST parse'],
+    ['ripgrep_fallback', 'warn', true, 'ripgrep fallback'],
+    ['skipped_no_files', 'info', false, 'no changed files'],
+  ] as const)('%s -> level %s, cloneScanned %s', (source, level, cloneScanned, msg) => {
+    const out = buildBlastLogRecord({ ...input, source });
+    expect(out.level).toBe(level);
+    expect(out.message).toContain(msg);
+    expect(out.record).toMatchObject({
+      event: 'blast.served',
+      source,
+      astParsed: false,
+      graphBuilt: false,
+      cloneScanned,
+      indexerVersion: 3,
+      lastIndexedSha: 'abc',
+      durationMs: 5,
+      counts: { symbols: 1, callers: 1 },
+    });
+  });
+
+  it('resolves the source from the facade degraded flag', () => {
+    expect(resolveBlastSource(0, null)).toBe('skipped_no_files');
+    expect(resolveBlastSource(2, { degraded: true })).toBe('ripgrep_fallback');
+    expect(resolveBlastSource(2, {})).toBe('persistent_index');
+  });
 });
 
 describe('buildBlastRadius', () => {

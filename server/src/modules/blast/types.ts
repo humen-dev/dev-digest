@@ -11,6 +11,7 @@ export const REASON_CONTRACT_OK: ReasonOk = true;
 
 export interface BuildBlastOptions {
   maxCallersPerSymbol: number;
+  bfsDepth: number;
   degraded: boolean;
   reason: BlastDegradedReason | null;
 }

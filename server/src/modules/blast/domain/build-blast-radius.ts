@@ -71,6 +71,13 @@ export function buildBlastRadius(source: BlastResult, opts: BuildBlastOptions): 
     crons: new Set(downstream.flatMap((d) => d.crons_affected)).size,
   };
 
+  const keptFiles = new Set(downstream.flatMap((d) => d.callers.map((c) => c.file)));
+  const callerFileFacts: Record<string, { endpoints: string[]; crons: string[] }> = {};
+  for (const f of [...keptFiles].sort(cmp)) {
+    const fx = facts?.[f];
+    if (fx) callerFileFacts[f] = { endpoints: [...fx.endpoints], crons: [...fx.crons] };
+  }
+
   return {
     changed_symbols: source.changedSymbols.map((s) => ({ name: s.name, file: s.file, kind: s.kind })),
     downstream,
@@ -79,5 +86,9 @@ export function buildBlastRadius(source: BlastResult, opts: BuildBlastOptions): 
     unattributed_endpoints: unattributed,
     degraded: opts.degraded,
     reason: opts.reason,
+    limits: { max_callers_per_symbol: opts.maxCallersPerSymbol, bfs_depth: opts.bfsDepth },
+    indirect: [],
+    indirect_stats: { files: 0, endpoints: 0, crons: 0 },
+    caller_file_facts: callerFileFacts,
   };
 }
