@@ -77,7 +77,7 @@ export function BlastRadius({ prId, repoId, repoFullName, headSha }: BlastRadius
             <React.Fragment key={key}>
               {i > 0 && <span style={s.sep}>·</span>}
               <span>
-                <span style={s.statNum}>{n}</span> {t(`stat.${key}`)}
+                <span style={s.statNum}>{n}</span> {t(`stat.${key}`, { count: n })}
               </span>
             </React.Fragment>
           ))}

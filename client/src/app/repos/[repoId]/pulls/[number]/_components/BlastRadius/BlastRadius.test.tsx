@@ -61,9 +61,9 @@ describe("BlastRadius", () => {
     renderCard();
 
     expect(screen.getByText("Blast radius")).toBeInTheDocument();
-    expect(screen.getByText("cron/jobs")).toBeInTheDocument();
-    expect(screen.getByText("cron/jobs").closest("div")).toHaveTextContent(
-      "1 symbols·2 callers·1 endpoints·1 cron/jobs",
+    expect(screen.getByText("cron")).toBeInTheDocument();
+    expect(screen.getByText("cron").closest("div")).toHaveTextContent(
+      "1 symbol·2 callers·1 endpoint·1 cron",
     );
     expect(screen.getByText("2 callers")).toBeInTheDocument();
 

@@ -1,10 +1,10 @@
 {
   "title": "Blast radius",
   "stat": {
-    "symbols": "symbols",
-    "callers": "callers",
-    "endpoints": "endpoints",
-    "crons": "cron/jobs"
+    "symbols": "{count, plural, one {symbol} other {symbols}}",
+    "callers": "{count, plural, one {caller} other {callers}}",
+    "endpoints": "{count, plural, one {endpoint} other {endpoints}}",
+    "crons": "{count, plural, one {cron} other {crons}}"
   },
   "view": {
     "tree": "tree",
