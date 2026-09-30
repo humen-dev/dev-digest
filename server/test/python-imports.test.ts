@@ -162,6 +162,10 @@ describe('python imports', () => {
     const rebound: PyImportsOf = (f) =>
       f === 'x.py' ? [from('django', ['apps'], 0, 1), imp('apps.tools.phone', null, 2)] : [];
     expect(resolveNameToFile(index, 'x.py', 'apps.tools.phone', rebound)?.file).toBe('apps/tools/phone.py');
+    // Same line (`from django import apps; import apps.tools.phone`): statement order decides.
+    const sameLine: PyImportsOf = (f) =>
+      f === 'x.py' ? [from('django', ['apps'], 0, 1), imp('apps.tools.phone', null, 1)] : [];
+    expect(resolveNameToFile(index, 'x.py', 'apps.tools.phone', sameLine)?.file).toBe('apps/tools/phone.py');
     expect(resolveNameToFile(index, 'x.py', 'apps.tools.phone', shadowed)).toBeNull();
     expect(resolveNameToFile(index, 'apps/contacts/urls.py', 'views.ContactViewSet', importsOf)).toEqual({
       file: 'apps/contacts/views.py',

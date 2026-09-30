@@ -225,12 +225,14 @@ export function resolveNameToFile(
 
   // 1. Last `from` import binding h — unless a later `import` statement rebinds h
   //    (Python's last binding wins, whichever statement kind it is).
+  //    Compare statement order (index in `imports`, which is source order), not
+  //    line numbers: `from a import h; import h` on one line must let the import win.
   const found = findFromBinding(imports, h);
-  const lastImportLine = imports.reduce(
-    (max, imp) => (imp.kind === 'import' && importBinds(imp, h) ? Math.max(max, imp.line) : max),
+  const lastImportIdx = imports.reduce(
+    (max, imp, i) => (imp.kind === 'import' && importBinds(imp, h) ? i : max),
     -1,
   );
-  const binding = found && found.imp.line >= lastImportLine ? found : null;
+  const binding = found && imports.indexOf(found.imp) > lastImportIdx ? found : null;
   if (binding) {
     const { imp, name } = binding;
     const sub = subModule(index, fromFile, imp.level, imp.module, name);

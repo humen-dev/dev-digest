@@ -15,3 +15,16 @@ export interface BuildBlastOptions {
   degraded: boolean;
   reason: BlastDegradedReason | null;
 }
+
+/** One `file_edges` row: `fromFile` imports `toFile`. */
+export interface BlastImportEdge {
+  fromFile: string;
+  toFile: string;
+}
+
+/** One `file_facts` row (endpoints / crons of a file). */
+export interface BlastFileFactsRow {
+  filePath: string;
+  endpoints: string[];
+  crons: string[];
+}
