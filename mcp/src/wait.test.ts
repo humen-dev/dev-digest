@@ -16,6 +16,24 @@ describe('waitForRun', () => {
     expect(outcome.kind).toBe('done');
     if (outcome.kind === 'done') expect(outcome.run.run_id).toBe('r1');
     expect(ctx.progressEvents.length).toBe(3);
+    const values = (ctx.progressEvents as Array<{ progress: number }>).map((p) => p.progress);
+    expect(values).toEqual([...values].sort((a, b) => a - b));
+    expect(new Set(values).size).toBe(values.length);
+  });
+
+  it('never repeats a progress value when polls land in the same instant', async () => {
+    const api = createFakeApi(
+      { runs: { pr1: [{ run_id: 'r1', agent_id: 'a1', agent_name: 'General', status: 'running', error: null, score: null, blockers: null, findings_count: null, ran_at: null }] } },
+      { runStatusScript: { r1: ['running', 'running', 'done'] } },
+    );
+    // A frozen clock: every poll happens at the same instant (the worst case of
+    // a short DEVDIGEST_MCP_POLL_MS or a fast-failing listRuns).
+    const ctx = makeCtx(api, { now: () => 0, sleep: async () => {} });
+
+    const outcome = await waitForRun({ ctx, prId: 'pr1', runId: 'r1', label: 'test' });
+
+    expect(outcome.kind).toBe('done');
+    expect(ctx.progressEvents).toEqual([{ progress: 0, total: ctx.config.waitMs, message: 'test: running (0s)' }]);
   });
 
   it('returns failed / cancelled outcomes verbatim', async () => {

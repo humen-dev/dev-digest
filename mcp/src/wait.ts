@@ -25,6 +25,7 @@ export async function waitForRun(o: {
   const { ctx, prId, runId, label } = o;
   const start = ctx.now();
   let consecutiveErrors = 0;
+  let lastProgressMs = -1;
 
   for (;;) {
     if (ctx.signal.aborted) return { kind: 'aborted', elapsedMs: ctx.now() - start };
@@ -45,12 +46,18 @@ export async function waitForRun(o: {
     const run = runs.find((r) => r.run_id === runId);
     const status = run?.status ?? null;
 
-    const elapsedS = Math.floor((ctx.now() - start) / 1000);
-    await ctx.progress({
-      progress: elapsedS,
-      total: Math.floor(ctx.config.waitMs / 1000),
-      message: `${label}: ${status ?? 'running'} (${elapsedS}s)`,
-    });
+    // MCP requires `progress` to increase with every notification. Whole seconds
+    // repeat when polls are < 1 s apart (DEVDIGEST_MCP_POLL_MS=500, or a fast-failing
+    // listRuns), so report milliseconds and skip a notification that would not advance.
+    const progressMs = ctx.now() - start;
+    if (progressMs > lastProgressMs) {
+      lastProgressMs = progressMs;
+      await ctx.progress({
+        progress: progressMs,
+        total: ctx.config.waitMs,
+        message: `${label}: ${status ?? 'running'} (${Math.floor(progressMs / 1000)}s)`,
+      });
+    }
 
     if (run && status && TERMINAL_STATUSES.has(status)) {
       return { kind: status as 'done' | 'failed' | 'cancelled', run };
