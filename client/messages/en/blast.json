@@ -1,18 +1,79 @@
 {
+  "title": "Blast radius",
   "stat": {
-    "symbols": "symbols",
-    "callers": "callers",
-    "endpoints": "endpoints",
-    "crons": "cron/jobs"
+    "label": "Blast radius summary",
+    "symbols": "{count, plural, one {symbol} other {symbols}}",
+    "callers": "{count, plural, one {caller} other {callers}}",
+    "endpoints": "{count, plural, one {endpoint} other {endpoints}}",
+    "crons": "{count, plural, one {cron} other {crons}}"
   },
   "view": {
-    "tree": "tree",
-    "graph": "graph"
+    "label": "Blast radius view",
+    "tree": "Tree",
+    "graph": "Graph"
   },
-  "callerCount": "{count} callers",
+  "callerCount": "{count, plural, one {# caller} other {# callers}}",
   "noDownstream": "{count} changed symbol(s), no downstream callers found.",
+  "noChangedSymbols": "No changed symbols found in this PR.",
+  "otherEndpoints": "Other affected endpoints",
+  "endpointsLabel": "Affected endpoints",
+  "cronsLabel": "Affected cron jobs",
+  "callerLink": "Open {file} line {line} on GitHub",
+  "toggle": {
+    "expand": "Expand callers",
+    "collapse": "Collapse callers"
+  },
+  "error": {
+    "load": "Couldn't load the blast radius"
+  },
+  "degraded": {
+    "badge": "Index incomplete",
+    "reason": {
+      "flag_off": "Repo intelligence is disabled on the API (REPO_INTEL_ENABLED=false).",
+      "index_failed": "Indexing this repo failed, so results may be missing.",
+      "index_partial": "The index is only partial, so some callers may be missing.",
+      "repo_too_large": "This repo is too large to index fully, so results may be missing.",
+      "no_data": "This repo has not been indexed yet."
+    }
+  },
+  "resync": {
+    "button": "Resync index",
+    "pending": "Resyncing…",
+    "started": "Resync started"
+  },
+  "limits": "Up to {max} callers per symbol · import depth {depth}",
+  "indirect": {
+    "label": "Via imports (depth ≤ {depth})",
+    "files": "{count, plural, one {# importing file} other {# importing files}}",
+    "endpointsLabel": "Endpoints reached via imports",
+    "cronsLabel": "Cron jobs reached via imports"
+  },
   "graph": {
     "empty": "No downstream callers to graph.",
-    "ariaLabel": "Blast radius graph"
+    "ariaLabel": "Blast radius graph",
+    "legend": {
+      "changed": "changed symbol",
+      "callers": "callers",
+      "endpoints": "endpoints affected",
+      "crons": "cron jobs"
+    },
+    "more": "+{count} more",
+    "unattributed": "{count, plural, one {# endpoint is} other {# endpoints are}} not linked to a caller. See the Tree view."
+  },
+  "history": {
+    "title": "Prior PRs touching these files",
+    "loading": "Loading prior PRs…",
+    "empty": "No merged PRs touched these files.",
+    "error": "Couldn't load prior PRs",
+    "unavailable": {
+      "no_token": "Add a GitHub token (GITHUB_TOKEN) to see prior PRs.",
+      "rate_limited": "GitHub rate limit reached. Try again later.",
+      "github_error": "GitHub history is unavailable right now."
+    },
+    "merged": "merged {date} by @{author}",
+    "overlap": "{count, plural, one {# shared file} other {# shared files}}",
+    "moreFiles": "+{count} more",
+    "capped": "Checked the {considered} most-changed of {total} files.",
+    "openPr": "Open PR #{number} on GitHub"
   }
 }

@@ -30,7 +30,7 @@
   "bundles": {
     "frontend": { "areaGlobs": ["client/**"] },
     "backend": { "areaGlobs": ["server/**"] },
-    "engine": { "areaGlobs": ["reviewer-core/**", "e2e/**"] },
+    "engine": { "areaGlobs": ["reviewer-core/**", "e2e/**", "mcp/**"] },
     "crosscut": { "areaGlobs": ["**"] }
   },
   "routes": [
@@ -117,6 +117,11 @@
     {
       "globs": ["e2e/specs/**", "e2e/lib/**", "e2e/run.ts"],
       "skills": ["typescript-expert"],
+      "bundle": "engine"
+    },
+    {
+      "globs": ["mcp/src/**"],
+      "skills": ["typescript-expert", "security"],
       "bundle": "engine"
     },
     {

@@ -7,7 +7,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { walkClone } from '../src/modules/repo-intel/pipeline/walk.js';
 import {
   EXCLUDED_DIRS,
@@ -17,7 +18,7 @@ import {
 
 async function writeFileAt(root: string, rel: string, contents: string): Promise<void> {
   const full = join(root, rel);
-  const dir = full.slice(0, full.lastIndexOf('/'));
+  const dir = dirname(full);
   if (dir && dir !== root) await mkdir(dir, { recursive: true });
   await writeFile(full, contents);
 }
@@ -106,5 +107,55 @@ describe('walkClone', () => {
     const first = await walkClone(root);
     const second = await walkClone(root);
     expect(first.files).toEqual(second.files);
+  });
+
+  it('returns .py files alongside JS/TS', async () => {
+    await writeFileAt(root, 'app/a.py', 'x = 1');
+    await writeFileAt(root, 'src/b.ts', 'export {}');
+    const result = await walkClone(root);
+    expect(result.files).toEqual(['app/a.py', 'src/b.ts']);
+    expect(result.stats.totalCandidates).toBe(2);
+  });
+
+  it('skips Python caches, envs and dirs holding pyvenv.cfg', async () => {
+    await writeFileAt(root, 'app/a.py', 'x = 1');
+    await writeFileAt(root, '.venv/lib/x.py', 'x = 1');
+    await writeFileAt(root, 'app/__pycache__/a.py', 'x = 1');
+    await writeFileAt(root, 'myenv/pyvenv.cfg', 'home = /usr');
+    await writeFileAt(root, 'myenv/lib/site.py', 'x = 1');
+    const result = await walkClone(root);
+    expect(result.files).toEqual(['app/a.py']);
+  });
+
+  it('skips .py under migrations but keeps db/migrations/001.ts', async () => {
+    await writeFileAt(root, 'apps/x/migrations/0001_initial.py', 'x = 1');
+    await writeFileAt(root, 'apps/x/models.py', 'x = 1');
+    await writeFileAt(root, 'db/migrations/001.ts', 'export {}');
+    const result = await walkClone(root);
+    expect(result.files).toEqual(['apps/x/models.py', 'db/migrations/001.ts']);
+    expect(result.stats.totalCandidates).toBe(2);
+  });
+
+  it('walks the django-mini fixture: 16 non-migration files', async () => {
+    const fixture = fileURLToPath(new URL('./fixtures/django-mini', import.meta.url));
+    const result = await walkClone(fixture);
+    expect(result.files).toEqual([
+      'apps/__init__.py',
+      'apps/contacts/__init__.py',
+      'apps/contacts/models.py',
+      'apps/contacts/serializers.py',
+      'apps/contacts/urls.py',
+      'apps/contacts/views.py',
+      'apps/history/__init__.py',
+      'apps/history/views.py',
+      'apps/reports/__init__.py',
+      'apps/reports/tasks.py',
+      'apps/tools/__init__.py',
+      'apps/tools/phone.py',
+      'config/__init__.py',
+      'config/settings.py',
+      'config/urls.py',
+      'manage.py',
+    ]);
   });
 });

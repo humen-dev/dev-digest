@@ -104,7 +104,9 @@ export class SimpleGitClient implements GitClient {
    */
   async diffNameOnly(repo: RepoRef, base: string, head: string): Promise<string[]> {
     if (base === head) return [];
-    const raw = await this.git(repo).raw(['diff', '--name-only', `${base}..${head}`]);
+    // --no-renames: a rename is reported as delete + add, so the old path's
+    // index rows (facts, symbols) get cleared instead of lingering.
+    const raw = await this.git(repo).raw(['diff', '--name-only', '--no-renames', `${base}..${head}`]);
     return raw
       .split('\n')
       .map((s) => s.trim())

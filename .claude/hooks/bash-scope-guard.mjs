@@ -14,7 +14,7 @@ import { deny, allow, readPayload, segments, tokenize } from './lib/guard-io.mjs
 
 const GUARD = 'bash-scope-guard';
 
-const CD_DIR = /^(?:\.\/)?(?:server|client|reviewer-core|e2e)\/?$/;
+const CD_DIR = /^(?:\.\/)?(?:server|client|reviewer-core|e2e|mcp)\/?$/;
 const GIT_READ = new Set(['status', 'diff', 'log', 'show', 'merge-base', 'rev-parse', 'ls-files']);
 
 /** `cd <package>` — the only way to change directory. */

@@ -40,6 +40,14 @@ import type { IntentRepositoryPort } from '../modules/intent/ports.js';
 import { SmartDiffRepository } from '../modules/smart-diff/repository.js';
 import { SmartDiffService } from '../modules/smart-diff/service.js';
 import type { SmartDiffRepositoryPort } from '../modules/smart-diff/ports.js';
+import { BlastRepository } from '../modules/blast/repository.js';
+import { BlastService } from '../modules/blast/service.js';
+import type { BlastRepositoryPort } from '../modules/blast/ports.js';
+import { PrHistoryRepository } from '../modules/pr-history/repository.js';
+import { PrHistoryService } from '../modules/pr-history/service.js';
+import type { PrHistoryRepositoryPort, PrHistorySourcePort } from '../modules/pr-history/ports.js';
+import { OctokitPrHistorySource } from '../adapters/github/pr-history.js';
+import { BFS_DEPTH, MAX_CALLERS_PER_SYMBOL } from '../modules/repo-intel/constants.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
@@ -75,6 +83,12 @@ export interface ContainerOverrides {
   intentRepo?: IntentRepositoryPort;
   /** Smart-diff persistence port — tests swap the port, not the service. */
   smartDiffRepo?: SmartDiffRepositoryPort;
+  /** Blast-radius persistence port — tests swap the port, not the service. */
+  blastRepo?: BlastRepositoryPort;
+  /** Prior-PR history persistence port — tests swap the port, not the service. */
+  prHistoryRepo?: PrHistoryRepositoryPort;
+  /** Prior-PR GitHub GraphQL source — tests inject a fake (never the network). */
+  prHistorySource?: PrHistorySourcePort;
 }
 
 export class Container {
@@ -102,6 +116,9 @@ export class Container {
   private _conventionsService?: ConventionsService;
   private _intentService?: IntentService;
   private _smartDiffService?: SmartDiffService;
+  private _blastService?: BlastService;
+  private _prHistoryService?: PrHistoryService;
+  private _prHistorySource?: PrHistorySourcePort;
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
@@ -207,6 +224,25 @@ export class Container {
     }));
   }
 
+  /** Blast radius — what else a PR can affect (docs/plans/blast-radius.md). */
+  get blastService(): BlastService {
+    return (this._blastService ??= new BlastService({
+      blast: this.overrides.blastRepo ?? new BlastRepository(this.db),
+      intel: this.repoIntel,
+      repoIntelEnabled: this.config.repoIntelEnabled,
+      maxCallersPerSymbol: MAX_CALLERS_PER_SYMBOL,
+      bfsDepth: BFS_DEPTH,
+    }));
+  }
+
+  /** Prior PRs touching a PR's files — GitHub GraphQL behind a narrow port (docs/plans/blast-radius-p3.md). */
+  get prHistoryService(): PrHistoryService {
+    return (this._prHistoryService ??= new PrHistoryService({
+      pulls: this.overrides.prHistoryRepo ?? new PrHistoryRepository(this.db),
+      github: () => this.prHistorySource(),
+    }));
+  }
+
   get codeIndex(): CodeIndex {
     if (this.overrides.codeIndex) return this.overrides.codeIndex;
     this._codeIndex ??= new RipgrepCodeIndex(this.git);
@@ -273,6 +309,15 @@ export class Container {
     return this._github;
   }
 
+  async prHistorySource(): Promise<PrHistorySourcePort> {
+    if (this.overrides.prHistorySource) return this.overrides.prHistorySource;
+    if (this._prHistorySource) return this._prHistorySource;
+    const token = await this.secrets.get('GITHUB_TOKEN');
+    if (!token) throw new ConfigError('GITHUB_TOKEN is not configured');
+    this._prHistorySource = new OctokitPrHistorySource(token);
+    return this._prHistorySource;
+  }
+
   /** Resolve an LLM provider by id; constructs from the secret key, cached. */
   async llm(id: 'openai' | 'anthropic' | 'openrouter'): Promise<LLMProvider> {
     const injected = this.overrides.llm?.[id];
@@ -328,6 +373,7 @@ export class Container {
   invalidateSecretCaches(): void {
     this.llmCache.clear();
     this._github = undefined;
+    this._prHistorySource = undefined;
     this._embedder = undefined;
   }
 }

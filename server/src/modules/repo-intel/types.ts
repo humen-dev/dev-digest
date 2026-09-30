@@ -69,6 +69,19 @@ export interface BlastCallerRow {
   line: number;
   /** file_rank.rank of the caller file (0 in the degraded/ripgrep path). */
   rank: number;
+  /** Names (dotted and bare) of every symbol in `file` whose [line, endLine] contains `line`; sorted.
+   *  Absent on the degraded path — consumers then use [symbol]. */
+  scopes?: string[];
+}
+
+/** fact string → sorted, unique handler names (bare `name` or `Class.method`). A fact with no key = handler unknown. */
+export type FactHandlers = Record<string, string[]>;
+
+export interface BlastCallerFileFacts {
+  endpoints: string[];
+  crons: string[];
+  endpointHandlers?: FactHandlers;
+  cronHandlers?: FactHandlers;
 }
 
 export interface BlastResult {
@@ -81,7 +94,7 @@ export interface BlastResult {
    * endpoints/crons to the changed symbol whose callers live in that file.
    * Present on the persistent (non-degraded) path; absent otherwise.
    */
-  factsByFile?: Record<string, { endpoints: string[]; crons: string[] }>;
+  factsByFile?: Record<string, BlastCallerFileFacts>;
   degraded?: boolean;
   reason?: DegradedReason;
 }

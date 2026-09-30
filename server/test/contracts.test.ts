@@ -3,6 +3,8 @@ import {
   Review,
   Finding,
   Intent,
+  BlastRadiusResponse,
+  PrHistoryResponse,
   BlastRadius,
   Risks,
   PrHistory,
@@ -173,6 +175,73 @@ describe('AI contracts parse fixtures', () => {
       log: [{ t: '00.00', kind: 'info', msg: 'started' }],
     });
     expect(trace.tool_calls).toHaveLength(1);
+  });
+
+  it('BlastRadiusResponse accepts healthy and degraded answers, rejects unknown reasons', () => {
+    const healthy = {
+      changed_symbols: [{ name: 'rateLimit', file: 'src/middleware/ratelimit.ts', kind: 'function' }],
+      downstream: [
+        {
+          symbol: 'rateLimit',
+          callers: [{ name: 'publicRouter', file: 'src/api/public/index.ts', line: 23 }],
+          endpoints_affected: ['GET /api/public/items'],
+          crons_affected: ['reset-rate-buckets'],
+        },
+      ],
+      summary: '1 symbol · 1 caller · 1 endpoint · 1 cron job',
+      stats: { symbols: 1, callers: 1, endpoints: 1, crons: 1 },
+      unattributed_endpoints: [],
+      degraded: false,
+      reason: null,
+    };
+    expect(BlastRadiusResponse.parse(healthy).reason).toBeNull();
+    const degraded = { ...healthy, downstream: [], degraded: true, reason: 'no_data' };
+    expect(BlastRadiusResponse.parse(degraded).reason).toBe('no_data');
+    expect(BlastRadiusResponse.safeParse({ ...healthy, reason: 'bogus' }).success).toBe(false);
+  });
+
+  it('BlastRadiusResponse accepts the optional limits/indirect/caller_file_facts fields and rejects depth 0', () => {
+    const base = {
+      changed_symbols: [], downstream: [], summary: '0 symbols · 0 callers · 0 endpoints · 0 cron jobs',
+      stats: { symbols: 0, callers: 0, endpoints: 0, crons: 0 }, unattributed_endpoints: [],
+      degraded: false, reason: null,
+    };
+    const full = {
+      ...base,
+      limits: { max_callers_per_symbol: 20, bfs_depth: 2 },
+      indirect: [{ symbol: 'formatMoney', files: ['src/server.ts'], endpoints: ['GET /health'], crons: [] }],
+      indirect_stats: { files: 1, endpoints: 1, crons: 0 },
+      caller_file_facts: { 'src/routes/orders.ts': { endpoints: ['GET /api/orders'], crons: [] } },
+    };
+    expect(BlastRadiusResponse.parse(base).limits).toBeUndefined();
+    expect(BlastRadiusResponse.parse(full).limits?.bfs_depth).toBe(2);
+    expect(BlastRadiusResponse.safeParse({ ...full, limits: { max_callers_per_symbol: 20, bfs_depth: 0 } }).success).toBe(false);
+  });
+
+  it('BlastRadiusResponse accepts optional caller_facts and rejects a malformed entry', () => {
+    const base = {
+      changed_symbols: [], downstream: [], summary: '0 symbols · 0 callers · 0 endpoints · 0 cron jobs',
+      stats: { symbols: 0, callers: 0, endpoints: 0, crons: 0 }, unattributed_endpoints: [],
+      degraded: false, reason: null,
+    };
+    expect(BlastRadiusResponse.parse(base).caller_facts).toBeUndefined();
+    const withFacts = {
+      ...base,
+      caller_facts: [{ name: 'createInvoice', file: 'src/routes/invoices.ts', endpoints: ['POST /api/invoices'], crons: [] }],
+    };
+    expect(BlastRadiusResponse.parse(withFacts).caller_facts).toHaveLength(1);
+    expect(BlastRadiusResponse.safeParse({ ...base, caller_facts: [{ name: 'x' }] }).success).toBe(false);
+  });
+
+  it('PrHistoryResponse accepts available and unavailable answers, rejects unknown reasons', () => {
+    const ok = {
+      history: [{ pr_number: 2, title: 't', merged_at: '2026-09-01T00:00:00Z', author: 'a', files_overlap: ['src/lib/money.ts'], notes: '' }],
+      available: true, reason: null, files_considered: 1, files_total: 1,
+    };
+    expect(PrHistoryResponse.parse(ok).history).toHaveLength(1);
+    const down = { history: [], available: false, reason: 'rate_limited', files_considered: 0, files_total: 3 };
+    expect(PrHistoryResponse.parse(down).reason).toBe('rate_limited');
+    expect(PrHistoryResponse.safeParse({ ...down, reason: 'bogus' }).success).toBe(false);
   });
 });
 

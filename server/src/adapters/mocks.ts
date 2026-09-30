@@ -33,6 +33,7 @@ import type {
   SecretKey,
 } from '@devdigest/shared';
 import { parseUnifiedDiff } from './git/diff-parser.js';
+import type { HistoryPathHits, HistoryQuery } from './github/pr-history.js';
 
 /**
  * Deterministic MOCK adapters for tests/dev — NO real network. Each mirrors the
@@ -333,5 +334,18 @@ export class MockSecretsProvider implements SecretsProvider {
   constructor(private secrets: Partial<Record<string, string>> = {}) {}
   async get(key: SecretKey): Promise<string | undefined> {
     return this.secrets[key as string];
+  }
+}
+
+/** Fake prior-PR source (GraphQL history lookup) — records calls, never touches the network. */
+export class MockPrHistorySource {
+  public calls: HistoryQuery[] = [];
+
+  constructor(private opts: { hits?: HistoryPathHits[]; error?: Error } = {}) {}
+
+  async mergedPrsTouchingPaths(q: HistoryQuery): Promise<HistoryPathHits[]> {
+    this.calls.push(q);
+    if (this.opts.error) throw this.opts.error;
+    return this.opts.hits ?? [];
   }
 }

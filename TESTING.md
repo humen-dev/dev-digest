@@ -31,6 +31,7 @@ If a test wouldn't catch a class of regression we care about, we don't write it.
 | server-integration | `server/` | integration (real Postgres) | vitest | `server-integration.yml` | **yes** |
 | reviewer-core | `reviewer-core/` | unit (engine) | vitest | `reviewer-core.yml` | no |
 | e2e web | `e2e/` | browser e2e (deterministic) | agent-browser + `run.ts` | `e2e-web.yml` | yes (stack) |
+| mcp | `mcp/` | unit + in-memory protocol + stdio smoke | vitest | `mcp.yml` | no |
 
 ## What each suite covers
 
@@ -56,12 +57,20 @@ and a `run` with a stubbed model → grounded findings. No DB / GitHub / FS.
 main journeys (boot → PR list → PR detail; agents) against a real seeded stack.
 No `chat`, no model key.
 
+**mcp** — the stdio MCP server: unit tests against a fake `DevDigestApi` (no
+network, no keys), an in-memory MCP protocol test (`tools/list` order,
+annotations, description/instructions budgets, no `outputSchema`, `isError`
+wire format), and one stdio smoke test that spawns the real launcher with the
+DevDigest API unreachable (a closed port) to check it starts and reports
+`api_unreachable` instead of crashing. No live API, no LLM key.
+
 ## Running locally
 
 ```sh
 # per package
 cd client        && pnpm test           # + pnpm typecheck
 cd reviewer-core && npm test
+cd mcp           && npm test            # + npm run typecheck
 
 # server — the unit/integration split (see note below)
 cd server && pnpm exec vitest run --exclude '**/*.it.test.ts'   # unit, no Docker

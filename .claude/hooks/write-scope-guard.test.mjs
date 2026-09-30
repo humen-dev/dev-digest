@@ -54,6 +54,8 @@ test('test-writer: test files allowed', () => {
     'client/src/test/render.tsx',
     'reviewer-core/test/engine.ts',
     'e2e/specs/07-foo.flow.json',
+    'mcp/src/tools/list-agents.test.ts',
+    'mcp/test/fake-api.ts',
   ]) assertAllowed('test-writer', p);
 });
 
@@ -67,6 +69,7 @@ test('test-writer: source, setup, vendor, config and outside paths denied', () =
     'client/vitest.config.ts',
     'server/src/app.ts',
     'e2e/specs/7-foo.flow.json',
+    'mcp/src/tools/list-agents.ts',
     '../outside.ts',
   ]) {
     const reason = assertDenied('test-writer', p);
@@ -96,6 +99,8 @@ test('doc-writer: docs allowed', () => {
     'client/README.md',
     'README.md',
     'docs/adr/0001-x.md',
+    'mcp/README.md',
+    'mcp/docs/tools.md',
   ]) assertAllowed('doc-writer', p);
 });
 
@@ -112,6 +117,8 @@ test('doc-writer: specs, agent maps, plans and code denied', () => {
     'docs/skill-foo/x.md',
     'server/docs/x.ts',
     'server/src/app.ts',
+    'mcp/AGENTS.md',
+    'mcp/INSIGHTS.md',
     '../README.md',
   ]) {
     const reason = assertDenied('doc-writer', p);
