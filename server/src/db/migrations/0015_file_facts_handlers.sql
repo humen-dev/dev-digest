@@ -1,0 +1,2 @@
+ALTER TABLE "file_facts" ADD COLUMN "endpoint_handlers" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "file_facts" ADD COLUMN "cron_handlers" jsonb DEFAULT '{}'::jsonb NOT NULL;

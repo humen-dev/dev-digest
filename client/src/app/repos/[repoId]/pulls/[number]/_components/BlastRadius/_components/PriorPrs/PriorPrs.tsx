@@ -29,7 +29,7 @@ function PrItem({ item, repoFullName }: { item: PrHistoryItem; repoFullName: str
           target="_blank"
           rel="noopener noreferrer"
           style={s.prTitle}
-          aria-label={t("history.openPr", { number: item.pr_number })}
+          aria-label={`${label} — ${t("history.openPr", { number: item.pr_number })}`}
         >
           {label}
         </a>

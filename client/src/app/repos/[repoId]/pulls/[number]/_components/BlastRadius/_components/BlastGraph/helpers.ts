@@ -79,6 +79,22 @@ function placeColumn(raw: RawNode[], col: number): GraphNode[] {
   return nodes;
 }
 
+type CallerFacts = { endpoints: string[]; crons: string[] };
+
+/** Graph node id of a caller — shared by the node builder and the facts lookup. */
+export const callerNodeId = (name: string, file: string) => `caller:${name}|${file}`;
+
+/**
+ * Resolves a caller node's endpoints/crons. Prefers its per-caller `caller_facts`
+ * entry; a caller without one (or an older response without `caller_facts`)
+ * falls back to the raw facts of its file.
+ */
+function callerFactsLookup(data: BlastRadiusResponse): (c: { id: string; file: string }) => CallerFacts | undefined {
+  const byCaller = new Map((data.caller_facts ?? []).map((f) => [callerNodeId(f.name, f.file), f]));
+  const byFile = data.caller_file_facts ?? {};
+  return (c) => byCaller.get(c.id) ?? byFile[c.file];
+}
+
 /** Pure layout of the direct blast radius: symbols → callers → endpoints/crons. */
 export function layoutBlastGraph(data: BlastRadiusResponse): GraphLayout {
   const symbols: RawNode[] = [];
@@ -89,18 +105,18 @@ export function layoutBlastGraph(data: BlastRadiusResponse): GraphLayout {
     const symbolId = `symbol:${i}`;
     symbols.push({ id: symbolId, kind: "symbol", text: group.symbol });
     for (const c of group.callers) {
-      const id = `caller:${c.name}|${c.file}`;
+      const id = callerNodeId(c.name, c.file);
       if (!callers.has(id)) callers.set(id, { id, kind: "caller", text: c.name, file: c.file });
       links.push([symbolId, id]);
     }
   });
 
-  // Caller → endpoint/cron edges come only from per-caller-file facts.
-  const facts = data.caller_file_facts ?? {};
+  // Caller → endpoint/cron edges: per-caller `caller_facts` when present, else per-caller-file facts.
+  const factsFor = callerFactsLookup(data);
   const endpointSet = new Set<string>();
   const cronSet = new Set<string>();
   for (const c of callers.values()) {
-    const f = facts[c.file];
+    const f = factsFor(c);
     if (!f) continue;
     for (const e of f.endpoints) {
       endpointSet.add(e);

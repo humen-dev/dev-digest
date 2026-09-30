@@ -9,16 +9,10 @@ export interface BlastPull {
   repoId: string;
 }
 
-export interface BlastImportEdge {
-  fromFile: string;
-  toFile: string;
-}
-
-export interface BlastFileFactsRow {
-  filePath: string;
-  endpoints: string[];
-  crons: string[];
-}
+// Plain row shapes live in ring 1 (types.ts) so domain code can use them without
+// depending on this port file; re-exported here for adapters and tests.
+import type { BlastFileFactsRow, BlastImportEdge } from './types.js';
+export type { BlastImportEdge, BlastFileFactsRow };
 
 export interface BlastRepositoryPort {
   /** Workspace-scoped; null when the PR is not in the workspace. */

@@ -81,6 +81,8 @@ export const fileFacts = pgTable(
     filePath: text('file_path').notNull(),
     endpoints: jsonb('endpoints').notNull().default([]),
     crons: jsonb('crons').notNull().default([]),
+    endpointHandlers: jsonb('endpoint_handlers').$type<Record<string, string[]>>().notNull().default({}),
+    cronHandlers: jsonb('cron_handlers').$type<Record<string, string[]>>().notNull().default({}),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.repoId, t.filePath] }),

@@ -29,7 +29,9 @@ import {
 import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { RepoIntelRepository, type FullSymbolRow } from './repository.js';
+import { callerScopes } from './domain/caller-scopes.js';
 import type {
+  BlastCallerFileFacts,
   BlastCallerRow,
   BlastChangedSymbol,
   BlastResult,
@@ -368,6 +370,7 @@ export class RepoIntelService implements RepoIntel {
         viaSymbol: c.toSymbol,
         line: c.line,
         rank: c.rank,
+        scopes: callerScopes(symsByFile.get(c.fromPath) ?? [], c.line, enclosing),
       });
     }
     callers.sort((a, b) => b.rank - a.rank);
@@ -376,9 +379,14 @@ export class RepoIntelService implements RepoIntel {
     // attribute them to the changed symbol whose callers live in that file.
     const facts = await this.repo.getFileFacts(repoId, callerFiles);
     const endpoints = new Set<string>();
-    const factsByFile: Record<string, { endpoints: string[]; crons: string[] }> = {};
+    const factsByFile: Record<string, BlastCallerFileFacts> = {};
     for (const f of facts) {
-      factsByFile[f.filePath] = { endpoints: f.endpoints, crons: f.crons };
+      factsByFile[f.filePath] = {
+        endpoints: f.endpoints,
+        crons: f.crons,
+        endpointHandlers: f.endpointHandlers ?? {},
+        cronHandlers: f.cronHandlers ?? {},
+      };
       for (const e of f.endpoints) endpoints.add(e);
     }
 

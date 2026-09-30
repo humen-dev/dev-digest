@@ -4,7 +4,10 @@
  * Walks a clone directory and returns the set of files the parse phase should
  * process, applying:
  *   - EXCLUDED_DIRS  (node_modules, dist, build, coverage, .next, out, vendor, .git)
- *   - SUPPORTED_EXT  (.ts, .tsx, .js, .jsx, .mjs, .cjs)
+ *   - EXCLUDED_DIRS also covers Python caches/envs; a non-root dir holding
+ *                    `pyvenv.cfg` (a virtualenv) is not walked
+ *   - INDEXED_EXT    (.ts, .tsx, .js, .jsx, .mjs, .cjs, .py)
+ *   - .py files under a `migrations` directory are skipped (not counted)
  *   - MAX_FILE_SIZE  (400 KB) — files larger than this are counted in
  *                    `stats.skippedTooLarge` and left out of the result.
  *   - MAX_INDEXED_FILES (5000) — if exceeded, take the FIRST N (by walk order)
@@ -26,15 +29,20 @@ import { extname, join, relative, sep } from 'node:path';
 import {
   EXCLUDED_DIRS,
   MAX_FILE_SIZE,
+  INDEXED_EXT,
   MAX_INDEXED_FILES,
-  SUPPORTED_EXT,
+  PYTHON_EXCLUDED_DIR_SEGMENTS,
+  PYTHON_EXT,
+  VENV_MARKER_FILE,
 } from '../constants.js';
 
 const EXCLUDED_SET: ReadonlySet<string> = new Set(EXCLUDED_DIRS);
-const SUPPORTED_SET: ReadonlySet<string> = new Set(SUPPORTED_EXT);
+const INDEXED_SET: ReadonlySet<string> = new Set(INDEXED_EXT);
+const PYTHON_SET: ReadonlySet<string> = new Set(PYTHON_EXT);
+const PYTHON_EXCLUDED_SEGMENTS: ReadonlySet<string> = new Set(PYTHON_EXCLUDED_DIR_SEGMENTS);
 
 export interface WalkStats {
-  /** Files seen on disk with a SUPPORTED_EXT extension (before size + bound filters). */
+  /** Files seen on disk with an INDEXED_EXT extension (before size + bound filters). */
   totalCandidates: number;
   /** Candidates dropped because stat().size > MAX_FILE_SIZE. */
   skippedTooLarge: number;
@@ -85,6 +93,9 @@ async function walkDir(
     return;
   }
 
+  // A virtualenv anywhere but the clone root (custom names like `myenv/`).
+  if (dir !== root && entries.some((e) => e.name === VENV_MARKER_FILE)) return;
+
   for (const entry of entries) {
     if (entry.isSymbolicLink()) continue; // never follow symlinks (loops, perf)
     const name = entry.name;
@@ -98,11 +109,19 @@ async function walkDir(
     if (!entry.isFile()) continue;
 
     const ext = extname(name).toLowerCase();
-    if (!SUPPORTED_SET.has(ext)) continue;
+    if (!INDEXED_SET.has(ext)) continue;
+
+    const full = join(dir, name);
+    // Posix-style relative path so DB rows are platform-agnostic (matches the
+    // `pr_files.path` convention).
+    const rel = relative(root, full).split(sep).join('/');
+
+    if (PYTHON_SET.has(ext) && rel.split('/').slice(0, -1).some((seg) => PYTHON_EXCLUDED_SEGMENTS.has(seg))) {
+      continue;
+    }
 
     stats.totalCandidates += 1;
 
-    const full = join(dir, name);
     let size: number;
     try {
       size = (await stat(full)).size;
@@ -114,9 +133,6 @@ async function walkDir(
       continue;
     }
 
-    // Posix-style relative path so DB rows are platform-agnostic (matches the
-    // `pr_files.path` convention).
-    const rel = relative(root, full).split(sep).join('/');
     out.push(rel);
   }
 }

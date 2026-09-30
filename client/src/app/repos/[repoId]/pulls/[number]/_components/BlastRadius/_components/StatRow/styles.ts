@@ -10,6 +10,8 @@ export const s = {
     fontSize: 13.5,
     color: "var(--text-secondary)",
   } satisfies CSSProperties,
+  // display: contents — the labelled group adds semantics without changing the flex layout.
+  stats: { display: "contents" } satisfies CSSProperties,
   stat: { display: "inline-flex", alignItems: "center", gap: 5 } satisfies CSSProperties,
   icon: { display: "inline-flex", color: "var(--text-muted)" } satisfies CSSProperties,
   num: { color: "var(--text-primary)", fontWeight: 700 } satisfies CSSProperties,

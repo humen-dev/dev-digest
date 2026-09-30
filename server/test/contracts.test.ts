@@ -218,6 +218,21 @@ describe('AI contracts parse fixtures', () => {
     expect(BlastRadiusResponse.safeParse({ ...full, limits: { max_callers_per_symbol: 20, bfs_depth: 0 } }).success).toBe(false);
   });
 
+  it('BlastRadiusResponse accepts optional caller_facts and rejects a malformed entry', () => {
+    const base = {
+      changed_symbols: [], downstream: [], summary: '0 symbols · 0 callers · 0 endpoints · 0 cron jobs',
+      stats: { symbols: 0, callers: 0, endpoints: 0, crons: 0 }, unattributed_endpoints: [],
+      degraded: false, reason: null,
+    };
+    expect(BlastRadiusResponse.parse(base).caller_facts).toBeUndefined();
+    const withFacts = {
+      ...base,
+      caller_facts: [{ name: 'createInvoice', file: 'src/routes/invoices.ts', endpoints: ['POST /api/invoices'], crons: [] }],
+    };
+    expect(BlastRadiusResponse.parse(withFacts).caller_facts).toHaveLength(1);
+    expect(BlastRadiusResponse.safeParse({ ...base, caller_facts: [{ name: 'x' }] }).success).toBe(false);
+  });
+
   it('PrHistoryResponse accepts available and unavailable answers, rejects unknown reasons', () => {
     const ok = {
       history: [{ pr_number: 2, title: 't', merged_at: '2026-09-01T00:00:00Z', author: 'a', files_overlap: ['src/lib/money.ts'], notes: '' }],

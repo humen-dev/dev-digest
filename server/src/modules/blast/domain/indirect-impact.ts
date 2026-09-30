@@ -1,5 +1,5 @@
 import type { BlastIndirectImpact, BlastIndirectStats, BlastRadiusResponse } from '@devdigest/shared';
-import type { BlastFileFactsRow, BlastImportEdge } from '../ports.js';
+import type { BlastFileFactsRow, BlastImportEdge } from '../types.js';
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 const sortedUnique = (xs: Iterable<string>): string[] => [...new Set(xs)].sort(cmp);
