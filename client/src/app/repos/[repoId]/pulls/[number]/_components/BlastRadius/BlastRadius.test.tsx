@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { BlastRadiusResponse } from "@devdigest/shared";
 import blastMessages from "../../../../../../../../messages/en/blast.json";
@@ -69,9 +69,11 @@ describe("BlastRadius", () => {
 
     expect(screen.getByText("Blast radius")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Prior PRs touching these files/ })).toBeInTheDocument();
-    expect(screen.getByText("cron").parentElement?.parentElement).toHaveTextContent(
-      "1symbol2callers1endpoint1cronTreeGraph",
-    );
+    const summary = within(screen.getByRole("group", { name: "Blast radius summary" }));
+    for (const label of ["symbol", "callers", "endpoint", "cron"]) {
+      expect(summary.getByText(label)).toBeInTheDocument();
+    }
+    expect(summary.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("2 callers")).toBeInTheDocument();
 
     const link = screen.getByRole("link", { name: /renderRow/ });

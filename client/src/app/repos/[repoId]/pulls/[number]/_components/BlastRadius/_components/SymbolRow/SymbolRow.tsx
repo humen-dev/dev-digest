@@ -30,7 +30,6 @@ export function SymbolRow({ group, defaultExpanded, repoFullName, headSha, indir
         type="button"
         style={s.toggle}
         aria-expanded={open}
-        aria-label={`${open ? t("toggle.collapse") : t("toggle.expand")}: ${group.symbol}`}
         onClick={() => setOpen((v) => !v)}
       >
         <Chevron size={14} />

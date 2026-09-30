@@ -33,6 +33,13 @@ export const s = {
     borderRadius: "50%",
     border: "2px solid var(--border-strong)",
   } satisfies CSSProperties,
+  swatchEndpoint: {
+    width: 10,
+    height: 10,
+    borderRadius: "50%",
+    border: "2px solid var(--accent)",
+    background: "var(--accent-bg)",
+  } satisfies CSSProperties,
   swatchCron: {
     width: 10,
     height: 10,

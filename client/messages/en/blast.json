@@ -1,6 +1,7 @@
 {
   "title": "Blast radius",
   "stat": {
+    "label": "Blast radius summary",
     "symbols": "{count, plural, one {symbol} other {symbols}}",
     "callers": "{count, plural, one {caller} other {callers}}",
     "endpoints": "{count, plural, one {endpoint} other {endpoints}}",

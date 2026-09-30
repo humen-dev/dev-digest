@@ -26,6 +26,7 @@ export function StatRow({ stats, view, onViewChange }: StatRowProps) {
 
   return (
     <div style={s.row}>
+      <span role="group" aria-label={t("stat.label")} style={s.stats}>
       {items.map(([key, n, StatIcon]) => (
         <span key={key} style={s.stat}>
           <span style={s.icon} aria-hidden="true">
@@ -35,6 +36,7 @@ export function StatRow({ stats, view, onViewChange }: StatRowProps) {
           <span>{t(`stat.${key}`, { count: n })}</span>
         </span>
       ))}
+      </span>
       <div style={s.toggle}>
         <ViewToggle view={view} onChange={onViewChange} />
       </div>

@@ -16,6 +16,7 @@ export function BlastGraph({ data }: { data: BlastRadiusResponse }) {
   if (data.downstream.length === 0) return <p style={s.empty}>{t("graph.empty")}</p>;
 
   const hasCrons = layout.nodes.some((n) => n.kind === "cron");
+  const hasEndpoints = layout.nodes.some((n) => n.kind === "endpoint");
 
   return (
     <div style={s.wrap}>
@@ -57,10 +58,12 @@ export function BlastGraph({ data }: { data: BlastRadiusResponse }) {
           <span style={s.swatchCaller} />
           {t("graph.legend.callers")}
         </span>
-        <span style={s.legendItem}>
-          <span style={s.swatchSymbol} />
-          {t("graph.legend.endpoints")}
-        </span>
+        {hasEndpoints && (
+          <span style={s.legendItem}>
+            <span style={s.swatchEndpoint} />
+            {t("graph.legend.endpoints")}
+          </span>
+        )}
         {hasCrons && (
           <span style={s.legendItem}>
             <span style={s.swatchCron} />
