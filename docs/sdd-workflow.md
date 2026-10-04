@@ -36,20 +36,24 @@ flowchart TD
   S <-->|"Spec review ⇄ answers<br/>(+ parallel researchers)"| U1{User}
   S -->|"SPEC-NN draft → approve"| P[implementation-planner]
   P <-->|"Requirements review ⇄ answers<br/>+ multi- / single-agent"| U2{User}
-  P -->|"docs/plans/slug.md → approve"| W0[Wave 0 — main session]
+  P -->|"docs/plans/slug.md → approve"| IMPL{{"/impl &lt;plan&gt; — from here on automated"}}
+  IMPL --> W0[Wave 0 — main session]
   W0 --> W[Wave 1…N — implementers by Kind]
   W -->|commit each wave| V[plan-verifier scope = wave units]
-  V -->|FAIL| W
+  V -->|"FAIL → mode: fix of the owner"| W
   V -->|PASS, last wave| VA[plan-verifier scope=all]
   VA -->|plan gap| P
-  VA -->|T-rows missing| TW[test-writer]
-  VA -->|PASS| R["architecture ∥ security ∥ correctness review"]
-  TW --> R
-  R -->|findings| FX[fixes] --> RV[plan-verifier re-verify]
-  R -->|clean| SC[spec-creator implemented SPEC-NN]
-  RV -->|PASS| SC
-  SC --> G[/pr-self-review gate/] --> PR[gh pr create]
+  VA -->|"NOT MET incl. T-rows → mode: fix"| W
+  VA -->|PASS| R["architecture ∥ bugs ∥ security (if touched)"]
+  R -->|"CRITICAL / WARNING → fix by owner,<br/>re-review with previous (≤ 3 rounds)"| R
+  R -->|clean| RV[plan-verifier re-verify]
+  RV -->|PASS| SC[spec-creator implemented SPEC-NN]
+  SC --> G[/pr-self-review gate/] --> PR[gh pr create — by the user]
 ```
+
+Spec and plan are written **manually**, each in its own run of `spec-creator` and
+`implementation-planner`. Everything after an approved plan is one command,
+[`/impl`](../.claude/skills/impl/SKILL.md) — see [§6](#6-stage-4--waves).
 
 Three ideas carry the whole process:
 
@@ -66,7 +70,7 @@ Three ideas carry the whole process:
 
 | Who | Model | Does | Writes |
 |---|---|---|---|
-| **Main session** (orchestrator) | — | Runs every agent, relays questions to the user, does Wave 0, commits each wave, routes failures | git commits, Wave 0 files |
+| **Main session** (orchestrator; `/impl` from the plan on) | — | Runs every agent, relays questions to the user, does Wave 0, commits each wave and fix round, routes failures | git commits, Wave 0 files |
 | **User** | — | Answers questions, approves the spec and the plan, decides on overrides | — |
 | `brainstormer` | opus | Raw idea → Design brief with 2–3 approaches | nothing |
 | `researcher` | sonnet | Finds facts in the repo or on the web, with evidence | nothing |
@@ -75,11 +79,11 @@ Three ideas carry the whole process:
 | `implementer-backend` | sonnet | One `backend` unit (server) | the unit's *Owns* files |
 | `implementer-ui` | sonnet | One `ui` unit (client) | the unit's *Owns* files |
 | `implementer` | sonnet | One `engine` / `e2e` / `mcp` unit | the unit's *Owns* files |
-| `plan-verifier` | opus | Code vs plan (and spec), item by item | nothing |
-| `test-writer` | sonnet | Missing tests from the plan's §6 | test files only |
+| `plan-verifier` | sonnet (opus with `/impl --strict`, final run only) | Code vs plan (and spec), item by item | nothing |
+| `test-writer` | sonnet | On demand only — not part of `/impl` (the owning implementer writes its tests) | test files only |
 | `architecture-reviewer` | sonnet | File placement and import direction | nothing |
-| `security-reviewer` | opus | Exploitable vulnerabilities in the diff | nothing |
-| correctness review | — | Logic bugs: `/code-review high` or `pr-review-toolkit:code-reviewer` + `silent-failure-hunter` | nothing |
+| `security-reviewer` | opus (sonnet inside `/impl`) | Exploitable vulnerabilities in the diff; `/impl` runs it only when the diff touches routes, input, fetches, paths, secrets or prompts | nothing |
+| bug review | sonnet | Logic bugs: `pr-review-toolkit:code-reviewer` inside `/impl` (`--no-bugs` skips it); manually `/code-review high` | nothing |
 | `doc-writer` | sonnet | Permanent docs for what was built | READMEs, `<pkg>/docs/**`, ADRs |
 
 Agents never talk to each other. Every hand-off goes through the main session,
@@ -236,6 +240,26 @@ A **wave** is a group of units that can be built **at the same time**: they do
 not depend on each other and do not touch the same files. Waves run in order;
 units inside a wave run in parallel.
 
+Stages 4–6 run as one command in the main session:
+
+```
+/impl <plan path | slug> [notes…] [design.png…] [--strict] [--no-bugs]
+/impl resume <slug>
+```
+
+- **notes** go to every implementer as *orchestrator notes, subordinate to the
+  plan*; a note that changes scope or a contract stops the run before Wave 0.
+- **designs** (image paths) go to `implementer-ui` units only.
+- It needs a template-shaped plan with `Status: approved`, a clean tree, and
+  creates `impl/<slug>` when started on `main`. It commits Wave 0, every wave and
+  every fix round; it never pushes or opens the PR.
+- `.claude/skills/impl/scripts/plan-tools.mjs` does the deterministic parts:
+  `waves` (units per wave + agent), `unit` (the block pasted into the prompt),
+  `owner` (file → owning unit, to route findings) and the run state in
+  `.claude/.impl/<slug>/` (git-ignored, with every saved report).
+- Budgets: ≤ 2 fix rounds per wave, ≤ 3 review rounds; over budget it stops and
+  asks the user.
+
 ### 6.1 Wave 0 — the main session
 
 Wave 0 holds everything other units depend on and that implementers are not
@@ -299,9 +323,10 @@ Changed · Skills applied · Verification · Out of scope.
      wave.
    - Verdict: **PASS** / **FAIL** (any NOT MET or PARTIAL) / **INCOMPLETE** (only
      NOT VERIFIABLE left).
-3. **FAIL** → the owning unit's implementer fixes it → `plan-verifier` in
-   **re-verify mode** (`previous` = the last report) re-checks only what failed
-   plus what the fix touched. **PASS** → next wave.
+3. **FAIL** → the owning unit's implementer in **`mode: fix`** (the not-MET rows
+   as `findings`) → commit → `plan-verifier` in **re-verify mode** (`previous` =
+   the last report) re-checks only what failed plus what the fix touched.
+   **PASS** → next wave.
 
 ### 6.4 Single-agent mode
 
@@ -316,18 +341,28 @@ still reject wastes tokens on "this is missing" noise, and review fixes can brea
 plan items.
 
 1. **`plan-verifier scope=all`** — the full table, including the spec's
-   `S<NN>-*` rows (see [§9](#9-verification-rows-and-ids)).
-2. **`test-writer`** (`plan` + `unit`) for every NOT MET `T-*` row — the
-   verifier names exactly which tests are missing.
-3. **Reviews in parallel:**
+   `S<NN>-*` rows (see [§9](#9-verification-rows-and-ids)). NOT MET rows —
+   missing `T-*` tests included — go to the owning unit in `mode: fix`; tests
+   are part of the unit's *Owns*, so `test-writer` is not needed here.
+2. **Review round 1, in parallel:**
    - `architecture-reviewer` — where code lives, import direction (depcruise first);
-   - `security-reviewer` — can an attacker exploit the diff (source → sink);
-   - correctness — `/code-review high`, or `pr-review-toolkit:code-reviewer` +
-     `pr-review-toolkit:silent-failure-hunter`.
-   Each reviewer reports only findings with confidence ≥ 80; `request_changes`
-   goes back to the owning implementer.
-4. **Fixes → `plan-verifier` re-verify.**
-5. **`doc-writer`** (optional) — permanent docs for what was actually built.
+   - bug review — `pr-review-toolkit:code-reviewer` (sonnet), correctness only;
+   - `security-reviewer` (sonnet) — only when the diff touches routes, input,
+     outbound fetches, paths, secrets or LLM prompts.
+   Each reports only findings with confidence ≥ 80.
+3. **Triage (main session):** duplicates across reviewers merged; CRITICAL and
+   WARNING are fixed, SUGGESTION is listed for the user at the end;
+   `plan-tools owner` maps every finding's file to its owning unit.
+4. **Fix round:** one implementer per owning unit in `mode: fix`, in parallel
+   (files without an owner: main session) → commit `fix(<slug>): review round k`.
+   An implementer may mark a finding `disputed` with evidence instead of fixing it.
+5. **Re-review:** only the reviewers that had CRITICAL/WARNING, with `previous`
+   (their last report) and `range` = the fix commits: each previous finding is
+   marked fixed / open / withdrawn, and only the fix diff is reviewed for new
+   problems. Back to 3 until nothing CRITICAL/WARNING is open — at most 3 rounds,
+   then the user decides.
+6. **`plan-verifier` re-verify** — the review fixes must not break the plan.
+7. **`doc-writer`** (optional, manual) — permanent docs for what was actually built.
 
 ## 8. Stage 6 — Close the spec and open the PR
 
@@ -378,11 +413,12 @@ off. Evidence for only half the shape → PARTIAL.
 | Failure | Goes to | Then |
 |---|---|---|
 | Implementer cannot proceed (`BLOCKED:`) | main session → user / plan | fix the input, re-run the unit |
-| Wave verification FAIL | the owning unit's implementer | re-verify |
+| Wave verification FAIL | the owning unit's implementer, `mode: fix` | re-verify |
 | `S<NN>-*` NOT MET, a unit cites the criterion | that unit's implementer (code bug) | re-verify |
 | `S<NN>-*` NOT MET, **no unit cites it** (`plan gap: S<NN>-…`) | `implementation-planner` | it adds unit(s) in a **new wave**, finished units untouched; the wave loop runs again |
-| `T-*` NOT MET after the last wave | `test-writer` | re-verify |
-| Reviewer `request_changes` | the owning implementer | re-verify |
+| `T-*` NOT MET after the last wave | the owning unit's implementer, `mode: fix` | re-verify |
+| Reviewer CRITICAL / WARNING | the owning unit's implementer, `mode: fix` (no owner → main session) | re-review with `previous` (≤ 3 rounds), then re-verify |
+| Fix or review budget exhausted | the user | accept / fix manually / one more round |
 | Spec is wrong or incomplete | the user → `spec-creator` (`revise` a draft, or a new spec that `Supersedes` an approved one) | re-plan the affected units |
 | `/pr-self-review` BLOCKED | fix the CRITICAL finding | re-run the gate (the seal is void after any change) |
 
@@ -443,8 +479,8 @@ filter on the PR page." Designs: two PNG frames + a text note.
 | Spec template | [`specs/_TEMPLATE.md`](../specs/_TEMPLATE.md) | humans |
 | Plan | `docs/plans/<slug>.md` | `implementation-planner` |
 | Plan template | [`docs/plans/_TEMPLATE.md`](plans/_TEMPLATE.md) | humans |
-| Code + tests | per unit *Owns* | implementers, `test-writer` |
-| Reports (verifier, reviewers) | chat replies | the agents |
+| Code + tests | per unit *Owns* | implementers (`test-writer` on demand) |
+| Reports (verifier, reviewers, implementers) | `.claude/.impl/<slug>/*.md` + `state.json` (git-ignored) | the agents; saved by `/impl` |
 | Docs, ADRs | `README.md`, `<pkg>/docs/**`, `docs/adr/**` | `doc-writer` |
 | PR body draft | `.claude/.pr-self-review/pr-body.md` | `/pr-self-review` |
 | Learnings | `<pkg>/INSIGHTS.md` (append-only) | main session via `engineering-insights` |
@@ -460,8 +496,15 @@ filter on the PR page." Designs: two PNG frames + a text note.
   plan by heading ranges, check with `agent-check` (short output, related tests
   only); the per-wave verifier report is compact; the spec fast path skips a
   second interview.
-- Reviews and `test-writer` are optional for tiny changes but recommended for
-  any multi-wave feature.
+- Model choice: implementers, `plan-verifier` and `architecture-reviewer` run on
+  sonnet; inside `/impl` the security and bug reviewers are overridden to sonnet
+  too, and security runs only when the diff touches its surface. Opus stays for
+  `spec-creator` / `implementation-planner` / `brainstormer` (manual) and for the
+  final verification with `--strict`.
+- Re-reviews are scoped to the fix diff plus the previous findings, not a full
+  second review.
+- `test-writer` is outside the default flow; use it for backfilling an
+  under-tested area or `tdd` on demand.
 
 ## 15. Guard rails
 

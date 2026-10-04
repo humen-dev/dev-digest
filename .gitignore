@@ -27,3 +27,6 @@ test-results/
 # pr-self-review gate state (signature, last report, PR body draft)
 .claude/.pr-self-review/
 .claude/.insights-state/
+
+# /impl run state (plan-tools state.json, saved agent reports)
+.claude/.impl/

@@ -1,6 +1,6 @@
 ---
 name: architecture-reviewer
-description: Read-only architecture reviewer for DevDigest. Use after a wave or feature is implemented, before `/pr-self-review`, to check that the change set puts every file in the right ring/layer — server onion rings (dependency-cruiser first), client UI layers and the server/client boundary, reviewer-core engine rules, cross-package imports. Input — `range` (default `git merge-base main HEAD`..working tree, untracked files included) or `paths`; optional `plan` for the intended placement. Returns an "Architecture review" report — findings with confidence ≥ 80, each with file:line, the offending import/snippet, the named rule and the target location — plus the depcruise result and a verdict (request_changes / comment / approve). Never edits files; Bash is limited by a hook to read-only git and depcruise. Interview mode — if the scope is unclear it returns a "Clarification needed" block; relay the questions, then re-invoke with the answers.
+description: Read-only architecture reviewer for DevDigest. Use after a wave or feature is implemented, before `/pr-self-review`, to check that the change set puts every file in the right ring/layer — server onion rings (dependency-cruiser first), client UI layers and the server/client boundary, reviewer-core engine rules, cross-package imports. Input — `range` (default `git merge-base main HEAD`..working tree, untracked files included) or `paths`; optional `plan` for the intended placement; optional `previous` (a prior report → re-review mode — previous findings fixed or open, plus only the fix range). Returns an "Architecture review" report — findings with confidence ≥ 80, each with file:line, the offending import/snippet, the named rule and the target location — plus the depcruise result and a verdict (request_changes / comment / approve). Never edits files; Bash is limited by a hook to read-only git and depcruise. Interview mode — if the scope is unclear it returns a "Clarification needed" block; relay the questions, then re-invoke with the answers.
 model: sonnet
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit, PowerShell, Agent, Skill, WebSearch, WebFetch
@@ -100,6 +100,29 @@ one round only.
   *Architecture rule* column state the intended placement. A file placed against
   both the plan and the skill is a finding; a plan that contradicts the skill is
   reported under *Not reviewed* as a plan issue, not silently followed.
+
+## Re-review mode (`previous` given)
+
+Input: `previous` — your last report (or its path) — and `range` — the fix
+commits only (e.g. `<sha before fixes>..HEAD`). This is the cheap second pass of
+the `/impl` review loop; do not redo the full review.
+
+1. For every `A-<k>` finding in `previous`: re-open the cited location (it may
+   have moved — follow the symbol) and decide **fixed** (quote the new code) or
+   **open** (quote what still violates the rule). A finding the implementer
+   marked `disputed` gets your verdict on the argument: keep it **open** with a
+   one-line reply, or drop it as **withdrawn** with the reason.
+2. Review **only the fix range** with the normal procedure for *new* findings —
+   the fix itself can introduce a violation. Do not re-review untouched code.
+3. Report with the normal skeleton, plus a first section:
+
+   ```markdown
+   ### Previous findings
+   | ID | Status (fixed / open / withdrawn) | Evidence (file:line, quoted) |
+   ```
+
+   *Findings* then holds the still-open ones (same IDs) and new ones (next free
+   IDs). The verdict is computed over *Findings* exactly as in a full review.
 
 ## Procedure
 

@@ -16,7 +16,7 @@ implementation-planner to …") or let the main session delegate to it.
 | [implementer](implementer.md) | sonnet | Implements one **engine / e2e / mcp** unit of an approved plan; holds the shared procedure all three implementers follow | only the files its unit owns (Bash limited via `bash-scope-guard implementer`) | `onion-architecture`, `zod`, `security` |
 | [implementer-backend](implementer-backend.md) | sonnet | Implements one **backend** (server) unit — reads `implementer.md` for the procedure | same | `onion-architecture`, `fastify-best-practices`, `drizzle-orm-patterns`, `zod`, `security` |
 | [implementer-ui](implementer-ui.md) | sonnet | Implements one **ui** (client) unit — reads `implementer.md` for the procedure | same | `frontend-ui-architecture`, `react-best-practices`, `next-best-practices`, `react-testing-library`, `zod` |
-| [plan-verifier](plan-verifier.md) | opus | Checks the finished code against an approved plan item by item; PASS / FAIL / INCOMPLETE | nothing (Bash limited to read-only git + the plan's checks via `bash-scope-guard`) | `ears-requirements` only (to read `S<NN>-*` rows) — the plan is the standard |
+| [plan-verifier](plan-verifier.md) | sonnet | Checks the finished code against an approved plan item by item; PASS / FAIL / INCOMPLETE | nothing (Bash limited to read-only git + the plan's checks via `bash-scope-guard`) | `ears-requirements` only (to read `S<NN>-*` rows) — the plan is the standard |
 | [test-writer](test-writer.md) | sonnet | Writes tests for a plan unit's §6 rows or an under-tested area (`backfill` or `tdd`) and runs them | only test files and test helpers (hook-enforced `write-scope-guard`; Bash limited to tests/typecheck) | `react-testing-library`, `frontend-ui-architecture`, `onion-architecture`, `fastify-best-practices`, `drizzle-orm-patterns`, `typescript-expert`, `zod` |
 | [architecture-reviewer](architecture-reviewer.md) | sonnet | Reviews a change set for file placement and import direction (depcruise first) | nothing (Bash limited to depcruise + read-only git via `bash-scope-guard`) | `onion-architecture`, `frontend-ui-architecture` |
 | [security-reviewer](security-reviewer.md) | opus | Reviews a change set for exploitable vulnerabilities (traced source → sink, OWASP) — never placement | nothing (Bash limited to read-only git via `bash-scope-guard`) | `security` |
@@ -57,34 +57,33 @@ flowchart TD
   P -->|"Requirements review:<br/>questions · recommendations ·<br/>multi- or single-agent?"| U{User answers}
   U -->|answers + mode| P
   P -->|"docs/plans/slug.md"| A{User approves plan}
-  A -->|approved| W0["Wave 0 — main session:<br/>contracts, schema + migration,<br/>deps, shared registries"]
+  A -->|"approved → /impl &lt;plan&gt; (automated from here)"| W0["Wave 0 — main session:<br/>contracts, schema + migration,<br/>deps, shared registries"]
   W0 -->|"one unit each, agent by Kind"| I["implementer-backend / -ui / implementer × N<br/>(multi-agent: parallel, same checkout;<br/>single-agent: sequential)"]
   I -->|reports| C[Main session commits the wave]
   C -->|"every wave, mandatory<br/>scope = the wave's units (compact)"| V[plan-verifier]
-  V -->|"FAIL → fix the unit"| I
+  V -->|"FAIL → mode: fix of the owner"| I
   V -->|"PASS · next wave"| I
   V -->|"PASS · last wave"| VA["plan-verifier scope=all<br/>(full table, S-NN rows)"]
-  VA -->|"T-rows NOT MET"| TW[test-writer]
-  VA -->|"other rows NOT MET"| I
+  VA -->|"NOT MET incl. T-rows → mode: fix"| I
   VA -->|"S-rows NOT MET as plan gap<br/>(no unit cites the criterion)"| P
   VA -->|PASS| RV{"Reviews in parallel"}
-  TW --> RV
   RV --> AR[architecture-reviewer]
-  RV --> SR[security-reviewer]
-  RV --> CR["correctness review<br/>(/code-review or pr-review-toolkit)"]
-  AR & SR & CR -->|"findings → fixes"| I2[implementer fixes]
-  I2 --> RE["plan-verifier re-verify<br/>(previous = last report)"]
-  AR & SR & CR -->|"approve / comment"| SI["spec-creator implemented SPEC-NN<br/>(user OK · all S-rows MET)"]
-  RE -->|PASS| SI
+  RV --> SR["security-reviewer<br/>(only if surface touched)"]
+  RV --> CR["bug review<br/>(pr-review-toolkit:code-reviewer)"]
+  AR & SR & CR -->|"CRITICAL / WARNING → owner, mode: fix"| I2[implementer fixes · commit]
+  I2 -->|"re-review with previous,<br/>fix range only (≤ 3 rounds)"| RV
+  AR & SR & CR -->|"nothing open"| RE["plan-verifier re-verify<br/>(previous = last report)"]
+  RE -->|PASS| SI["spec-creator implemented SPEC-NN<br/>(user OK · all S-rows MET)"]
   SI --> PR[/pr-self-review → PR/]
   PR -. optional .-> DW[doc-writer]
   P -. external facts .-> RS[researcher]
 ```
 
-- The **main session is the orchestrator** — it runs the implementation-planner, relays its
-  requirements review (incl. the execution-mode choice), gets approval,
-  does Wave 0, fans out implementers, commits each wave, runs the checks below and
-  finally `/pr-self-review`.
+- **Spec and plan are manual, building is one command.** `spec-creator` and
+  `implementation-planner` are run by hand (their interviews need the user).
+  Once the plan is approved, [`/impl <plan>`](../skills/impl/SKILL.md) makes the
+  main session the orchestrator for everything below: Wave 0, implementer waves,
+  commits, verification, the review loop, re-verify and `/pr-self-review`.
 - Implementers of one wave run **in parallel in the same checkout**. Disjoint file
   ownership from the plan is what keeps them apart; they never touch git state,
   dependencies or `INSIGHTS.md`.
@@ -95,11 +94,17 @@ flowchart TD
   back to the owning unit's implementer; re-run it with `previous` = the last
   report (re-verify mode). It is also the **only full-suite run per wave** —
   implementers run only related tests in multi-agent mode.
-- **Order after the last wave: verify → tests → review → re-verify.** Reviewing
-  code the verifier would still reject wastes tokens on "this is missing" noise;
-  the verifier's NOT MET `T-*` rows tell `test-writer` exactly which tests to
-  write; fixes from review can break plan items, so finish with a re-verify, then
+- **Order after the last wave: verify → review loop → re-verify.** Reviewing
+  code the verifier would still reject wastes tokens on "this is missing" noise.
+  NOT MET rows — missing `T-*` tests included — go back to the owning unit in
+  `mode: fix` (its tests are in its *Owns*; `test-writer` is on demand only).
+  Review fixes can break plan items, so finish with a re-verify, then
   `/pr-self-review`.
+- **Review loop.** Round 1: `architecture-reviewer` ∥ bug review ∥
+  `security-reviewer` (only when the diff touches its surface). CRITICAL and
+  WARNING go to the owning unit (`plan-tools owner`) in `mode: fix`; then only the
+  reviewers that had findings re-review with `previous` = their last report and
+  `range` = the fix commits. At most 3 rounds, then the user decides.
 - **A spec criterion no unit covers is a plan gap, not a code bug.** An
   `S<NN>-*` row NOT MET because no unit cites that criterion (the verifier lists
   it under *Missing* as `plan gap: S<NN>-…`) cannot be fixed by an implementer —
@@ -116,10 +121,10 @@ flowchart TD
   `implementer-ui`, `engine` / `e2e` / `mcp` → `implementer`. Paste the unit block
   and the §3 contracts it consumes into the prompt so it does not read the whole
   plan.
-- **Correctness lane.** No project agent hunts logic bugs — `architecture-reviewer`
-  is placement only, `/pr-self-review` routes best-practice skills. Run
-  `/code-review high` on the branch, or `pr-review-toolkit:code-reviewer` +
-  `pr-review-toolkit:silent-failure-hunter`, in parallel with the two reviewers.
+- **Bug lane.** No project agent hunts logic bugs — `architecture-reviewer`
+  is placement only, `/pr-self-review` routes best-practice skills. `/impl` runs
+  `pr-review-toolkit:code-reviewer` (model sonnet) for correctness only; by hand,
+  `/code-review high` on the branch does the same job.
 - **`brainstormer` is optional and comes first** — use it when the request is
   still an idea; skip it when the request already fixes goal, behaviour and scope.
 - **`spec-creator` comes before planning** for any user-visible or cross-module

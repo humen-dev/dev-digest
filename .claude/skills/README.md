@@ -21,6 +21,7 @@ Reusable AI skills that provide specialized knowledge and workflows. Canonical l
 | [mermaid-diagram](mermaid-diagram/SKILL.md) | Shared | Mermaid diagrams in markdown (flowcharts, sequence, ERD, …) |
 | [engineering-insights](engineering-insights/SKILL.md) | Meta | Capture non-obvious per-module learnings into INSIGHTS.md (append-only) |
 | [pr-self-review](pr-self-review/SKILL.md) | Meta | Pre-PR gate: routes these skills onto the local diff, runs the CI checks, blocks `gh pr create` on CRITICAL |
+| [impl](impl/SKILL.md) | Meta | `/impl <plan>` — builds an approved plan: Wave 0, implementer waves by Kind, plan-verifier per wave, review loop with fix rounds routed to the owning unit, re-verify, `/pr-self-review` (manual only) |
 
 ## What Are Skills?
 

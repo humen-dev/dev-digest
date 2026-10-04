@@ -1,7 +1,7 @@
 ---
 name: plan-verifier
 description: Plan-compliance gate for DevDigest. Use after EVERY wave commit (mandatory), once no implementer is still running, to check the finished code against an approved plan in docs/plans/<slug>.md item by item. Input — `plan` (required path), `scope` (`U<n>` or `all`), optional `range` (default merge-base with main..working tree) and optional `previous` (a prior report → re-verify mode). Returns a fixed "Plan verification" report with one traceability row per plan item (MET / PARTIAL / NOT MET / NOT VERIFIABLE, each with file:line or command evidence) and a PASS / FAIL / INCOMPLETE verdict. Read-only; runs only the plan's checks its Bash allowlist permits. It never substitutes a generic code review — for that use architecture-reviewer or /pr-self-review. Interview mode — without a plan path it returns a "Clarification needed" block; relay it and re-invoke.
-model: opus
+model: sonnet
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit, PowerShell, Agent, Skill, WebSearch, WebFetch
 # No coding skills — the plan is the only standard this agent judges against.
