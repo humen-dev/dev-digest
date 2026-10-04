@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * PreToolUse hook (Bash) for read-mostly subagents — usage:
- *   node .claude/hooks/bash-scope-guard.mjs <profile>   # test-writer | architecture-reviewer | security-reviewer | plan-verifier
+ *   node .claude/hooks/bash-scope-guard.mjs <profile>   # implementer | test-writer | architecture-reviewer | security-reviewer | plan-verifier
  *
  * An allow-list, not a block-list: the command is split into segments
  * (`&&` `||` `;` `|` newline) and EVERY segment must match one of the profile's
@@ -31,7 +31,7 @@ const isGitRead = (t) =>
  * (`-u`, `--update`, `--coverage`, `--outputFile`) or never exits (`--watch`)
  * falls outside the list and is denied.
  */
-const VITEST_FLAGS = new Set(['--', '--run', '--exclude', '-t', '--testNamePattern', '--passWithNoTests', '--silent']);
+const VITEST_FLAGS = new Set(['--', '--run', '--exclude', '-t', '--testNamePattern', '--passWithNoTests', '--silent', '--reporter=dot']);
 const vitestArgsOk = (args) =>
   args.every(
     (a) =>
@@ -49,10 +49,28 @@ function isTestRun(t) {
   if (eq(t, 'pnpm', 'typecheck') || eq(t, 'npm', 'run', 'typecheck')) return true;
   if (startsWith(t, 'pnpm', 'test')) return vitestArgsOk(t.slice(2));
   if (startsWith(t, 'npm', 'test')) return vitestArgsOk(t.slice(2));
-  if (startsWith(t, 'pnpm', 'exec', 'vitest', 'run')) return vitestArgsOk(t.slice(4));
-  if (startsWith(t, 'npx', 'vitest', 'run')) return vitestArgsOk(t.slice(3));
+  if (startsWith(t, 'pnpm', 'exec', 'vitest', 'run') || startsWith(t, 'pnpm', 'exec', 'vitest', 'related')) return vitestArgsOk(t.slice(4));
+  if (startsWith(t, 'npx', 'vitest', 'run') || startsWith(t, 'npx', 'vitest', 'related')) return vitestArgsOk(t.slice(3));
   return false;
 }
+
+/**
+ * `node scripts/agent-check.mjs <package> [--full|--it|--no-tests] [files…]` — the
+ * token-lean typecheck + related-tests wrapper. `../scripts/…` covers a shell
+ * that is still inside a package after `cd <package>`.
+ */
+const AGENT_CHECK = /^(?:\.\.\/)?scripts\/agent-check\.mjs$/;
+const AGENT_CHECK_PKG = new Set(['server', 'client', 'reviewer-core', 'e2e', 'mcp']);
+const AGENT_CHECK_FLAGS = new Set(['--full', '--it', '--no-tests']);
+const isAgentCheck = (t) =>
+  t.length >= 3 &&
+  t[0] === 'node' &&
+  AGENT_CHECK.test(t[1]) &&
+  AGENT_CHECK_PKG.has(t[2]) &&
+  t.slice(3).every((a) => (a.startsWith('-') ? AGENT_CHECK_FLAGS.has(a) : !a.includes('..')));
+
+/** `pnpm db:generate --name <snake_name>` — drizzle-kit writes the unit's own new migration. */
+const isDbGenerate = (t) => t.length === 4 && t[0] === 'pnpm' && t[1] === 'db:generate' && t[2] === '--name' && /^[a-z0-9_]+$/.test(t[3]);
 
 /** `pnpm exec depcruise src --config .dependency-cruiser.cjs --ignore-known [--output-type X]`. */
 const DEPCRUISE = ['pnpm', 'exec', 'depcruise', 'src', '--config', '.dependency-cruiser.cjs', '--ignore-known'];
@@ -70,16 +88,21 @@ const HOOK_TEST = /^\.claude\/hooks\/[A-Za-z0-9._*-]+\.test\.mjs$/;
 const isHookTest = (t) => t.length >= 3 && t[0] === 'node' && t[1] === '--test' && t.slice(2).every((a) => HOOK_TEST.test(a));
 
 const COMMON = 'cd <package>, read-only git (status|diff|log|show|merge-base|rev-parse|ls-files)';
-const TESTS = 'pnpm test|typecheck, pnpm exec vitest run [paths], npm test, npm run typecheck, npx vitest run [paths]';
+const TESTS = 'pnpm test|typecheck, pnpm exec vitest run|related [paths], npm test, npm run typecheck, npx vitest run|related [paths]';
 const DEPCRUISE_TEXT = 'pnpm exec depcruise src --config .dependency-cruiser.cjs --ignore-known [--output-type err|err-long|json|text]';
+const AGENT_CHECK_TEXT = 'node scripts/agent-check.mjs <package> [--full|--it|--no-tests] [files…] (preferred: short output)';
 
 const PROFILES = {
-  'test-writer': { matchers: [isTestRun], allowed: `${COMMON}, ${TESTS}` },
+  implementer: {
+    matchers: [isAgentCheck, isTestRun, isDepcruise, isDbGenerate],
+    allowed: `${COMMON}, ${AGENT_CHECK_TEXT}, ${TESTS}, ${DEPCRUISE_TEXT}, pnpm db:generate --name <snake_name>`,
+  },
+  'test-writer': { matchers: [isAgentCheck, isTestRun], allowed: `${COMMON}, ${AGENT_CHECK_TEXT}, ${TESTS}` },
   'architecture-reviewer': { matchers: [isDepcruise], allowed: `${COMMON}, ${DEPCRUISE_TEXT}` },
   'security-reviewer': { matchers: [], allowed: COMMON },
   'plan-verifier': {
-    matchers: [isTestRun, isDepcruise, isHookTest],
-    allowed: `${COMMON}, ${TESTS}, ${DEPCRUISE_TEXT}, node --test .claude/hooks/*.test.mjs`,
+    matchers: [isAgentCheck, isTestRun, isDepcruise, isHookTest],
+    allowed: `${COMMON}, ${AGENT_CHECK_TEXT}, ${TESTS}, ${DEPCRUISE_TEXT}, node --test .claude/hooks/*.test.mjs`,
   },
 };
 

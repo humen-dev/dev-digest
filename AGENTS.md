@@ -39,12 +39,18 @@ Docker (Postgres only). TypeScript 5.7 throughout.
   requirements (spec / brief — it never writes specs), asks questions + the
   **multi-agent vs single-agent** choice, then writes `docs/plans/<slug>.md`
   (template `_TEMPLATE.md`) → user approves → main session does Wave 0 → one
-  `implementer` per unit — **in parallel in the same checkout** (multi-agent;
-  disjoint file ownership) or sequentially (single-agent); pass plan path + unit
-  id → main session commits each wave → `plan-verifier` (**mandatory** after every wave commit) → optional
-  `test-writer` / `architecture-reviewer` ∥ `security-reviewer` / `doc-writer` →
-  `/pr-self-review`.
-  Implementers never touch git state, deps or `INSIGHTS.md`.
+  implementer per unit, by Kind (`implementer-backend` · `implementer-ui` ·
+  `implementer` for engine/e2e/mcp) — **in parallel in the same checkout**
+  (multi-agent; disjoint file ownership) or sequentially (single-agent); pass plan
+  path + unit id + the pasted unit block → main session commits each wave →
+  `plan-verifier` (**mandatory** after every wave commit; `scope=all` after the
+  last) → `test-writer` for its NOT MET test rows → `architecture-reviewer` ∥
+  `security-reviewer` ∥ correctness (`/code-review`) → fixes → `plan-verifier`
+  re-verify → optional `doc-writer` → user OK → `spec-creator implemented SPEC-NN`
+  (same PR) → `/pr-self-review`. A spec row no unit covers (*plan gap*) goes back
+  to `implementation-planner` for a new wave, not to an implementer.
+  Implementers never touch git state, deps or `INSIGHTS.md`; they check with
+  `node scripts/agent-check.mjs <pkg> <files>` (typecheck + related tests, short output).
 - **Checks:** every package exposes `test` + `typecheck`; **`tsc --noEmit` is the
   lint gate** — there is no separate ESLint step, so a clean typecheck is required.
 

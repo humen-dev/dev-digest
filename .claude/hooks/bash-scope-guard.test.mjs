@@ -41,7 +41,7 @@ function assertDenied(profile, command, raw = false) {
   return decision.permissionDecisionReason;
 }
 
-const ALL = ['test-writer', 'architecture-reviewer', 'security-reviewer', 'plan-verifier'];
+const ALL = ['implementer', 'test-writer', 'architecture-reviewer', 'security-reviewer', 'plan-verifier'];
 const DEPCRUISE = 'cd server && pnpm exec depcruise src --config .dependency-cruiser.cjs --ignore-known';
 
 test('fail-closed: unknown / missing profile, empty stdin, invalid JSON, no command', () => {
@@ -153,7 +153,49 @@ test('plan-verifier: tests, depcruise and hook suites allowed', () => {
   assertAllowed('plan-verifier', `${DEPCRUISE} --output-type err`);
   assertAllowed('plan-verifier', 'node --test .claude/hooks/write-scope-guard.test.mjs');
   assertAllowed('plan-verifier', 'node --test .claude/hooks/write-scope-guard.test.mjs .claude/hooks/bash-scope-guard.test.mjs');
+  assertAllowed('plan-verifier', 'node scripts/agent-check.mjs server --full');
   assertDenied('plan-verifier', 'node --test server/test/x.test.mjs');
   assertDenied('plan-verifier', 'node .claude/hooks/pr-gate.mjs');
   assertDenied('plan-verifier', 'pnpm exec vitest run -u');
+});
+
+const AGENT_CHECK = 'node scripts/agent-check.mjs';
+
+test('implementer: agent-check, tests, depcruise and db:generate allowed; git writes, installs and servers denied', () => {
+  for (const cmd of [
+    `${AGENT_CHECK} server server/src/modules/x/service.ts server/test/x.test.ts`,
+    `${AGENT_CHECK} client --full`,
+    `${AGENT_CHECK} server --it src/modules/x/repository.ts`,
+    `${AGENT_CHECK} e2e --no-tests`,
+    'cd server && node ../scripts/agent-check.mjs server src/modules/x/routes.ts',
+    'cd client && pnpm typecheck',
+    'cd client && pnpm exec vitest related src/app/x/X.tsx --run --reporter=dot',
+    'cd server && pnpm exec vitest run --exclude "**/*.it.test.ts"',
+    `${DEPCRUISE} --output-type err`,
+    'cd server && pnpm db:generate --name intent_layer',
+  ]) assertAllowed('implementer', cmd);
+  for (const cmd of [
+    `${AGENT_CHECK} nope src/x.ts`,
+    `${AGENT_CHECK} server --watch`,
+    `${AGENT_CHECK} server ../../etc/passwd`,
+    'node scripts/other.mjs server',
+    'cd server && pnpm db:migrate',
+    'cd server && pnpm db:generate --name "x; rm -rf ."',
+    'cd server && pnpm db:generate',
+    'cd server && pnpm dev',
+    'git stash',
+    'git checkout -- server/src/x.ts',
+    'gh pr create',
+    'docker compose down -v',
+    'npm ci',
+    'powershell -c "git commit"',
+  ]) assertDenied('implementer', cmd);
+});
+
+test('test-writer: agent-check and reporter=dot allowed, db:generate denied', () => {
+  assertAllowed('test-writer', `${AGENT_CHECK} client client/src/app/x/X.test.tsx`);
+  assertAllowed('test-writer', 'cd client && pnpm exec vitest run src/app/x --reporter=dot');
+  assertDenied('test-writer', 'cd server && pnpm db:generate --name x');
+  assertDenied('architecture-reviewer', `${AGENT_CHECK} server --full`);
+  assertDenied('security-reviewer', `${AGENT_CHECK} server --full`);
 });

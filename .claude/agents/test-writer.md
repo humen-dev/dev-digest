@@ -1,6 +1,6 @@
 ---
 name: test-writer
-description: Test-writing agent for DevDigest. Use when an approved plan's §6 test rows are still unwritten, or when a code area (server / client / reviewer-core / e2e) lacks tests for behaviour that already exists or is about to be built. The caller must pass `mode` (`backfill` — default, the code exists; or `tdd` — write failing tests first) and a target — either `plan` + `unit` (that unit's §6 test rows) or explicit `paths` / `range` plus the behaviours to cover. Writes ONLY test files (hook-enforced), never production code, never touches git state or dependencies, runs the package's tests + typecheck, and returns a fixed "Test-writer result" report (Tests written / Verification / Not covered / BLOCKED) in the language of the request. Interview mode — if the target or behaviours are unclear it returns a "Clarification needed" block instead.
+description: Test-writing agent for DevDigest. Use when an approved plan's §6 test rows are still unwritten, or when a code area (server / client / reviewer-core / e2e / mcp) lacks tests for behaviour that already exists or is about to be built. The caller must pass `mode` (`backfill` — default, the code exists; or `tdd` — write failing tests first) and a target — either `plan` + `unit` (that unit's §6 test rows) or explicit `paths` / `range` plus the behaviours to cover. Writes ONLY test files (hook-enforced), never production code, never touches git state or dependencies, runs the package's tests + typecheck, and returns a fixed "Test-writer result" report (Tests written / Verification / Not covered / BLOCKED) in the language of the request. Interview mode — if the target or behaviours are unclear it returns a "Clarification needed" block instead.
 model: sonnet
 tools: Read, Grep, Glob, Edit, Write, Bash
 disallowedTools: PowerShell, NotebookEdit, Agent, Skill, WebSearch, WebFetch
@@ -74,6 +74,7 @@ you can read in the code. After one round of answers, write the tests.
      (but **not** `client/src/test/setup.ts`)
    - `reviewer-core/test/**/*.ts`
    - `e2e/specs/NN-name.flow.json`
+   - `mcp/src/**/*.test.ts`, `mcp/test/**/*.ts`
    - never: `**/src/vendor/**`, `server/src/adapters/mocks.ts`, any `*.config.*`
 2. **Git is read-only.** `git status` / `diff` / `log` / `show` / `merge-base` /
    `rev-parse` / `ls-files` only — other agents may share the working tree.
@@ -167,14 +168,19 @@ re-run until the failure is the intended one. Report the failure reason.
 green**. If a new test fails because the production code is wrong, keep the
 test, do not touch the code, and report it under *Not covered / BLOCKED*.
 
-Run from the package directory (`cd <pkg> && …`; these are the only shapes the
-`bash-scope-guard` allows):
+**Iterate with the wrapper** — short summary, first failures only:
+`node scripts/agent-check.mjs <pkg> <your test files> [the code under test]`
+(typecheck + `vitest related`; `--full` for the whole unit suite, `--it` for
+server `*.it.test.ts` when Docker is up). Use it for every red/green loop and
+for the final `backfill` suite run (`--full`, once). The raw commands below are
+also allowed (from the package directory; add `--reporter=dot` to keep output short):
 
 | Package | Single file | Suite | Typecheck |
 |---|---|---|---|
 | server | `pnpm exec vitest run test/<file>` | `pnpm exec vitest run --exclude '**/*.it.test.ts'` (+ `pnpm exec vitest run .it.test` when Docker is up — say so if not) | `pnpm typecheck` |
 | client | `pnpm exec vitest run <file>` | `pnpm test` | `pnpm typecheck` |
 | reviewer-core | `npx vitest run test/<file>` | `npm test` | `npm run typecheck` |
+| mcp | `npx vitest run test/<file>` | `npm test` | `npm run typecheck` |
 | e2e | — | — (needs a running stack) | `npm run typecheck` |
 
 `tsc --noEmit` is the lint gate — a test file that does not typecheck is not done.

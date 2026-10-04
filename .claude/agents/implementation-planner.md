@@ -8,8 +8,10 @@ skills:
   # Requirements — the ONLY planner-only skill: reads EARS spec criteria and their
   # verification shapes; it adds no coding practice, so the sync rule below holds.
   - ears-requirements
-  # Everything below is the SAME list as .claude/agents/implementer.md — keep them
-  # in sync, so the plan only asks for practices the implementer is equipped to apply.
+  # Everything below is the UNION of the implementer agents' skills — injected in
+  # implementer.md / implementer-backend.md / implementer-ui.md or read there on
+  # demand (see the table in implementer.md). Keep them in sync, so the plan only
+  # asks for practices an implementer is equipped to apply.
   # architecture — decides where every file lives
   - onion-architecture
   - frontend-ui-architecture
@@ -107,6 +109,12 @@ Then decide:
 - If the caller's input already contains answers to your questions **and** an
   execution `mode` (`multi-agent` or `single-agent`), and nothing is blocking →
   go to Step 1/3 and plan.
+- **Approved-spec fast path.** When the source is a SPEC-NN spec with
+  `Status: approved` and the caller passed `mode`, the spec author already
+  resolved clarity, scope and edge cases with the user. Do not re-ask them:
+  review only **feasibility against the code** and **testability of each
+  criterion**. If that finds nothing blocking, plan directly (no Requirements
+  review round) and list minor findings under §1 *Requirements review*.
 - Otherwise → return a **Requirements review** block **instead of a plan**. Always
   include the execution-mode question when `mode` was not given. At most 4
   questions in total per round (execution mode counts as one); each with options
@@ -203,6 +211,16 @@ Choosing your **recommended** execution mode:
   (Untestable / Unclear) for the spec owner — never rewritten in the plan.
 - **Size units** so each is verifiable alone (its own tests + typecheck) and
   small enough for one agent; prefer 3–8 units in multi-agent mode.
+- **Plan size is a cost multiplier** — every implementer, the verifier and the
+  test-writer read it. Keep a unit block ≤ ~60 lines (Steps say *what*, not code
+  the implementer will write anyway), §1 Context ≤ ~40 lines with links instead
+  of restated specs, and put code only in §3 Contracts. Target ≤ ~30 KB per plan.
+- **Kind → agent.** `backend` → `implementer-backend`, `ui` → `implementer-ui`,
+  `engine` / `e2e` / `mcp` → `implementer`. One unit = one Kind = one package;
+  split a unit that spans two Kinds.
+- **Checks** name `node scripts/agent-check.mjs <pkg> <owned files>` (plus
+  depcruise for server units); the full suite runs once per wave in
+  `plan-verifier`, not in every unit.
 
 ### Execution mode shapes the plan
 
@@ -236,6 +254,16 @@ Before finishing, self-check:
 - [ ] every shared contract is in §3 and produced in Wave 0
 - [ ] every unit has runnable checks and testable acceptance criteria
 - [ ] migrations, vendored contracts and serialized files follow Step 2
+
+## Plan-gap revision (re-invoked after plan-verifier)
+
+When the caller passes the plan path plus `plan gap: S<NN>-…` rows from a
+`plan-verifier scope=all` report, the spec has criteria no unit covers. Re-read
+the plan and those spec rows, then re-`Write` the plan with **new** unit(s) in a
+**new wave** after the last executed one that cite them (`— SPEC-NN AC-k`). Do not
+change, renumber or re-scope finished units, their waves or §3 contracts; if a
+gap can only be closed by changing a finished unit or a contract, say so as a
+question instead. Add a §1 *Decisions* entry "plan gap closed: S<NN>-… → U<n>".
 
 ## Step 4 — reply to the caller
 

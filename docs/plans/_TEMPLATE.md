@@ -10,7 +10,7 @@
 | Goal | <one sentence: what the user can do after this ships — taken from the requirements, not invented> |
 | Requirements source | <spec path(s) in `<pkg>/specs/` · Design brief · request> (input — this plan never edits it) |
 | Execution mode | multi-agent (parallel waves) · single-agent (sequential pass) — chosen by the user |
-| Packages touched | server · client · reviewer-core · e2e · shared (list only the touched ones) |
+| Packages touched | server · client · reviewer-core · e2e · mcp · shared (list only the touched ones) |
 
 ## 1. Context
 What exists today (with `path:line` evidence), why it is not enough, and a short
@@ -46,18 +46,19 @@ reports it as `BLOCKED:` in its result.
 ## 4. Work units
 One block per unit. A unit is the smallest change that carries its own tests
 and can be verified alone. **No two units in the same wave may own the same file.**
+Keep each block ≤ ~60 lines — every implementer reads it; code belongs in §3 only.
 
 ### U<n> — <short title>
 | Field | Value |
 |---|---|
-| Kind | backend · ui · engine · e2e |
+| Kind | backend (→ `implementer-backend`) · ui (→ `implementer-ui`) · engine · e2e · mcp (→ `implementer`) |
 | Wave | 0 · 1 · 2 … |
 | Depends on | U… (or "none") |
 | Owns (create/modify) | exact paths, incl. tests |
 | Must not touch | anything notable the unit might be tempted to edit |
 | Consumes | contracts/units it reads from (§3 names) |
 | Produces | contracts/symbols other units rely on |
-| Checks | e.g. `server: pnpm typecheck · pnpm exec vitest run <file> · depcruise` |
+| Checks | e.g. `node scripts/agent-check.mjs server <owned files> · depcruise` (full suite: plan-verifier, once per wave) |
 
 **Steps**
 1. …

@@ -57,8 +57,9 @@ anything; a hook limits your shell to read-only git and the plan's checks.
 ## Input
 
 - `plan` — path to `docs/plans/<slug>.md` (required)
-- `scope` — `U<n>` (that unit plus the §3 contracts it consumes/produces) or
-  `all` (every item in the plan). Default `all`.
+- `scope` — `U<n>` or a list `U2,U3,U5` (the units of one wave, plus the §3
+  contracts they consume/produce) or `all` (every item in the plan). Default
+  `all`. Unit scopes use *Compact mode* in the report.
 - `range` — optional git range; default `$(git merge-base main HEAD)`..working
   tree plus untracked files.
 - `previous` — optional prior Plan verification report → *Re-verify mode*.
@@ -106,12 +107,12 @@ Assign IDs exactly as follows:
 | `T-<k>` | §6 Test plan | row / bullet |
 | `V-<k>` | §7 Verification | row / numbered item |
 | `R-<heading>-<k>` | free-form plan | requirement bullet or table row under that heading (`<heading>` = short kebab slug) |
-| `S<NN>-<AC\|EC\|NFR>-<k>` | the SPEC-NN spec named in the plan header *Requirements source* (only when `scope = all`) | spec acceptance criterion, edge case and NFR — MET only when the behaviour is shown in code or a test, not merely cited by a unit; an item no unit cites is NOT MET (plan gap) |
+| `S<NN>-<AC\|EC\|NFR>-<k>` | the SPEC-NN spec named in the plan header *Requirements source* (only when `scope = all`) | spec acceptance criterion, edge case and NFR — MET only when the behaviour is shown in code or a test, not merely cited by a unit; an item no unit cites is NOT MET (plan gap) and is also listed under *Missing* as `plan gap: S<NN>-…` so the orchestrator routes it to `implementation-planner`, not to an implementer |
 
 Also turn the plan's stated goal (header *Goal* or a "requirements" list) into
-rows — `R-goal-<k>` — when it states something checkable. In `scope = U<n>`
+rows — `R-goal-<k>` — when it states something checkable. In `scope = U<n>` (or a unit list)
 include only that unit's rows plus the `C-*` it consumes or produces. Write down
-the item count before Step 3; the final table must have exactly that many rows.
+the item count before Step 3; the final table must have exactly that many rows (compact mode: the not-MET rows plus the IDs on the `MET (…)` line).
 
 ## Step 3 — determine the change set (read-only git)
 
@@ -153,7 +154,9 @@ Verdicts: **MET** · **PARTIAL** · **NOT MET** · **NOT VERIFIABLE** (with reas
 Run `U<n>-CHK-*` and `V-*` commands only when they match your allowlist
 (enforced by `.claude/hooks/bash-scope-guard.mjs plan-verifier`):
 
-- `cd server|client|reviewer-core|e2e`
+- `cd server|client|reviewer-core|e2e|mcp`
+- `node scripts/agent-check.mjs <pkg> --full [--it]` — **preferred** for suite +
+  typecheck runs: same commands, short output (summary + first failures)
 - read-only git: `git status|diff|log|show|merge-base|rev-parse|ls-files` (no `--output`)
 - `pnpm typecheck` · `pnpm test` · `pnpm exec vitest run [paths / --exclude …]`
   · `npm test` · `npm run typecheck` · `npx vitest run [paths]` (no `-u`,
@@ -194,6 +197,12 @@ still has one row per item and the header count stays complete.
 ### Checks run
 ### Out-of-plan observations (optional — never changes the verdict)
 ```
+
+**Compact mode (`scope = U<n>` or a list of a wave's units):** *Traceability*
+contains only the rows that are **not MET**, followed by one line
+`MET (<count>): <ID>, <ID>, …` — no evidence column for MET rows. The item count
+in the header still covers every item. This keeps the orchestrator's context
+small across waves. `scope = all` and re-verify mode always print the full table.
 
 - The header table has rows `Verdict`, `Plan shape`, `Items` (plus `Range`).
 - `BLOCKED:` items, if any, go first, before the header.
