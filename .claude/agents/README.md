@@ -39,6 +39,9 @@ is unaffected by them.
 
 ## How they work together
 
+Step-by-step walkthrough with a worked example, failure routing and lifecycles:
+[`docs/sdd-workflow.md`](../../docs/sdd-workflow.md).
+
 ```mermaid
 flowchart TD
   R[Feature request] -->|idea still open| B[brainstormer]

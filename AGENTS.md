@@ -94,6 +94,7 @@ Docker (Postgres only). TypeScript 5.7 throughout.
 ## Deeper context — read the file when the task touches it (don't preload)
 - [`README.md`](./README.md) — full overview + architecture diagram + quick start
 - [`TESTING.md`](./TESTING.md) — cross-package test strategy & CI workflows
+- [`docs/sdd-workflow.md`](./docs/sdd-workflow.md) — full spec → plan → waves → verify → PR workflow
 - [`docs/`](./docs/) — repo-level docs (e.g. `agent-prompts/`)
 - Per-package `docs/` · `specs/` · `INSIGHTS.md` — linked from each package's AGENTS.md
 - [`specs/`](./specs/README.md) — cross-module specs only (global `SPEC-NN`, EARS) + the spec template
