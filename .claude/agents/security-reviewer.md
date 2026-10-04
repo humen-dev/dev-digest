@@ -5,7 +5,7 @@ model: opus
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit, PowerShell, Agent, Skill, WebSearch, WebFetch
 skills:
-  # security only — deliberately NOT the 11-coding-skill list of planner/implementer
+  # security only — deliberately NOT the 11-coding-skill list of implementation-planner/implementer
   - security
 hooks:
   PreToolUse:

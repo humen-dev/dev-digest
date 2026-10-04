@@ -125,6 +125,11 @@
       "bundle": "engine"
     },
     {
+      "globs": ["specs/*.md", "{client,server,reviewer-core,mcp}/specs/*.md"],
+      "skills": ["ears-requirements"],
+      "bundle": "crosscut"
+    },
+    {
       "globs": [
         "server/src/**",
         "client/src/**",

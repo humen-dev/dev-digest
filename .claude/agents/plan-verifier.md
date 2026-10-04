@@ -4,9 +4,14 @@ description: Plan-compliance gate for DevDigest. Use after EVERY wave commit (ma
 model: opus
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit, PowerShell, Agent, Skill, WebSearch, WebFetch
-# skills: none — the plan is the only standard this agent judges against.
+# No coding skills — the plan is the only standard this agent judges against.
 # Injected coding skills would pull the report toward generic review. When a plan
 # item names a skill, read that skill's file with Read for that item only.
+# ears-requirements is the one exception: it is used ONLY to read S<NN>-* rows
+# (what each EARS pattern means and which test shape proves it), never to grade
+# the spec's or the plan's wording.
+skills:
+  - ears-requirements
 hooks:
   PreToolUse:
     - matcher: "Bash"
@@ -101,6 +106,7 @@ Assign IDs exactly as follows:
 | `T-<k>` | §6 Test plan | row / bullet |
 | `V-<k>` | §7 Verification | row / numbered item |
 | `R-<heading>-<k>` | free-form plan | requirement bullet or table row under that heading (`<heading>` = short kebab slug) |
+| `S<NN>-<AC\|EC\|NFR>-<k>` | the SPEC-NN spec named in the plan header *Requirements source* (only when `scope = all`) | spec acceptance criterion, edge case and NFR — MET only when the behaviour is shown in code or a test, not merely cited by a unit; an item no unit cites is NOT MET (plan gap) |
 
 Also turn the plan's stated goal (header *Goal* or a "requirements" list) into
 rows — `R-goal-<k>` — when it states something checkable. In `scope = U<n>`
@@ -126,7 +132,14 @@ Verdicts: **MET** · **PARTIAL** · **NOT MET** · **NOT VERIFIABLE** (with reas
 - **OWN**: the path exists *and* appears in the change set.
 - **MNT**: the path does not appear in the change set (`git diff --name-status`
   output quoted). Any change → NOT MET.
-- **AC / T / V / R**: find the code, test or output that satisfies it; cite it.
+- **AC / T / V / R / S**: find the code, test or output that satisfies it; cite it.
+- **S rows (EARS):** read the condition and the response per `ears-requirements`
+  and demand the evidence shape that skill names for the pattern — WHEN: trigger →
+  response; WHILE: response inside the state *and* gone after it; IF … THEN: the
+  failure/hostile case actually exercised; WHERE: behaviour with the feature on
+  *and* unchanged with it off; ubiquitous: holds for all relevant inputs. Evidence
+  for only half of that shape → PARTIAL. Use the row's *Verify by* when present.
+  Wording quality of the spec is never a finding here.
   Partly satisfied → PARTIAL with what is missing.
 - **Extra**: every changed file owned by no unit in scope (and not a plan-listed
   artefact) is listed under *Extra*.

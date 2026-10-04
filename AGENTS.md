@@ -31,11 +31,17 @@ Docker (Postgres only). TypeScript 5.7 throughout.
   deliberate override is `PR_SELF_REVIEW_BYPASS=1`. Retire a false positive with
   `pr-self-review.mjs accept "<key>" --reason "…"` — never with a habitual bypass.
 - **Plan → implement (subagents in `.claude/agents/`):** optional `brainstormer`
-  turns a raw idea into a Design brief → `planner` writes
-  `docs/plans/<slug>.md` (template `_TEMPLATE.md`) → user approves → main session
-  does Wave 0 → one `implementer` per unit **in parallel in the same checkout**
-  (pass plan path + unit id; disjoint file ownership) → main session commits each
-  wave → `plan-verifier` (**mandatory** after every wave commit) → optional
+  turns a raw idea into a Design brief → `spec-creator` analyses the designs
+  (gaps, corner cases, module interactions, UX; facts via parallel `researcher`s
+  the main session runs on its requests) and, after the user's answers,
+  writes an EARS spec `<pkg>/specs/YYYY-MM-DD-<slug>.md` (cross-module: root
+  `specs/`; template `specs/_TEMPLATE.md`; user approves it) → `implementation-planner` reviews the
+  requirements (spec / brief — it never writes specs), asks questions + the
+  **multi-agent vs single-agent** choice, then writes `docs/plans/<slug>.md`
+  (template `_TEMPLATE.md`) → user approves → main session does Wave 0 → one
+  `implementer` per unit — **in parallel in the same checkout** (multi-agent;
+  disjoint file ownership) or sequentially (single-agent); pass plan path + unit
+  id → main session commits each wave → `plan-verifier` (**mandatory** after every wave commit) → optional
   `test-writer` / `architecture-reviewer` ∥ `security-reviewer` / `doc-writer` →
   `/pr-self-review`.
   Implementers never touch git state, deps or `INSIGHTS.md`.
@@ -84,3 +90,4 @@ Docker (Postgres only). TypeScript 5.7 throughout.
 - [`TESTING.md`](./TESTING.md) — cross-package test strategy & CI workflows
 - [`docs/`](./docs/) — repo-level docs (e.g. `agent-prompts/`)
 - Per-package `docs/` · `specs/` · `INSIGHTS.md` — linked from each package's AGENTS.md
+- [`specs/`](./specs/README.md) — cross-module specs only (global `SPEC-NN`, EARS) + the spec template

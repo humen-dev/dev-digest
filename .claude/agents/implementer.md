@@ -5,7 +5,8 @@ model: sonnet
 tools: Read, Grep, Glob, Edit, Write, Bash, PowerShell
 disallowedTools: Agent, Skill, NotebookEdit, WebSearch, WebFetch
 skills:
-  # SAME list as .claude/agents/planner.md — keep them in sync.
+  # SAME list as .claude/agents/implementation-planner.md (minus its planner-only
+  # `ears-requirements`) — keep them in sync.
   # architecture — decides where every file lives
   - onion-architecture
   - frontend-ui-architecture

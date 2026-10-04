@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "devdigest-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["scripts/dev.sh", "--no-seed"],
+      "port": 3000
+    }
+  ]
+}

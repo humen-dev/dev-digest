@@ -5,7 +5,7 @@ model: sonnet
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit, PowerShell, Agent, Skill, WebSearch, WebFetch
 skills:
-  # architecture only — deliberately NOT the 11-coding-skill list of planner/implementer
+  # architecture only — deliberately NOT the 11-coding-skill list of implementation-planner/implementer
   - onion-architecture
   - frontend-ui-architecture
 hooks:

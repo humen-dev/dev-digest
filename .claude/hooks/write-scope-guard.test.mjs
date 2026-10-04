@@ -125,3 +125,36 @@ test('doc-writer: specs, agent maps, plans and code denied', () => {
     assert.match(reason, /doc-writer may not write/);
   }
 });
+
+test('spec-creator: module and cross-module specs allowed', () => {
+  for (const p of [
+    'specs/2026-10-04-blast-radius-panel.md',
+    'specs/README.md',
+    'client/specs/2026-10-04-severity-filter.md',
+    'client/specs/README.md',
+    'server/specs/2026-10-04-error-envelope.md',
+    'reviewer-core/specs/2026-10-04-grounding.md',
+    'mcp/specs/2026-10-04-run-agent-progress.md',
+    'mcp/specs/README.md',
+  ]) assertAllowed('spec-creator', p);
+});
+
+test('spec-creator: template, e2e flows, nested paths, code, plans and agent maps denied', () => {
+  for (const p of [
+    'specs/_TEMPLATE.md',
+    'e2e/specs/14-foo.flow.json',
+    'e2e/specs/README.md',
+    'client/specs/designs/frame.md',
+    'client/specs/2026-10-04-x.json',
+    'shared/specs/x.md',
+    'client/src/app/page.tsx',
+    'server/AGENTS.md',
+    'AGENTS.md',
+    'docs/plans/x.md',
+    'docs/specs/x.md',
+    '../specs/x.md',
+  ]) {
+    const reason = assertDenied('spec-creator', p);
+    assert.match(reason, /spec-creator may not write/);
+  }
+});

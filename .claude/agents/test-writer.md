@@ -5,7 +5,7 @@ model: sonnet
 tools: Read, Grep, Glob, Edit, Write, Bash
 disallowedTools: PowerShell, NotebookEdit, Agent, Skill, WebSearch, WebFetch
 skills:
-  # Deliberately NOT the 11-skill list of planner/implementer — only what shapes
+  # Deliberately NOT the 11-skill list of implementation-planner/implementer — only what shapes
   # tests: RTL technique, where test files live per architecture, and the
   # server/typing libraries the tests exercise.
   - react-testing-library
