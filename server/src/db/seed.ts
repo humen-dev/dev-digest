@@ -1045,13 +1045,15 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
           raw_output: '{"verdict":"request_changes","score":38,"findings":[…]}',
           memory_pulled: [],
           specs_read: ['specs/security-baseline.md'],
+          // RunTrace#project_context is `ProjectContextEntry` (§3.1: path,
+          // source, tokens, status) — no `bucket` (that field lives only on
+          // `EffectiveContextDoc`, the preview/resolve-time shape).
           project_context: [
             {
               path: 'specs/security-baseline.md',
               source: 'agent',
               tokens: securityBaselineTokens,
               status: 'included',
-              bucket: 'specs',
             },
           ],
           log: [

@@ -57,6 +57,15 @@ type Entry = { path: string; source: string; tokens: number | null; status: stri
 type Doc = { path: string; text: string };
 type Resolved = { cloned: boolean; entries: Entry[]; docs: Doc[] };
 
+/**
+ * `RunTrace#project_context` is `ProjectContextEntry` (§3.1: path, source,
+ * tokens, status) — `entries` resolved by `projectContextService` are
+ * `EffectiveContextDoc` (adds `bucket`, §3.4). The run-executor strips it
+ * before persisting; mirror that here instead of asserting against `Entry`.
+ */
+const withoutBucket = (entries: Entry[]) =>
+  entries.map(({ path, source, tokens, status }) => ({ path, source, tokens, status }));
+
 /** `ReviewRepository`-shaped fake: records every trace + completion for assertions. */
 function makeFakeRepo() {
   const traces: { runId: string; trace: any }[] = [];
@@ -166,7 +175,7 @@ describe('ReviewRunExecutor — project context (SPEC-01, U7)', () => {
 
     const trace = traces[0]!.trace;
     expect(trace.specs_read).toEqual(['specs/a.md']);
-    expect(trace.project_context).toEqual(entries);
+    expect(trace.project_context).toEqual(withoutBucket(entries));
 
     const expectedBlock = renderProjectContext(docs);
     expect(trace.prompt_assembly.specs).toBe(expectedBlock);
@@ -188,7 +197,7 @@ describe('ReviewRunExecutor — project context (SPEC-01, U7)', () => {
     expect(resolveEffective).toHaveBeenCalledWith('ws-1', AGENT.id, null);
     const trace = traces[0]!.trace;
     expect(trace.specs_read).toEqual([]);
-    expect(trace.project_context).toEqual(entries);
+    expect(trace.project_context).toEqual(withoutBucket(entries));
     const req = llm.calls.find((c) => c.method === 'completeStructured')!.req as {
       messages: { role: string; content: string }[];
     };

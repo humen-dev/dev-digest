@@ -349,7 +349,13 @@ d('Project Context in a run (SPEC-01, U7 — Testcontainers pg + real clone)', (
 
       const { trace } = await runAndGetTrace(app, pr.id, agent.id);
 
-      expect(trace.project_context).toEqual(preview.documents);
+      // Preview documents are `EffectiveContextDoc` (adds `bucket`, §3.4);
+      // trace entries are `ProjectContextEntry` (§3.1: path, source, tokens,
+      // status only) — compare on the four contract fields they share, same order.
+      const previewEntries = (preview.documents as Array<Record<string, unknown>>).map(
+        ({ path, source, tokens, status }) => ({ path, source, tokens, status }),
+      );
+      expect(trace.project_context).toEqual(previewEntries);
     } finally {
       await app.close();
       await rm(cloneDir, { recursive: true, force: true });

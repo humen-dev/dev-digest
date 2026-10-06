@@ -318,9 +318,17 @@ export class ReviewRunExecutor {
         memory_pulled: [],
         // SPEC-01 (U7) — `docs` is already included-only, grouped order
         // (ResolvedProjectContext's contract); `entries` is the full
-        // grouped-order status trace, every skipped reason included.
+        // grouped-order status trace, every skipped reason included. The
+        // trace's `project_context` is `ProjectContextEntry` (§3.1: path,
+        // source, tokens, status) — `entries` is `EffectiveContextDoc`
+        // (adds `bucket`, §3.4), so strip that field before persisting.
         specs_read: projectContext.docs.map((d) => d.path),
-        project_context: projectContext.entries,
+        project_context: projectContext.entries.map(({ path, source, tokens, status }) => ({
+          path,
+          source,
+          tokens,
+          status,
+        })),
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),
