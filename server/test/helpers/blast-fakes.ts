@@ -118,6 +118,9 @@ export class FakeRepoIntel implements RepoIntel {
   async getCriticalPaths() {
     return [];
   }
+  async getImporterCounts() {
+    return {};
+  }
 }
 
 export function newId(): string {

@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { parseSkillMarkdown } from '../modules/skills/domain/parse-markdown.js';
 import { renderProjectContext } from '@devdigest/reviewer-core';
+import { TourDocument } from '../modules/onboarding/types.js';
 import {
   API_CONTRACT_REVIEWER_PROMPT,
   GENERAL_REVIEWER_PROMPT,
@@ -194,6 +195,96 @@ const DEFAULT_PROVIDER = 'openrouter' as const;
 const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash';
 
 /**
+ * SPEC-03 (U7) — seeded onboarding tour for `acme/payments-api`, stored in
+ * `onboarding.json`. Content mirrors frames `7.png`-`9.png` and
+ * `screen_tour_context.jsx:3-14`: an architecture overview with a
+ * `flowchart LR` Mermaid diagram, 4 critical paths, 4 how-to-run steps (each
+ * grounded to a plausible source file), 3 guided-reading entries, and 3 first
+ * tasks (one of them a new file). `counters` records 3 total dropped items
+ * across the four grounded sections, matching each array's length against
+ * its section's `proposed - dropped`.
+ */
+const SEEDED_TOUR_DOCUMENT = {
+  tracked_file_count: 12_450,
+  indexed_file_count: 12_450,
+  architecture: {
+    overview:
+      '**payments-api** is a Node + TypeScript service fronting Stripe. Requests enter through `src/server.ts`, pass through `src/middleware/auth.ts`, and route to `src/api/public/index.ts`. Persistence is Postgres via a thin `db` client; `src/lib/redis.ts` backs sessions and the new rate-limit buckets.',
+    overview_paths: [
+      'src/server.ts',
+      'src/middleware/auth.ts',
+      'src/api/public/index.ts',
+      'src/lib/redis.ts',
+    ],
+    diagram:
+      'flowchart LR\n  client --> server[server.ts]\n  server --> middleware[middleware]\n  server --> api[api/public/*]\n  middleware --> redis[(redis)]\n  api --> postgres[(postgres)]',
+  },
+  critical_paths: [
+    { path: 'src/server.ts', note: 'App bootstrap + middleware chain', importer_count: null },
+    {
+      path: 'src/api/public/index.ts',
+      note: 'Public router — unauthenticated surface',
+      importer_count: null,
+    },
+    {
+      path: 'src/middleware/auth.ts',
+      note: 'Token validation, used by 14 routes',
+      importer_count: null,
+    },
+    { path: 'src/lib/redis.ts', note: 'Shared Redis singleton — reuse this', importer_count: null },
+  ],
+  how_to_run: [
+    { command: 'pnpm install', note: null, source: 'package.json' },
+    { command: 'cp .env.example .env  # add OPENAI + STRIPE keys', note: null, source: '.env.example' },
+    { command: 'docker compose up -d postgres redis', note: null, source: 'docker-compose.yml' },
+    { command: 'pnpm dev  # http://localhost:3000', note: null, source: 'package.json' },
+  ],
+  guided_reading: [
+    {
+      path: 'src/server.ts',
+      reason: 'See the whole request lifecycle in one file',
+      importer_count: null,
+    },
+    {
+      path: 'src/api/public/index.ts',
+      reason: 'Understand the public contract before touching it',
+      importer_count: null,
+    },
+    {
+      path: 'src/middleware/auth.ts',
+      reason: 'Auth touches almost everything downstream',
+      importer_count: null,
+    },
+  ],
+  first_tasks: [
+    {
+      title: 'Add a /health readiness probe',
+      target: 'src/api/public/health.ts',
+      complexity: 'low',
+      new_file: true,
+    },
+    {
+      title: 'Backfill tests for the rate limiter',
+      target: 'test/ratelimit.test.ts',
+      complexity: 'medium',
+      new_file: false,
+    },
+    {
+      title: 'Document the webhook signature flow',
+      target: 'specs/webhooks.md',
+      complexity: 'low',
+      new_file: false,
+    },
+  ],
+  counters: {
+    critical_paths: { proposed: 5, dropped: 1 },
+    how_to_run: { proposed: 4, dropped: 0 },
+    guided_reading: { proposed: 4, dropped: 1 },
+    first_tasks: { proposed: 4, dropped: 1 },
+  },
+} satisfies TourDocument;
+
+/**
  * Seed the starter's demo data. Idempotent: re-running upserts the default
  * workspace/user and the demo fixtures.
  *
@@ -283,6 +374,25 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       .returning();
   }
   const repoId = repo!.id;
+
+  // ---- seeded onboarding tour for payments-api (SPEC-03, U7) ----
+  // Insert-once: no tracked-file validation here (no repo_index_state row for
+  // this repo — EC-36, "no index" is a valid/stale state, not an error).
+  const [existingTour] = await db
+    .select({ repoId: t.onboarding.repoId })
+    .from(t.onboarding)
+    .where(eq(t.onboarding.repoId, repoId));
+  if (!existingTour) {
+    await db.insert(t.onboarding).values({
+      repoId,
+      json: SEEDED_TOUR_DOCUMENT,
+      generatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      tourCommit: 'a1b2c3d4e5f6',
+      model: DEFAULT_MODEL,
+      apiCostUsd: null,
+      durationMs: 41_000,
+    });
+  }
 
   // ---- PR #482 (rate limiting) ----
   let [pr] = await db

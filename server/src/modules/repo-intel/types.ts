@@ -147,6 +147,10 @@ export interface RepoMapResult {
   reason?: DegradedReason;
 }
 
+// Re-exported so onboarding (and any other consumer) codes against the facade
+// module, never `repo-intel/constants.ts` directly.
+export { EXCLUDED_DIRS, MAX_FILE_SIZE } from './constants.js';
+
 /**
  * The facade. Studio (T2+) serves reads purely from the Postgres cache; T1 and
  * CI may parse diff-scoped on the hot path. Indexing runs through
@@ -192,4 +196,10 @@ export interface RepoIntel {
     opts?: { exclude?: string[] },
   ): Promise<string[]>;
   getCriticalPaths(repoId: string): Promise<string[][]>;
+  /**
+   * Distinct importer count per path (from `file_edges`), for onboarding's
+   * `importer_count`. Absent keys mean 0 — never throws, never returns a
+   * partial map with explicit zeros.
+   */
+  getImporterCounts(repoId: string, paths: string[]): Promise<Record<string, number>>;
 }
