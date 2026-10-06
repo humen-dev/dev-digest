@@ -109,28 +109,6 @@ describe('assemblePrompt — projectContext (SPEC-01)', () => {
     const { messages } = assemblePrompt({ system: 'AGENT-SYS', diff: 'DIFF' });
     expect(messages[0]!.content).not.toContain('attached project documents');
   });
-
-  it('D3: the legacy `specs` slot still renders when projectContext is absent', () => {
-    const { messages, assembly } = assemblePrompt({
-      system: 'AGENT-SYS',
-      diff: 'DIFF',
-      specs: ['legacy spec chunk'],
-    });
-    expect(messages[1]!.content).toContain('## Project context');
-    expect(messages[1]!.content).toContain('legacy spec chunk');
-    expect(assembly.specs).toContain('legacy spec chunk');
-  });
-
-  it('`specs` is ignored once projectContext has ≥ 1 doc', () => {
-    const { messages } = assemblePrompt({
-      system: 'AGENT-SYS',
-      diff: 'DIFF',
-      specs: ['legacy spec chunk'],
-      projectContext: [{ path: 'README.md', text: 'new doc text' }],
-    });
-    expect(messages[1]!.content).not.toContain('legacy spec chunk');
-    expect(messages[1]!.content).toContain('new doc text');
-  });
 });
 
 describe('reviewPullRequest — projectContext across map-reduce chunks', () => {

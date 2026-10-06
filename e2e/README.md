@@ -105,3 +105,5 @@ a CI artifact by `.github/workflows/e2e-web.yml`).
 | `10-agent-skills-tab` | Test Quality Reviewer agent → Skills tab → its 3 linked skills render |
 | `11-conventions` | sidebar → Conventions → seeded scan summary + 3 accepted rules → create-skill modal → Cancel |
 | `13-smart-diff` | PR #482 → Files changed tab → Smart order groups by role (Core logic/Wiring/Boilerplate), seeded CRITICAL finding renders inline with a "blocker" label, expand Boilerplate → pnpm-lock.yaml, toggle to Original order |
+| `14-project-context` | sidebar → Project Context → page heading renders; seeded repo has no local clone → "Repository not cloned" empty state |
+| `15-trace-project-context` | PR #482 → Agent runs tab → Timeline's seeded Security Reviewer run → open its trace drawer → expand "Project context — attached specs (untrusted)" → attached specs/security-baseline.md text visible |

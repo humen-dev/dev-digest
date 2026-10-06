@@ -63,17 +63,11 @@ export interface PromptParts {
   /** Relevant memory items (trusted, curated). */
   memory?: string[];
   /**
-   * @deprecated Use `projectContext` instead. Project-context spec chunks
-   * (untrusted content). Ignored once `projectContext` has ≥ 1 doc.
-   */
-  specs?: string[];
-  /**
    * Attached project-context documents (SPEC-01; untrusted). Rendered by
    * `renderProjectContext` into one `## Project context` section (grouped by
-   * bucket, each doc delimiter-wrapped) that REPLACES the legacy `specs`
-   * slot above. When present and non-empty, the system guard also names
-   * "attached project documents" (see `INJECTION_GUARD_WITH_PROJECT_CONTEXT`).
-   * Empty/undefined → falls back to `specs`, no behaviour change.
+   * bucket, each doc delimiter-wrapped). When present and non-empty, the
+   * system guard also names "attached project documents" (see
+   * `INJECTION_GUARD_WITH_PROJECT_CONTEXT`). Empty/undefined → section omitted.
    */
   projectContext?: ProjectContextDoc[];
   /**
@@ -85,7 +79,7 @@ export interface PromptParts {
   repoMap?: string;
   /**
    * Callers-of-changed-symbols digest (T1.3). Untrusted (derived from repo
-   * code) — delimiter-wrapped like specs. When present, rendered before
+   * code) — delimiter-wrapped. When present, rendered before
    * `## Diff to review` so the model sees crossfile context first. Empty /
    * undefined → section omitted (no behavior change).
    */
@@ -124,8 +118,6 @@ export interface AssembledPrompt {
 export function assemblePrompt(parts: PromptParts): AssembledPrompt {
   const skillsBlock =
     parts.skills && parts.skills.length > 0 ? parts.skills.join('\n\n') : undefined;
-  // The new `projectContext` slot REPLACES the legacy `specs` slot once it has
-  // ≥ 1 doc (D3); `specs` keeps working, unmodified, until then.
   const projectContextBlock =
     parts.projectContext && parts.projectContext.length > 0
       ? renderProjectContext(parts.projectContext)
@@ -137,10 +129,6 @@ export function assemblePrompt(parts: PromptParts): AssembledPrompt {
   const memoryBlock =
     parts.memory && parts.memory.length > 0
       ? parts.memory.map((m) => `- ${m}`).join('\n')
-      : undefined;
-  const specsBlock =
-    !projectContextBlock && parts.specs && parts.specs.length > 0
-      ? parts.specs.map((s, i) => wrapUntrusted(`spec-${i}`, s)).join('\n\n')
       : undefined;
 
   const prDescription =
@@ -163,8 +151,6 @@ export function assemblePrompt(parts: PromptParts): AssembledPrompt {
   }
   if (projectContextBlock) {
     userSections.push(projectContextBlock);
-  } else if (specsBlock) {
-    userSections.push(`## Project context\n${specsBlock}`);
   }
   if (parts.callers && parts.callers.trim().length > 0) {
     userSections.push(
@@ -184,7 +170,7 @@ export function assemblePrompt(parts: PromptParts): AssembledPrompt {
     system,
     skills: skillsBlock ?? null,
     memory: memoryBlock ?? null,
-    specs: projectContextBlock ?? specsBlock ?? null,
+    specs: projectContextBlock ?? null,
     callers: parts.callers ?? null,
     repo_map: parts.repoMap ?? null,
     pr_description: prDescription ?? null,

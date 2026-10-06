@@ -1,0 +1,14 @@
+{
+  "name": "Project Context nav entry opens the page; the seeded repo has no local clone",
+  "description": "From the seeded repo's PR list, clicks the 'Project Context' sidebar nav entry and confirms the page heading renders (AC-1). The seeded demo repo acme/payments-api has no local clone in the e2e stack, so the page shows the 'Repository not cloned' empty state instead of a document tree (EC-1). Read-only, no model call.",
+  "steps": [
+    { "cmd": ["open", "{BASE}/"], "label": "load the app root" },
+    { "cmd": ["wait", "--url", "/pulls"], "label": "root redirects to the seeded repo's PR list" },
+    { "cmd": ["find", "text", "Project Context", "click"], "label": "WORKSPACE → Project Context in the sidebar" },
+    { "cmd": ["wait", "--url", "/context"], "label": "navigate to the Project Context route" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "document list fetch settles" },
+    { "cmd": ["wait", "--text", "Project Context"], "label": "page heading renders — AC-1" },
+    { "cmd": ["wait", "--text", "Repository not cloned"], "label": "no local clone for the seeded repo — EC-1" },
+    { "cmd": ["wait", "--text", "This repository has no local clone yet. Import or resync it to browse project documents."], "label": "empty-state body explains the next step" }
+  ]
+}
