@@ -161,6 +161,7 @@
   "tabs": {
     "config": "Config",
     "preview": "Preview",
+    "context": "Context",
     "stats": "Stats",
     "versions": "Versions"
   },
@@ -213,6 +214,22 @@
     "agentsUsing": "Agents using this skill",
     "noAgents": "No agents use this skill yet.",
     "open": "Open"
+  },
+  "context": {
+    "title": "Context",
+    "inheritNote": "Every agent that links this skill inherits the documents below, in this order, as part of its own effective context.",
+    "attachedBadge": "{count} attached",
+    "filterPlaceholder": "Filter documents…",
+    "capped": "Showing {shown} of {total}",
+    "emptyTitle": "No documents found",
+    "notClonedTitle": "Repository not cloned",
+    "notClonedBody": "Clone the repository to browse and attach its project documents.",
+    "noMatchTitle": "No documents match",
+    "attachCta": "+ Attach documents",
+    "loadError": "Could not load this repository's project documents.",
+    "saveError": "Could not save the attached documents. Try again.",
+    "serializeTitle": "Serializes as",
+    "serializeEmpty": "Attach a document to preview how it is grouped in the prompt."
   },
   "versionsTab": {
     "title": "Version history",

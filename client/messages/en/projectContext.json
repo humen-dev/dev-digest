@@ -1,0 +1,46 @@
+{
+  "page": {
+    "title": "Project Context",
+    "crumb": "Project Context",
+    "repoFallback": "repo",
+    "loadError": "Could not load project documents.",
+    "notCloned": {
+      "title": "Repository not cloned",
+      "body": "This repository has no local clone yet. Import or resync it to browse project documents."
+    }
+  },
+  "tree": {
+    "empty": {
+      "title": "No project documents found",
+      "body": "Add Markdown files to the repository, then Refresh.",
+      "cta": "Refresh"
+    },
+    "capped": "Showing {shown} of {total}",
+    "footer": "{count} files · scanned {when}",
+    "refresh": "Refresh"
+  },
+  "preview": {
+    "selectHint": "Select a document to preview it.",
+    "notFound": "Document not found.",
+    "tokens": "≈ {count} tokens",
+    "saved": "Saved",
+    "usedBy": "Used by"
+  },
+  "editor": {
+    "warning": "Edits are saved to the local clone only and are not committed. Re-analyze / resync of this repository resets tracked files and discards uncommitted edits.",
+    "textareaLabel": "Document text",
+    "save": "Save",
+    "retry": "Retry",
+    "saveError": "Could not save the document."
+  },
+  "toggle": {
+    "preview": "Preview",
+    "edit": "Edit"
+  },
+  "confirm": {
+    "title": "Discard unsaved changes?",
+    "body": "You have unsaved edits to this document. Discard them?",
+    "confirm": "Discard",
+    "cancel": "Cancel"
+  }
+}

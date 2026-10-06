@@ -1,0 +1,17 @@
+{
+  "row": {
+    "notFound": "Not found",
+    "detach": "Detach",
+    "viaSkill": "via skill {name}",
+    "tokens": "≈ {count}",
+    "preview": "Preview"
+  },
+  "preview": {
+    "attach": "Attach",
+    "attached": "Attached",
+    "usedBy": "{count, plural, one {Used by # agent} other {Used by # agents}}",
+    "tokens": "≈ {count, plural, one {# token} other {# tokens}}",
+    "loadError": "Could not load this document.",
+    "empty": "This document is empty."
+  }
+}

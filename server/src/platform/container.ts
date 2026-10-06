@@ -53,6 +53,10 @@ import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
 import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer/index.js';
 import { type UrlFetcher, HttpUrlFetcher } from '../adapters/url-fetcher/index.js';
+import { FsProjectDocs } from '../adapters/project-docs/index.js';
+import { DrizzleProjectContextRepository } from '../modules/project-context/repository.js';
+import { ProjectContextService } from '../modules/project-context/service.js';
+import type { ProjectDocsFs } from '../modules/project-context/ports.js';
 
 /**
  * DI container. One per app instance. Holds config, db, the JobRunner,
@@ -89,6 +93,14 @@ export interface ContainerOverrides {
   prHistoryRepo?: PrHistoryRepositoryPort;
   /** Prior-PR GitHub GraphQL source — tests inject a fake (never the network). */
   prHistorySource?: PrHistorySourcePort;
+  /**
+   * Project-docs filesystem adapter. Typed as the PORT (`ProjectDocsFs`), not
+   * the concrete `FsProjectDocs` — `adapters-not-into-modules` forbids the
+   * adapter from importing the port it implements, so this is the one place
+   * that checks the shapes actually match (see `adapters/project-docs/index.ts`
+   * file header).
+   */
+  projectDocsFs?: ProjectDocsFs;
 }
 
 export class Container {
@@ -124,6 +136,8 @@ export class Container {
   private _tokenizer?: Tokenizer;
   private _urlFetcher?: UrlFetcher;
   private _priceBook?: PriceBook;
+  private _projectDocsFs?: ProjectDocsFs;
+  private _projectContextService?: ProjectContextService;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -279,6 +293,28 @@ export class Container {
     if (this.overrides.tokenizer) return this.overrides.tokenizer;
     this._tokenizer ??= new TiktokenTokenizer();
     return this._tokenizer;
+  }
+
+  /** Project-docs filesystem adapter (SPEC-01) — walk/read/write repo Markdown docs. */
+  get projectDocsFs(): ProjectDocsFs {
+    if (this.overrides.projectDocsFs) return this.overrides.projectDocsFs;
+    this._projectDocsFs ??= new FsProjectDocs();
+    return this._projectDocsFs;
+  }
+
+  /**
+   * Project Context — attachments, documents and the effective-context
+   * preview (SPEC-01). `tokens` reuses the `tokenizer` getter: `TokenCounter`
+   * (ports.ts) and `Tokenizer` (adapters/tokenizer) are the same
+   * `{ count(text): number }` shape.
+   */
+  get projectContextService(): ProjectContextService {
+    return (this._projectContextService ??= new ProjectContextService({
+      repo: new DrizzleProjectContextRepository(this.db),
+      fs: this.projectDocsFs,
+      tokens: this.tokenizer,
+      excludedDirs: this.config.projectDocsExcludedDirs,
+    }));
   }
 
   /**

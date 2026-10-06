@@ -30,6 +30,10 @@ const EnvSchema = z.object({
   // sources (comma-separated; subdomains match). Empty string ⇒ no external
   // fetching. Every fetch still goes through the SSRF-safe UrlFetcher.
   INTENT_LINK_ALLOWLIST: z.string().optional(),
+  // Project Context (SPEC-01, Decision D8): extra directory NAMES (not paths)
+  // whose `.md` files are excluded from discovery, on top of the fs adapter's
+  // own defaults (dot-dirs, node_modules). Comma-separated; empty by default.
+  PROJECT_DOCS_EXCLUDED_DIRS: z.string().optional(),
   API_PORT: z.coerce.number().int().default(3001),
   WEB_PORT: z.coerce.number().int().default(3000),
   DEVDIGEST_CLONE_DIR: z.string().optional(),
@@ -65,6 +69,8 @@ export type AppConfig = {
   repoIntelEnabled: boolean;
   /** Lower-cased hostnames whose links the intent classifier may fetch (subdomains match). */
   intentLinkAllowlist: string[];
+  /** Extra directory names excluded from project-doc discovery (D8, AC-5). Empty by default. */
+  projectDocsExcludedDirs: string[];
 };
 
 const DEFAULT_INTENT_LINK_ALLOWLIST =
@@ -89,6 +95,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     intentLinkAllowlist: (parsed.INTENT_LINK_ALLOWLIST ?? DEFAULT_INTENT_LINK_ALLOWLIST)
       .split(',')
       .map((h) => h.trim().toLowerCase())
+      .filter(Boolean),
+    projectDocsExcludedDirs: (parsed.PROJECT_DOCS_EXCLUDED_DIRS ?? '')
+      .split(',')
+      .map((d) => d.trim())
       .filter(Boolean),
   };
 }

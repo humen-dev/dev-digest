@@ -50,6 +50,7 @@
     "tabs": {
       "config": "Config",
       "skills": "Skills",
+      "context": "Context",
       "evals": "Evals",
       "stats": "Stats",
       "ci": "CI"
@@ -112,5 +113,25 @@
   },
   "mount": {
     "body": "Mount point for {owner}. The Agent Editor shell + tab routing are wired by A2 — {owner} renders this tab."
+  },
+  "context": {
+    "title": "Context",
+    "helper": "Attach the Markdown project documents this agent should read on every run. Order matters — earlier docs appear earlier in the assembled prompt. A document reached only through a linked skill is read-only here.",
+    "attachedCount": "{attached} of {total} attached",
+    "filterPlaceholder": "Filter documents…",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "footerTokens": "≈ {count, plural, one {# token} other {# tokens}}",
+    "footerCritical": "Over 4,000 tokens — large prompts can raise cost and latency.",
+    "footerNote": "Attached documents are sent with every run as an untrusted \"Project context\" block, grouped by folder and traced per document in the run's trace.",
+    "capped": "Showing {shown} of {total}",
+    "emptyTitle": "No documents found",
+    "emptyBody": "No Markdown documents were found in this repository's working tree.",
+    "reindex": "Re-index",
+    "notClonedTitle": "Repository not cloned",
+    "notClonedBody": "Clone the repository to browse and attach its project documents.",
+    "noMatchTitle": "No documents match",
+    "loadError": "Could not load this repository's project documents.",
+    "saveError": "Could not save the attached documents. Try again."
   }
 }
