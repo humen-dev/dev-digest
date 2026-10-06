@@ -16,4 +16,4 @@ keeps its spec in that module's `specs/` folder instead; nothing else belongs he
 - Acceptance criteria use EARS (`WHEN` / `WHILE` / `IF … THEN` / `WHERE` + `shall`).
 
 ## Index
-- _(add specs here: `[YYYY-MM-DD-slug.md](./YYYY-MM-DD-slug.md) — SPEC-NN · status · one line)_
+- [2026-10-06-project-context.md](./2026-10-06-project-context.md) — SPEC-01 · draft · attach repo Markdown docs to agents/skills; edit docs in the clone; injected in full as untrusted `## Project context` (working tree) and shown in the run trace
