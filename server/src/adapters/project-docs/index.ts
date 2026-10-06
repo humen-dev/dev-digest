@@ -19,9 +19,29 @@
  * `realpath` — it never reads a file's body (NFR-11). `write()` opens with
  * `'r+'`, which fails on a path that does not already exist, so it can only
  * overwrite — never create — a file.
+ *
+ * `walk()` perf (NFR-9): directory entries recursed into are never symlinks
+ * (`Dirent.isDirectory()` reflects the readdir entry's own type, not the
+ * type it points to — a symlink to a directory is `isSymbolicLink()`, not
+ * `isDirectory()`, so it is already excluded from recursion, same as before
+ * this change). That means a PLAIN file's `absPath` contains no symlinked
+ * path segment once `realRoot` itself is resolved once — its realpath is
+ * `absPath` unchanged, so calling `realpath()` per plain file was pure
+ * overhead. Only a `.md` entry that is ITSELF a symlink needs the
+ * `realpath` + containment check; a plain file only needs one `lstat` for
+ * `sizeBytes`. Per-file stats also run through a bounded `PQueue` (already a
+ * dependency, see `repo-intel/pipeline/full.ts`) instead of one `await` per
+ * file in sequence, so the thousands of independent `lstat`/`realpath`
+ * round-trips overlap instead of serializing one libuv threadpool hop at a
+ * time.
  */
 import { opendir, lstat, realpath, readFile, open } from 'node:fs/promises';
+import type { Dirent } from 'node:fs';
 import { join, sep } from 'node:path';
+import PQueue from 'p-queue';
+
+/** Bounded concurrency for the per-file `lstat`/`realpath` calls in `walk()` — I/O-bound, not CPU-bound. */
+const WALK_STAT_CONCURRENCY = 64;
 
 /** Local mirror of the port's `WalkedDoc` — see the file header for why this isn't imported. */
 interface WalkedDoc {
@@ -56,17 +76,21 @@ export class FsProjectDocs {
       return [];
     }
     const out: WalkedDoc[] = [];
-    await this.walkDir(realRoot, realRoot, '', excludedDirNames, out);
+    const queue = new PQueue({ concurrency: WALK_STAT_CONCURRENCY });
+    await this.walkDir(realRoot, realRoot, '', excludedDirNames, out, queue);
+    await queue.onIdle(); // wait for every enqueued per-file stat to finish
     out.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
     return out;
   }
 
+  /** Directory recursion is sequential (few dirs); per-file stats are queued onto the shared bounded `queue`. */
   private async walkDir(
     realRoot: string,
     absDir: string,
     relDir: string,
     excludedDirNames: readonly string[],
     out: WalkedDoc[],
+    queue: PQueue,
   ): Promise<void> {
     let dir;
     try {
@@ -84,30 +108,62 @@ export class FsProjectDocs {
 
       if (entry.isDirectory()) {
         if (isExcludedDirName(name, excludedDirNames)) continue;
-        await this.walkDir(realRoot, absPath, relPath, excludedDirNames, out);
+        // Recursed into only when `entry.isDirectory()` is true, which Node's
+        // Dirent reports from the directory entry's OWN type — a symlink
+        // pointing at a directory is `isSymbolicLink()`, never
+        // `isDirectory()`, so it never reaches here (UT-7 holds for dirs too).
+        await this.walkDir(realRoot, absPath, relPath, excludedDirNames, out, queue);
         continue;
       }
       if (!entry.isFile() && !entry.isSymbolicLink()) continue; // skip sockets, devices, etc.
       if (!relPath.endsWith('.md')) continue; // ancestor dirs already filtered above
 
+      void queue.add(() => this.statOneEntry(realRoot, absPath, relPath, entry, out));
+    }
+  }
+
+  /** Resolves one `.md` candidate to a `WalkedDoc` (or drops it) and pushes the result into `out`. */
+  private async statOneEntry(
+    realRoot: string,
+    absPath: string,
+    relPath: string,
+    entry: Dirent,
+    out: WalkedDoc[],
+  ): Promise<void> {
+    if (entry.isSymbolicLink()) {
+      // Only a symlink needs `realpath` + containment: its target may live
+      // anywhere, including outside `realRoot` (UT-7).
       let real: string;
       try {
         real = await realpath(absPath);
       } catch {
-        continue; // broken symlink
+        return; // broken symlink
       }
-      if (!isWithinRoot(real, realRoot)) continue; // symlink escapes the root (UT-7)
+      if (!isWithinRoot(real, realRoot)) return; // symlink escapes the root (UT-7)
 
       let st;
       try {
         st = await lstat(real); // `real` is fully resolved — lstat === stat here
       } catch {
-        continue;
+        return;
       }
-      if (!st.isFile()) continue; // e.g. a symlink that resolves to a directory
-
+      if (!st.isFile()) return; // e.g. a symlink that resolves to a directory
       out.push({ path: relPath, sizeBytes: st.size });
+      return;
     }
+
+    // Plain file: every ancestor directory was recursed into because it was
+    // ITSELF a non-symlink directory entry (see `walkDir` above), and
+    // `realRoot` was resolved once up front — so `absPath` already IS its
+    // own realpath. No `realpath()` call needed, only the `lstat` for size.
+    let st;
+    try {
+      st = await lstat(absPath);
+    } catch {
+      return;
+    }
+    if (!st.isFile()) return; // defensive: Dirent already said `isFile()`
+    out.push({ path: relPath, sizeBytes: st.size });
   }
 
   async read(cloneRoot: string, relPath: string): Promise<DocReadResult> {
