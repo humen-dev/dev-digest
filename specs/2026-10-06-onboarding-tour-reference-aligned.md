@@ -1,7 +1,7 @@
 # Spec: Onboarding Tour (aligned with the reference implementation)
 
 Spec ID: SPEC-03
-Status: approved
+Status: implemented
 Created: 2026-10-06
 Approved: 2026-10-06 by user
 Modules: client · server
@@ -570,6 +570,7 @@ none open.
 |---|---|---|
 | 2026-10-06 | created (draft) as a successor of the approved SPEC-02 — aligned with the reference implementation per the user: staleness by index commit (AC-67 … AC-69, EC-36); eligibility by index status, no degraded tour, no job-queue detection (EC-34, EC-35); one Mermaid diagram via the existing renderer (AC-65, AC-66, EC-28 rewritten, UT-10 rewritten); synchronous generation with an in-process in-flight set (AC-31, AC-32, AC-36, EC-8, EC-10 … EC-12, EC-14 rewritten); route `/repos/:repoId/tour` (AC-1, AC-63, EC-24 rewritten). IDs kept from SPEC-02; removed and never reused: AC-12, AC-16, AC-33, AC-47, AC-48, AC-56, AC-57 … AC-62, EC-5, EC-6, EC-13, EC-30 … EC-33, F-28, Q-1 … Q-4 (closed decisions carried into the requirements). Also rewritten: AC-11, AC-27, AC-29, AC-38 (tour commit = `last_indexed_sha`), AC-45, AC-53, AC-64 (via *Markdown export*), EC-1, EC-4, NFR-3, NFR-4, NFR-6. | spec-creator |
 | 2026-10-06 | status → approved (user's advance approval of the updated spec, relayed by the main session) | spec-creator |
+| 2026-10-06 | status → implemented (user instruction relayed by the main session; plan `docs/plans/onboarding-tour.md`, branch `L05-sdd`, commits 1d6eda6, 22d0ac7, 863fe05, 6f91bcd, 4693689, 2c99e93; final plan-verifier scope=all: 293 MET, 0 NOT MET, no plan gaps, all 109 SPEC-03 rows covered). Still NOT VERIFIABLE, pending the user's manual check and the hermetic e2e run: AC-8 / EC-21 in a browser, AC-65 visible in a browser, UT-10 in a browser, NFR-3 on a real model, e2e flow 16 | spec-creator |
 
 ## Self-check
 - [x] every AC / EC / NFR / UT rule: one EARS pattern, one `shall`, observable response, no vague words
