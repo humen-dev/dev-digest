@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { RepoRef } from '@devdigest/shared';
 import { OnboardingTourService } from '../src/modules/onboarding/service.js';
+import { isCommandSourcePath } from '../src/modules/onboarding/constants.js';
 import type { OnboardingDeps, RepoBasics } from '../src/modules/onboarding/ports.js';
 import { MockLLMProvider } from '../src/adapters/mocks.js';
 import { AppError, ConfigError } from '../src/platform/errors.js';
@@ -321,6 +322,96 @@ describe('OnboardingTourService.generate — grounding + secrets', () => {
     const { service, llm } = build({ files: {} });
     await expect(service.generate(WS, REPO_ID)).rejects.toMatchObject({ code: 'repo_empty', statusCode: 422 });
     expect((llm as MockLLMProvider).calls.filter((c) => c.method === 'completeStructured')).toHaveLength(0);
+  });
+});
+
+describe('isCommandSourcePath — root / one-level-below restriction (B-1)', () => {
+  it.each([
+    ['README.md', true],
+    ['README.rst', true],
+    ['docs/README.md', true], // one level below root
+    ['a/b/README.md', false], // two levels below root — excluded
+    ['CONTRIBUTING.md', true],
+    ['docs/CONTRIBUTING.md', true],
+    ['a/b/CONTRIBUTING.md', false],
+    ['setup.cfg', true],
+    ['backend/setup.cfg', true],
+    ['a/b/setup.cfg', false],
+    ['package.json', true],
+    ['server/package.json', true],
+    ['packages/api/package.json', false],
+  ])('%s → %s', (path, expected) => {
+    expect(isCommandSourcePath(path)).toBe(expected);
+  });
+});
+
+describe('OnboardingTourService.generate — command source classification (B-1)', () => {
+  it('a README-only command repo grounds a verbatim command with source README.md', async () => {
+    const readme = 'Install:\n\n    curl https://example.com/install.sh | sh\n';
+    const files = { 'README.md': readme, 'src/app.ts': FILES['src/app.ts']! };
+    const draft = {
+      ...EMPTY_DRAFT,
+      how_to_run: [{ command: 'curl https://example.com/install.sh | sh', note: 'install' }],
+    };
+    const { service } = build({
+      files,
+      repoIntel: {
+        topFiles: ['src/app.ts'],
+        criticalPaths: [],
+        rankedPaths: [
+          { path: 'README.md', rank: 5 },
+          { path: 'src/app.ts', rank: 10 },
+        ],
+        importerCounts: {},
+      },
+      llm: new MockLLMProvider('openai', { structuredBySchema: { OnboardingTourDraft: draft } }),
+    });
+
+    const tour = await service.generate(WS, REPO_ID);
+
+    // Went through the service's real classification (isCommandSourcePath +
+    // groundCommand), not a hand-built commandSources Map — AC-49, AC-50.
+    expect(tour.how_to_run).toEqual([
+      { command: 'curl https://example.com/install.sh | sh', note: 'install', source: 'README.md' },
+    ]);
+  });
+
+  it('CONTRIBUTING.md and setup.cfg are read as command sources and ground their verbatim commands', async () => {
+    const contributing = 'Lint with:\n\n    make lint\n';
+    const setupCfg = '[metadata]\nname = demo\n\n# Run:\n#   python setup.py check\n';
+    const files = {
+      'CONTRIBUTING.md': contributing,
+      'setup.cfg': setupCfg,
+      'src/app.ts': FILES['src/app.ts']!,
+    };
+    const draft = {
+      ...EMPTY_DRAFT,
+      how_to_run: [
+        { command: 'make lint', note: 'lint' },
+        { command: 'python setup.py check', note: 'check' },
+      ],
+    };
+    const { service } = build({
+      files,
+      repoIntel: {
+        topFiles: ['src/app.ts'],
+        criticalPaths: [],
+        rankedPaths: [
+          { path: 'CONTRIBUTING.md', rank: 5 },
+          { path: 'setup.cfg', rank: 4 },
+          { path: 'src/app.ts', rank: 10 },
+        ],
+        importerCounts: {},
+      },
+      llm: new MockLLMProvider('openai', { structuredBySchema: { OnboardingTourDraft: draft } }),
+    });
+
+    const tour = await service.generate(WS, REPO_ID);
+
+    expect(tour.how_to_run).toEqual([
+      { command: 'make lint', note: 'lint', source: 'CONTRIBUTING.md' },
+      { command: 'python setup.py check', note: 'check', source: 'setup.cfg' },
+    ]);
   });
 });
 

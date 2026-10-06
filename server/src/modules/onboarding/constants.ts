@@ -33,26 +33,40 @@ export const DRAFT_TEMPERATURE = 0.3;
 /** EC-12, NFR-3: generation wall-clock budget before a 504. */
 export const GENERATION_TIMEOUT_MS = 120_000;
 
-const COMMAND_SOURCE_BASENAMES: ReadonlySet<string> = new Set(['package.json', 'manage.py', 'pyproject.toml']);
-const MAKEFILE_RE = /^Makefile$/;
+const COMMAND_SOURCE_BASENAMES: ReadonlySet<string> = new Set([
+  'package.json',
+  'Makefile',
+  'manage.py',
+  'pyproject.toml',
+  'setup.cfg',
+  'CONTRIBUTING.md',
+]);
 const COMPOSE_FILE_RE = /^(docker-compose.*\.ya?ml|compose\.ya?ml)$/;
-const REQUIREMENTS_FILE_RE = /(^|\/)requirements[^/]*\.txt$/;
-const ENV_EXAMPLE_FILE_RE = /(^|\/)\.env\.(example|sample|template)$/;
+const README_FILE_RE = /^README/;
+const REQUIREMENTS_FILE_RE = /^requirements[^/]*\.txt$/;
+const ENV_EXAMPLE_FILE_RE = /^\.env\.(example|sample|template)$/;
 
 /**
  * True when `path` is a recognized "command source" file — the file kinds
  * `domain/commands.ts`'s grounding rules 2-8 read scripts/targets/services
  * from (`package.json`, `Makefile`, a compose file, a requirements file, an
- * `.env.example` variant, `manage.py`, `pyproject.toml`). Used to split the
- * AC-44 candidate set into excerpt files vs. command-source files.
+ * `.env.example` variant, `manage.py`, `pyproject.toml`, `setup.cfg`, a
+ * `README*`, `CONTRIBUTING.md`). Used to split the AC-44 candidate set into
+ * excerpt files vs. command-source files.
+ *
+ * SPEC-03 Definitions ("Command source files"): only files at the repository
+ * root or exactly one directory level below it qualify — `path` has at most
+ * one `/`.
  */
 export function isCommandSourcePath(path: string): boolean {
-  const base = path.slice(path.lastIndexOf('/') + 1);
+  const segments = path.split('/');
+  if (segments.length > 2) return false;
+  const base = segments[segments.length - 1]!;
   return (
     COMMAND_SOURCE_BASENAMES.has(base) ||
-    MAKEFILE_RE.test(base) ||
     COMPOSE_FILE_RE.test(base) ||
-    REQUIREMENTS_FILE_RE.test(path) ||
-    ENV_EXAMPLE_FILE_RE.test(path)
+    README_FILE_RE.test(base) ||
+    REQUIREMENTS_FILE_RE.test(base) ||
+    ENV_EXAMPLE_FILE_RE.test(base)
   );
 }
