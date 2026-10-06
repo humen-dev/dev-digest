@@ -16,6 +16,8 @@ describe('isValidDocPathSyntax — UT-6', () => {
     ['parent traversal mid-path', 'docs/../../outside.md'],
     ['NUL byte', 'notes\0.md'],
     ['wrong extension', 'notes.txt'],
+    ['too short (below DB CHECK min 4)', '.md'],
+    ['too long (above DB CHECK max 1024)', 'a'.repeat(1022) + '.md'],
   ];
 
   it.each(hostile)('rejects %s (%s)', (_label, path) => {
@@ -25,6 +27,10 @@ describe('isValidDocPathSyntax — UT-6', () => {
   it('accepts a plain repo-relative .md path', () => {
     expect(isValidDocPathSyntax('docs/a.md')).toBe(true);
     expect(isValidDocPathSyntax('README.md')).toBe(true);
+  });
+
+  it('accepts a path at the DB CHECK max length (1024)', () => {
+    expect(isValidDocPathSyntax('a'.repeat(1021) + '.md')).toBe(true);
   });
 });
 

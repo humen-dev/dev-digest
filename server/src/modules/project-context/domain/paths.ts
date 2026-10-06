@@ -14,11 +14,14 @@ const DEFAULT_EXCLUDED_DIR_NAMES: ReadonlySet<string> = new Set(['node_modules']
 
 /**
  * True when `path` is a plain, repo-relative Markdown path: no absolute
- * root, no drive letter, no backslash, no `..` segment, no NUL byte, and it
- * ends in `.md`.
+ * root, no drive letter, no backslash, no `..` segment, no NUL byte, ends in
+ * `.md`, and its length is within the DB CHECK range (`length(path) BETWEEN
+ * 4 AND 1024`, `db/schema/project-context.ts`) — rejecting out-of-range
+ * paths here turns them into a 422 instead of an unhandled 500 on insert.
  */
 export function isValidDocPathSyntax(path: string): boolean {
   if (!path || path.includes('\0')) return false;
+  if (path.length < 4 || path.length > 1024) return false;
   if (!path.endsWith('.md')) return false;
   if (path.includes('\\')) return false;
   if (path.startsWith('/')) return false;
