@@ -225,6 +225,45 @@ describe('OnboardingTourService.generate — happy path', () => {
   });
 });
 
+describe('OnboardingTourService.generate — AC-39, AC-40, NFR-1 caps', () => {
+  it('a large repo is capped to ≤ 20 excerpts, ≤ 300 tree entries, ≤ 20,000 counted tokens', async () => {
+    const TRACKED_COUNT = 350; // more than the 300-entry tree cap
+    const CANDIDATE_COUNT = 30; // more than the 20-excerpt cap
+
+    const files: Record<string, string> = {};
+    for (let i = 0; i < TRACKED_COUNT; i++) {
+      files[`file${String(i).padStart(4, '0')}.ts`] = `export const v${i} = ${i};\n`;
+    }
+    const trackedPaths = Object.keys(files);
+    const topFiles = trackedPaths.slice(0, CANDIDATE_COUNT); // rank order
+    const rankedPaths = trackedPaths.map((path, idx) => ({ path, rank: TRACKED_COUNT - idx }));
+
+    const { service, llm } = build({
+      files,
+      repoIntel: { topFiles, criticalPaths: [], rankedPaths, importerCounts: {} },
+    });
+
+    await service.generate(WS, REPO_ID);
+
+    const req = (llm as MockLLMProvider).calls.find((c) => c.method === 'completeStructured')!.req as {
+      messages: { role: string; content: string }[];
+    };
+    const userMessage = req.messages.find((m) => m.role === 'user')!.content;
+
+    const excerptMatch = userMessage.match(/## Key file excerpts \((\d+)\)/);
+    expect(excerptMatch).not.toBeNull();
+    expect(Number(excerptMatch![1])).toBeLessThanOrEqual(20); // AC-40
+
+    const treeMatch = userMessage.match(/## File tree \((\d+)\)/);
+    expect(treeMatch).not.toBeNull();
+    expect(Number(treeMatch![1])).toBeLessThanOrEqual(300); // AC-39
+
+    // Same counting rule the service wires in (build()'s tokenizer stub): chars / 4.
+    const fullPromptText = req.messages.map((m) => m.content).join('\n');
+    expect(Math.ceil(fullPromptText.length / 4)).toBeLessThanOrEqual(20_000); // NFR-1
+  });
+});
+
 describe('OnboardingTourService.generate — grounding + secrets', () => {
   it('UT-7: a tracked file containing a secret-shaped token never reaches the prompt', async () => {
     const files = { ...FILES, 'src/leak.ts': SECRET_FILE };

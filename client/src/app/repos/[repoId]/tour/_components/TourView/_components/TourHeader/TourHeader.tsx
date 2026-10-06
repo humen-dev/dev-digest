@@ -79,7 +79,12 @@ export function TourHeader({
         >
           {generating ? t("actions.generating") : t("actions.regenerate")}
         </Button>
-        <Button kind="ghost" icon="Link" onClick={handleShare}>
+        <Button
+          kind="ghost"
+          icon="Link"
+          onClick={handleShare}
+          aria-label={t("actions.shareLinkAria", { section: sectionTitles[activeKind] })}
+        >
           {t("actions.shareLink")}
         </Button>
         <Button kind="ghost" icon="Copy" onClick={handleCopyMarkdown}>

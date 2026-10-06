@@ -16,6 +16,14 @@ export const TREE_RANK_POOL = 1000;
 export const PROMPT_TOKEN_BUDGET = 20_000;
 
 /**
+ * AC-40: at most 20 candidate files are excerpted (first 120 lines each, in
+ * rank order) — command source files (full text) are never subject to this
+ * cap. Enforced before `fitToBudget`, which may still drop further down from
+ * the tail to fit NFR-1.
+ */
+export const MAX_EXCERPT_FILES = 20;
+
+/**
  * AC-37, NFR-2: the one `completeStructured` call per accepted generation.
  * The schema name itself is `TOUR_DRAFT_SCHEMA_NAME` (types.ts, Wave 0).
  */

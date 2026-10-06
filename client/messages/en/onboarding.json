@@ -23,6 +23,7 @@
     "retry": "Retry",
     "reanalyze": "Re-analyze",
     "shareLink": "Share link",
+    "shareLinkAria": "Share link to the {section} section",
     "copyMarkdown": "Copy as Markdown",
     "copyAll": "Copy all",
     "copy": "Copy",

@@ -1,10 +1,15 @@
 /* TourView — the Onboarding Tour page (SPEC-03). Fetches the tour state and
    renders the state machine in strict priority order: loading skeleton
-   (EC-25) → load error (EC-26, keeps the last tour on a refetch failure,
-   EC-27) → a stored tour (header + notices + sections + TOC + footer) →
-   not cloned (EC-1) → not index-ready (EC-35) → the AC-29 empty state, or
-   EC-11's failure variant of it. Presentational sections are U4's
-   TourSections; this unit owns the orchestration around them. */
+   (EC-25) → load error (EC-26) → a stored tour (header + notices +
+   sections + TOC + footer) → not cloned (EC-1) → not index-ready (EC-35) →
+   the AC-29 empty state, or EC-11's failure variant of it. Gating the error
+   branch on `!state` rather than an `isError` flag is what keeps a stored
+   tour visible through a failed background refetch (EC-27): TanStack Query
+   keeps the last successful `data` on a background error, it only flips
+   `isError` — see `useOnboardingTour`'s EC-27 test in
+   `src/lib/hooks/onboarding-tour.test.ts` and the client INSIGHTS.md entry
+   on the same gotcha. Presentational sections are U4's TourSections; this
+   unit owns the orchestration around them. */
 "use client";
 
 import { useTranslations } from "next-intl";

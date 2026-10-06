@@ -66,6 +66,29 @@ describe("useOnboardingTour", () => {
     expect(api.get).toHaveBeenCalledWith("/repos/repo1/tour");
     expect(result.current.data).toEqual(STATE);
   });
+
+  it("keeps the last tour data when a background refetch fails — EC-27", async () => {
+    const stateWithTour: OnboardingTourState = { ...STATE, tour: TOUR };
+    vi.mocked(api.get).mockResolvedValueOnce(stateWithTour);
+    const { result } = renderHook(() => useOnboardingTour("repo1"), { wrapper: wrapperFor(makeClient()) });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual(stateWithTour);
+
+    vi.mocked(api.get).mockRejectedValueOnce(new ApiError("provider is down", 500, "external_service_error"));
+    await act(async () => {
+      try {
+        await result.current.refetch();
+      } catch {
+        /* expected — asserted via isError below */
+      }
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    // The page gates its error view on `!data` (TourView.tsx), not `isError` —
+    // this is what keeps the stored tour visible through a failed refetch.
+    expect(result.current.data).toEqual(stateWithTour);
+  });
 });
 
 describe("useGenerateTour", () => {

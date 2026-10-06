@@ -6,6 +6,7 @@ import {
   DRAFT_MAX_TOKENS,
   DRAFT_TEMPERATURE,
   isCommandSourcePath,
+  MAX_EXCERPT_FILES,
   PROMPT_TOKEN_BUDGET,
   TREE_RANK_POOL,
 } from './constants.js';
@@ -207,6 +208,10 @@ export class OnboardingTourService {
       }
 
       const tree = buildFileTree(trackedPaths, rankedForTree.map((r) => r.path), this.deps.excludedDirs);
+      // AC-40: at most MAX_EXCERPT_FILES candidate files are excerpted, in the
+      // rank order `candidateSet` was built in — command sources (full text)
+      // are never subject to this cap.
+      const cappedExcerpts = excerpts.slice(0, MAX_EXCERPT_FILES);
       const systemPrompt = await this.deps.loadSystemPrompt();
       const countTokens = (i: PromptInput): number =>
         this.deps.tokenizer.count(
@@ -215,7 +220,7 @@ export class OnboardingTourService {
             .join('\n'),
         );
       const input = fitToBudget(
-        { repoName: repo.fullName, tree, excerpts, commandFiles },
+        { repoName: repo.fullName, tree, excerpts: cappedExcerpts, commandFiles },
         countTokens,
         PROMPT_TOKEN_BUDGET,
       );

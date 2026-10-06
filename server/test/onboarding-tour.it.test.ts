@@ -184,6 +184,28 @@ d('Onboarding tour (Testcontainers pg + real git clone)', () => {
     await app.close();
   });
 
+  it('NFR-4: 20 GETs of a seeded tour, p95 ≤ 500 ms', async () => {
+    const { repoId, shaA } = await setupRepo({ 'src/app.ts': 'export const main = 1;' });
+    const app = await makeApp({ repoIntel: { indexState: { lastIndexedSha: shaA } } });
+
+    const generated = await app.inject({ method: 'POST', url: `/repos/${repoId}/tour/generate` });
+    expect(generated.statusCode).toBe(200);
+
+    const samples: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      const start = performance.now();
+      const res = await app.inject({ method: 'GET', url: `/repos/${repoId}/tour` });
+      samples.push(performance.now() - start);
+      expect(res.statusCode).toBe(200);
+    }
+
+    const sorted = [...samples].sort((a, b) => a - b);
+    const p95 = sorted[Math.min(sorted.length - 1, Math.ceil(0.95 * sorted.length) - 1)]!;
+    expect(p95).toBeLessThanOrEqual(500);
+
+    await app.close();
+  });
+
   it('NFR-7: the 11th POST in a minute is rate-limited (429) when NODE_ENV is not "test"', async () => {
     const { repoId, shaA } = await setupRepo({ 'src/app.ts': 'export const main = 1;' });
     const app = await makeApp({ repoIntel: { indexState: { lastIndexedSha: shaA } }, nodeEnv: 'development' });

@@ -94,7 +94,9 @@ describe("TourHeader", () => {
     Object.defineProperty(window, "location", { value: { origin: "http://localhost:3000" }, writable: true });
 
     renderHeader({ activeKind: "how_to_run" });
-    fireEvent.click(screen.getByRole("button", { name: "Share link" }));
+    const shareButton = screen.getByRole("button", { name: "Share link to the How to run locally section" });
+    expect(shareButton).toHaveTextContent("Share link");
+    fireEvent.click(shareButton);
     await act(async () => {
       await Promise.resolve();
     });
@@ -103,6 +105,11 @@ describe("TourHeader", () => {
     expect(
       await screen.findByText("Link copied — opens on machines running DevDigest with this repo imported"),
     ).toBeInTheDocument();
+  });
+
+  it("names the Share button after the currently highlighted section — NFR-8", () => {
+    renderHeader({ activeKind: "first_tasks" });
+    expect(screen.getByRole("button", { name: "Share link to the First tasks section" })).toBeInTheDocument();
   });
 
   it("copies the tour's Markdown export — AC-64", async () => {
