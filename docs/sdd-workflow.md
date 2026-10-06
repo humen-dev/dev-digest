@@ -144,6 +144,19 @@ The first reply is always a **Spec review**, never a file:
   (`revise`);
 - ≤ 8 questions per round, each with options and a default; at most 3 rounds.
 
+**Returning to `spec-creator` (orchestrator habit).** Every resume of a long
+`spec-creator` context re-writes its prompt cache once the subagent has been idle
+longer than the cache lifetime (≈ 5 min) — in the Project Context run that was
+≈ 850k cache-write tokens, about two thirds of the agent's cost
+(`docs/retros/ledger.md`, 2026-10-06). So:
+
+- collect **all** of the user's answers, new design sources and decisions first,
+  then send them in **one** message — never two back-to-back resumes;
+- after a long pause (the user went to fetch designs, a reference repo, a
+  decision), start a **fresh** `spec-creator` in `revise <spec path>` mode with a
+  short brief of what changed instead of resuming the old context — the draft
+  file already holds the state.
+
 ### 4.4 Writing the spec
 
 After the answers, the agent writes the file from

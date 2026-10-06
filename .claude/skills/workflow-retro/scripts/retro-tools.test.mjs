@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { analyze, classifyError, parseLedger, projectDirFor, trend, usageOf } from './retro-tools.mjs';
+import { analyze, classifyError, costOf, journalFacts, parseLedger, projectDirFor, trend, unionLength, usageOf } from './retro-tools.mjs';
 
 const usage = (out, read = 1000) => ({ input_tokens: 2, output_tokens: out, cache_read_input_tokens: read, cache_creation_input_tokens: 10 });
 const jsonl = (rows) => rows.map((r) => JSON.stringify(r)).join('\n') + '\n';
@@ -55,7 +55,7 @@ test('usage is counted once per message.id (largest output wins), not per journa
     { type: 'assistant', message: { id: 'x', usage: usage(80, 1000) } },
     { type: 'assistant', message: { id: 'y', usage: usage(10, 200) } },
   ];
-  assert.deepEqual(usageOf(lines), { input: 4, output: 90, cache_read: 1200, cache_write: 20, turns: 2 });
+  assert.deepEqual(usageOf(lines), { input: 4, output: 90, cache_read: 1200, cache_write: 20, cache_write_1h: 0, turns: 2 });
 });
 
 test('analyze: per-agent facts, nesting, parallelism, resumes, rewrites, errors, markers', () => {
@@ -114,6 +114,35 @@ test('trend: compares with the median of earlier runs of the same kind and forma
   assert.equal(t.comparison.output.flag, 'higher');
   assert.equal(t.comparison.wall_s.flag, null);
   assert.match(t.row, /^\| 2026-01-04 \| run \| spec \| 2 \| 300 \|/);
+});
+
+test('journalFacts: failed Bash (is_error false) is detected from output; resume gaps are idle', () => {
+  const lines = [
+    { type: 'user', timestamp: '2026-01-01T00:00:00Z', message: { content: 'first prompt' } },
+    { type: 'assistant', timestamp: '2026-01-01T00:00:10Z', message: { id: 'x1', content: [{ type: 'tool_use', id: 'b1', name: 'Bash', input: { command: 'git show a:b' } }, { type: 'tool_use', id: 'b2', name: 'Bash', input: { command: 'ls' } }] } },
+    { type: 'user', timestamp: '2026-01-01T00:00:20Z', toolUseResult: { stdout: "fatal: ambiguous argument 'a;b'", stderr: '' }, message: { content: [{ type: 'tool_result', tool_use_id: 'b1', is_error: false, content: '' }] } },
+    { type: 'user', timestamp: '2026-01-01T00:00:21Z', message: { content: [{ type: 'tool_result', tool_use_id: 'b2', is_error: false, content: 'error.ts\nfatal-ish.md' }] } },
+    { type: 'assistant', timestamp: '2026-01-01T00:01:00Z', message: { id: 'x2', content: [{ type: 'text', text: 'done' }] } },
+    // resumed 10 minutes later
+    { type: 'user', timestamp: '2026-01-01T00:11:00Z', message: { content: 'resume with answers' } },
+    { type: 'assistant', timestamp: '2026-01-01T00:12:00Z', message: { id: 'x3', content: [{ type: 'text', text: 'written' }] } },
+  ];
+  const f = journalFacts(lines);
+  assert.equal(f.errors.length, 1);
+  assert.equal(f.errors[0].kind, 'command-failed');
+  assert.match(f.errors[0].text, /^fatal: ambiguous/);
+  assert.equal(f.idle_ms, 600_000);
+  assert.deepEqual(f.segments.map(([a, b]) => (b - a) / 1000), [60, 60]);
+});
+
+test('unionLength merges overlapping intervals', () => {
+  assert.equal(unionLength([[0, 10], [5, 20], [30, 40], [NaN, 1]]), 30);
+});
+
+test('costOf prices 1h-tier cache writes separately, falling back to the 5m rate', () => {
+  const u = { input: 0, output: 0, cache_read: 0, cache_write: 3e6, cache_write_1h: 1e6 };
+  assert.equal(costOf(u, 'claude-opus-x', { opus: { cache_write: 5, cache_write_1h: 8 } }), 2 * 5 + 8);
+  assert.equal(costOf(u, 'claude-opus-x', { opus: { cache_write: 5 } }), 3 * 5);
 });
 
 test('projectDirFor mirrors the Claude Code project slug', () => {

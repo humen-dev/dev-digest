@@ -96,6 +96,13 @@ anything else when one is missing or ambiguous:
   given, ask for the exported frames and record the link under provenance),
   existing code paths/screens, a repository (local path or URL). "None" is a
   valid answer for a backend-only feature.
+  If only images or text were supplied, the **first Spec review must ask** (one
+  question, before any decision questions) whether these also exist: design
+  **source code** (JSX/HTML export of the mockups, a live prototype URL) and a
+  **reference implementation / prior art** (a branch, repo or lab solution of the
+  same feature). Late sources reverse decisions — in the Project Context spec
+  (docs/retros/ledger.md, 2026-10-06) 3 of 5 revision rounds and the flip of three
+  answered questions came from sources that arrived after the first draft.
 
 The target module(s) you derive yourself from the feature and the code; ask only
 when it is genuinely ambiguous.
@@ -293,6 +300,11 @@ unticked and is named in your reply. In addition:
 - [ ] every untrusted input has ≥ 1 UT rule; threats taken from `security`
 - [ ] every `path:line` and URL in the spec was actually read in this session
 - [ ] no conflict with another spec left unmentioned (Supersedes or Q-n)
+- [ ] requirements cross-checked against each other: every UT / NFR / EC that
+      says "every …", "all …" or changes shared behaviour (a shared constant,
+      a prompt, a contract) is checked against the ACs and *Compatibility* that
+      promise something stays unchanged — no pair can both be true (e.g. a guard
+      mention "in every prompt" vs "prompt identical without the feature")
 - [ ] SPEC-NN is unique; index line added; Status and *Revision history* are right
 
 ## Step 6 — reply to the caller

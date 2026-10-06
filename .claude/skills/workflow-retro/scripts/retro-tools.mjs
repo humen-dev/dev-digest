@@ -7,7 +7,9 @@
  *     --session <id|path>   main transcript (<id>.jsonl); default: newest in the project dir
  *     --project-dir <dir>   ~/.claude/projects/<slug>; default: derived from the cwd
  *     --since <ISO>         only agents launched at/after this time (scope one batch)
- *     --prices <file>       JSON {model_substr: {in,out,cache_read,cache_write}} in $/Mtok
+ *     --prices <file>       JSON {model_substr: {in,out,cache_read,cache_write,cache_write_1h}}
+ *                           in $/Mtok (cache_write = 5-minute tier; cache_write_1h falls back
+ *                           to cache_write and the result is flagged `cache_1h_unpriced`)
  *     --json                machine-readable output (default: human table)
  *
  *   node .claude/skills/workflow-retro/scripts/retro-tools.mjs trend <analysis.json>
@@ -22,6 +24,12 @@
  * - One API response is split over several journal lines (one per content block) that share
  *   message.id and REPEAT the usage object. Summing per line over-counts (cache-read most of
  *   all), so usage is taken once per message.id — from the line with the largest output.
+ * - usage.cache_creation splits cache writes into ephemeral_5m / ephemeral_1h (the main session
+ *   usually writes the 1h tier, subagents the 5m tier) — priced separately.
+ * - A failed Bash command is NOT marked is_error and its exit code is not stored; failures are
+ *   detected from the output text (FAIL_RE) and counted as `command-failed`.
+ * - A resumed agent (SendMessage) appends to the same journal; the gap before each resume prompt
+ *   is idle time, excluded from `active_s` (used for wall-clock, parallelism, critical path).
  * Exit 2 on bad usage / no journals found.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -33,6 +41,7 @@ const UNVERIFIED_RE = /\b(inference|inferred|not verified|unverified|did not (?:
 const READ_TOOLS = new Set(['Read', 'NotebookRead']);
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
 const TREND_FLAG = 1.5;
+const FAIL_RE = /^(fatal|error)[:\s]|command not found|No such file or directory|Traceback \(most recent call last\)|^npm ERR!|ERR_PNPM/im;
 
 function fail(msg) {
   console.error(`retro-tools: ${msg}`);
@@ -86,12 +95,13 @@ export function usageOf(lines) {
     const prev = byId.get(id);
     if (!prev || (u.output_tokens ?? 0) >= (prev.output_tokens ?? 0)) byId.set(id, u);
   }
-  const t = { input: 0, output: 0, cache_read: 0, cache_write: 0, turns: byId.size };
+  const t = { input: 0, output: 0, cache_read: 0, cache_write: 0, cache_write_1h: 0, turns: byId.size };
   for (const u of byId.values()) {
     t.input += u.input_tokens ?? 0;
     t.output += u.output_tokens ?? 0;
     t.cache_read += u.cache_read_input_tokens ?? 0;
     t.cache_write += u.cache_creation_input_tokens ?? 0;
+    t.cache_write_1h += u.cache_creation?.ephemeral_1h_input_tokens ?? 0;
   }
   return t;
 }
@@ -113,7 +123,19 @@ const resultText = (b) =>
       ? b.content.map((c) => c.text ?? '').join(' ')
       : '';
 
-/** Per-journal facts: tools, reads, writes, errors, models, final report markers, span. */
+/** A prompt line (user text, not a tool result) — the start of a turn or of a resume. */
+const isPrompt = (o) =>
+  o.type === 'user' &&
+  (typeof o.message?.content === 'string' || (blocks(o).length > 0 && !blocks(o).some((b) => b.type === 'tool_result')));
+
+/** Bash output text from the tool_result block and/or the journal's toolUseResult. */
+const bashText = (o, b) => {
+  const r = o.toolUseResult;
+  const extra = r && typeof r === 'object' ? `${r.stdout ?? ''}\n${r.stderr ?? ''}` : '';
+  return `${resultText(b)}\n${extra}`;
+};
+
+/** Per-journal facts: tools, reads, writes, errors, models, final report markers, span, idle. */
 export function journalFacts(lines) {
   const f = {
     models: new Set(),
@@ -124,17 +146,36 @@ export function journalFacts(lines) {
     errors: [],
     first: NaN,
     last: NaN,
+    idle_ms: 0,
+    segments: [],
     finalText: '',
   };
+  const toolName = new Map();
+  let prevT = NaN;
+  let segStart = NaN;
+  let prompts = 0;
   for (const o of lines) {
     const t = ms(o.timestamp);
+    if (isPrompt(o) && prompts++ > 0 && !Number.isNaN(t) && !Number.isNaN(prevT) && t > prevT) {
+      f.idle_ms += t - prevT;
+      f.segments.push([segStart, prevT]);
+      segStart = t;
+    }
+    if (!Number.isNaN(t) && Number.isNaN(segStart)) segStart = t;
     if (!Number.isNaN(t)) {
       if (Number.isNaN(f.first) || t < f.first) f.first = t;
       if (Number.isNaN(f.last) || t > f.last) f.last = t;
+      prevT = t;
     }
     if (o.type === 'assistant' && o.message?.model && !o.message.model.startsWith('<')) f.models.add(o.message.model);
     for (const b of blocks(o)) {
+      if (b.type === 'tool_result' && !b.is_error && toolName.get(b.tool_use_id) === 'Bash') {
+        const text = bashText(o, b);
+        const m = text.match(FAIL_RE);
+        if (m) f.errors.push({ kind: 'command-failed', text: text.slice(Math.max(0, m.index), m.index + 160).trim() });
+      }
       if (b.type === 'tool_use') {
+        toolName.set(b.id, b.name);
         f.toolCalls++;
         f.tools[b.name] = (f.tools[b.name] ?? 0) + 1;
         const p = b.input?.file_path ?? b.input?.notebook_path;
@@ -152,6 +193,7 @@ export function journalFacts(lines) {
       }
     }
   }
+  if (!Number.isNaN(segStart) && !Number.isNaN(prevT)) f.segments.push([segStart, prevT]);
   f.unverified = (f.finalText.match(UNVERIFIED_RE) ?? []).length;
   return f;
 }
@@ -194,12 +236,35 @@ export function costOf(usage, model, prices) {
   if (!key) return null;
   const p = prices[key];
   const M = 1e6;
+  const w1h = usage.cache_write_1h ?? 0;
   return (
     (usage.input / M) * (p.in ?? 0) +
     (usage.output / M) * (p.out ?? 0) +
     (usage.cache_read / M) * (p.cache_read ?? 0) +
-    (usage.cache_write / M) * (p.cache_write ?? 0)
+    ((usage.cache_write - w1h) / M) * (p.cache_write ?? 0) +
+    (w1h / M) * (p.cache_write_1h ?? p.cache_write ?? 0)
   );
+}
+
+/** True when 1h-tier cache writes were priced at the 5m rate (no cache_write_1h given). */
+const unpriced1h = (usage, model, prices) => {
+  if (!prices || !model || !usage.cache_write_1h) return false;
+  const key = Object.keys(prices).find((k) => model.includes(k));
+  return Boolean(key) && prices[key].cache_write_1h == null;
+};
+
+/** Total length of the union of [start, end] intervals (ms). */
+export function unionLength(segments) {
+  const s = segments.filter(([a, b]) => !Number.isNaN(a) && !Number.isNaN(b) && b >= a).sort((x, y) => x[0] - y[0]);
+  let total = 0;
+  let cur = null;
+  for (const [a, b] of s) {
+    if (!cur || a > cur[1]) {
+      if (cur) total += cur[1] - cur[0];
+      cur = [a, b];
+    } else cur[1] = Math.max(cur[1], b);
+  }
+  return cur ? total + cur[1] - cur[0] : 0;
 }
 
 const hitRatio = (u) => {
@@ -262,9 +327,13 @@ export function analyze({ sessionFile, since, prices }) {
       rewrites: Object.values(facts.writes).filter((w) => w.write > 1),
       unverified_markers: facts.unverified,
       span_s: round((facts.last - facts.first) / 1000),
+      idle_s: round(facts.idle_ms / 1000),
+      active_s: round((facts.last - facts.first - facts.idle_ms) / 1000),
       started: Number.isNaN(facts.first) ? null : new Date(facts.first).toISOString(),
       cost_usd: cost == null ? null : round(cost, 4),
+      cache_1h_unpriced: unpriced1h(usage, model, prices),
       _reads: facts.reads,
+      _segments: facts.segments,
     });
   }
   agents.sort((a, b) => String(a.started).localeCompare(String(b.started)));
@@ -281,6 +350,7 @@ export function analyze({ sessionFile, since, prices }) {
     tool_calls: mainF.toolCalls,
     errors: mainF.errors,
     cost_usd: round(costOf(mainUsage, mainModel, prices), 4),
+    cache_1h_unpriced: unpriced1h(mainUsage, mainModel, prices),
   };
 
   // Duplicated reads: same file read by ≥ 2 agents (orchestrator counts as one reader).
@@ -308,19 +378,32 @@ export function analyze({ sessionFile, since, prices }) {
       return { path: e.path, readers: e.readers.size, reads: e.reads, wasted_tokens_est: tokens };
     })
     .sort((a, b) => (b.wasted_tokens_est ?? 0) - (a.wasted_tokens_est ?? 0));
-  for (const a of agents) delete a._reads;
+  const segments = agents.flatMap((a) => a._segments);
+  for (const a of agents) {
+    delete a._reads;
+    delete a._segments;
+  }
 
   const all = [...agents, orchestrator];
   const sum = (k) => all.reduce((s, a) => s + (a[k] ?? 0), 0);
   const starts = agents.map((a) => ms(a.started)).filter((t) => !Number.isNaN(t));
   const ends = agents.map((a) => ms(a.started) + (a.span_s ?? 0) * 1000).filter((t) => !Number.isNaN(t));
-  const wall = starts.length ? (Math.max(...ends) - Math.min(...starts)) / 1000 : null;
-  const sumSpan = agents.reduce((s, a) => s + (a.span_s ?? 0), 0);
-  const critical = agents.reduce((m, a) => ((a.span_s ?? 0) > (m?.span_s ?? -1) ? a : m), null);
+  // elapsed = first launch → last agent line (includes human think-time between resumes);
+  // busy = time at least one agent was actually working; parallelism = Σ active ÷ busy.
+  const elapsed = starts.length ? (Math.max(...ends) - Math.min(...starts)) / 1000 : null;
+  const busy = unionLength(segments) / 1000;
+  const sumActive = agents.reduce((s, a) => s + (a.active_s ?? 0), 0);
+  const critical = agents.reduce((m, a) => ((a.active_s ?? 0) > (m?.active_s ?? -1) ? a : m), null);
   const costs = all.map((a) => a.cost_usd);
   const errorKinds = {};
   for (const e of all.flatMap((a) => a.errors)) errorKinds[e.kind] = (errorKinds[e.kind] ?? 0) + 1;
-  const totals = { input: sum('input'), output: sum('output'), cache_read: sum('cache_read'), cache_write: sum('cache_write') };
+  const totals = {
+    input: sum('input'),
+    output: sum('output'),
+    cache_read: sum('cache_read'),
+    cache_write: sum('cache_write'),
+    cache_write_1h: sum('cache_write_1h'),
+  };
 
   return {
     session: path.basename(sessionFile, '.jsonl'),
@@ -341,10 +424,14 @@ export function analyze({ sessionFile, since, prices }) {
       unverified_markers: agents.reduce((s, a) => s + a.unverified_markers, 0),
       human_wait_s: main.humanWait_s,
       questions_to_human: main.questions,
-      wall_s: round(wall),
-      parallelism: wall ? round(sumSpan / wall, 2) : null,
-      critical_path: critical ? { id: critical.id, type: critical.type, span_s: critical.span_s } : null,
+      elapsed_s: round(elapsed),
+      wall_s: round(busy),
+      parallelism: busy ? round(sumActive / busy, 2) : null,
+      critical_path: critical ? { id: critical.id, type: critical.type, active_s: critical.active_s } : null,
       cost_usd: costs.some((c) => c == null) ? null : round(costs.reduce((s, c) => s + c, 0), 4),
+      cost_note: all.some((a) => a.cache_1h_unpriced)
+        ? '1h-tier cache writes priced at the 5m rate — add cache_write_1h to the price map'
+        : null,
     },
   };
 }
@@ -400,11 +487,11 @@ const k = (n) => (n == null ? '-' : n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >=
 function printHuman(r) {
   const s = r.summary;
   console.log(`session ${r.session}${r.since ? ` since ${r.since}` : ''}`);
-  console.log('agent (└ nested)            type                 model              out    c-read  hit  tools err resum span');
+  console.log('agent (└ nested)            type                 model              out    c-read  hit  tools err resum active');
   for (const a of r.agents) {
     const name = `${'  '.repeat(a.depth - 1)}${a.depth > 1 ? '└ ' : ''}${a.id}`.slice(0, 26).padEnd(27);
     console.log(
-      `${name}${a.type.slice(0, 20).padEnd(21)}${String(a.model ?? '?').slice(0, 18).padEnd(19)}${k(a.output).padStart(6)} ${k(a.cache_read).padStart(7)} ${String(Math.round(a.cache_hit * 100)).padStart(3)}% ${String(a.tool_calls).padStart(5)} ${String(a.errors.length).padStart(3)} ${String(a.resumes).padStart(5)} ${String(a.span_s ?? '-').padStart(5)}s`,
+      `${name}${a.type.slice(0, 20).padEnd(21)}${String(a.model ?? '?').slice(0, 18).padEnd(19)}${k(a.output).padStart(6)} ${k(a.cache_read).padStart(7)} ${String(Math.round(a.cache_hit * 100)).padStart(3)}% ${String(a.tool_calls).padStart(5)} ${String(a.errors.length).padStart(3)} ${String(a.resumes).padStart(5)} ${String(a.active_s ?? '-').padStart(6)}s${a.idle_s ? ` (+${a.idle_s}s idle)` : ''}`,
     );
   }
   const o = r.orchestrator;
@@ -413,7 +500,7 @@ function printHuman(r) {
     `TOTAL agents=${s.agents} (nested=${s.nested_agents}) out=${k(s.output)} cache_read=${k(s.cache_read)} hit=${Math.round(s.cache_hit * 100)}% tools=${s.tool_calls} errors=${JSON.stringify(s.tool_errors)}`,
   );
   console.log(
-    `      wall=${s.wall_s}s parallelism=${s.parallelism}x critical=${s.critical_path?.type ?? '-'} resumes=${s.resumes} rewrites=${s.rewrites} unverified=${s.unverified_markers} human_wait=${s.human_wait_s}s/${s.questions_to_human}q cost=${s.cost_usd ?? 'n/a (pass --prices)'}`,
+    `      busy=${s.wall_s}s elapsed=${s.elapsed_s}s parallelism=${s.parallelism}x critical=${s.critical_path?.type ?? '-'} resumes=${s.resumes} rewrites=${s.rewrites} unverified=${s.unverified_markers} human_wait=${s.human_wait_s}s/${s.questions_to_human}q cost=${s.cost_usd ?? 'n/a (pass --prices)'}${s.cost_note ? ` (${s.cost_note})` : ''}`,
   );
   if (r.duplicated_reads.length) {
     console.log('duplicated reads:');

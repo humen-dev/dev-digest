@@ -27,8 +27,9 @@ Node-only (no Python, nothing to install):
    are rounded; use them only to cross-check. If `RT` fails, say so and give an in-context retro
    clearly labelled as approximate — never invent a metric. Unknown → `n/a`.
 3. **Prices are never hard-coded.** For `$`, get current per-model rates via the `claude-api` skill,
-   write them to `.claude/.retro/prices.json` (`{model_substr: {in, out, cache_read, cache_write}}`
-   in $/Mtok) and pass `--prices`. Without verified prices, cost is `n/a`.
+   write them to `.claude/.retro/prices.json` (`{model_substr: {in, out, cache_read, cache_write,
+   cache_write_1h}}` in $/Mtok; `cache_write` = 5-minute tier — subagents, `cache_write_1h` = 1-hour
+   tier — usually the main session) and pass `--prices`. Without verified prices, cost is `n/a`.
 4. **Writes:** only `.claude/.retro/<label>.json` (raw analysis, git-ignored) and one row in
    `docs/retros/ledger.md` (unless `no-ledger`). Nothing else until the user approves a
    recommendation.
@@ -55,15 +56,18 @@ If the session holds several unrelated batches and no `since:` was given, ask wh
    (SendMessage re-invocations), tokens (in / out / cache-read / cache-write, de-duplicated per API
    message), cache hit, tool calls by name, tool errors with a kind
    (`denied` · `not-found` · `timeout` · `stale-read` · `command-failed` · `other`), deliverables
-   written more than once (`rewrites`), unverified markers in its final report, span, cost.
-   Run-level: orchestrator usage, duplicated reads (file, readers, ~tokens re-read), human wait
-   (AskUserQuestion time) and question count, wall-clock, parallelism, critical path.
+   written more than once (`rewrites`), unverified markers in its final report, `active_s` /
+   `idle_s` (idle = gaps before resume prompts), cost. Run-level: orchestrator usage, duplicated
+   reads (file, readers, ~tokens re-read), human wait (AskUserQuestion time) and question count,
+   `wall_s` (time at least one agent was working), `elapsed_s` (first launch → last line),
+   parallelism (Σ active ÷ busy), critical path (by active time), `cost_note`.
 3. Re-read the agents' final reports and your own conversation for the qualitative side — the JSON
    tells you *where* to look, the reports tell you *why*.
 
-Caveat to state when relevant: an agent's `span_s` runs from its first to its last journal line, so a
-resumed agent's span includes the idle time between resumes (often human think-time). Use
-`human_wait_s` to separate the two.
+Caveats to state when relevant: `span_s` is first → last journal line; for a resumed agent use
+`active_s` (idle gaps before resumes removed) — idle time is human think-time, not agent work.
+A failed Bash command is not flagged by Claude Code; `RT` finds it from the output text
+(`command-failed`), so a command that prints `error:` on success may be a false positive.
 
 ## Phase 2 — analyse
 
