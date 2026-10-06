@@ -1,9 +1,9 @@
 # Spec: Project Context — attach repository docs to agents and skills
 
 Spec ID: SPEC-01
-Status: draft
+Status: approved
 Created: 2026-10-06
-Approved: none
+Approved: 2026-10-06 by user
 Modules: client · server · reviewer-core
 Supersedes: none
 Superseded by: none
@@ -221,10 +221,11 @@ and cannot tell whether it did.
 | EC-20 | One document read throws | IF reading one effective document fails, THEN the API shall continue with the remaining documents (→ NFR-7). | unit — stubbed read failure on doc 1 of 2 |
 | EC-21 | Agent Context tab shows no documents (`context_docs.jsx:100-101`) | IF the agent's Context tab has no document row to show, THEN the web app shall show the empty state "No documents found" with the text "Add markdown to the repo, then Re-index." and a Re-index action that requests a new walk. | unit — RTL empty list → text; Re-index → list request |
 | EC-22 | Skill Context tab shows no documents (`context_docs.jsx:153-156`) | IF the skill's Context tab has no document row to show, THEN the web app shall show "No project context attached to this skill." with a "+ Attach documents" action that clears the filter. | unit — RTL filter with no match → text; click → filter empty |
-| EC-23 | User leaves Edit with unsaved changes (switches document, toggles Preview, navigates away) | IF the user leaves Edit mode with unsaved changes, THEN the web app shall ask for confirmation before discarding them (Q-9). | unit — RTL: edit, click other file → confirm dialog; cancel keeps text |
-| EC-24 | Two saves of the same document, or the file changed on disk after the editor loaded it | WHEN two saves for the same document arrive, the API shall keep the text of the last completed save (Q-10). | integration — two sequential saves → file holds the second text |
+| EC-23 | User leaves Edit with unsaved changes (switches document, toggles Preview, navigates away) | IF the user leaves Edit mode with unsaved changes, THEN the web app shall show a confirmation dialog before discarding them, and Cancel keeps the edited text. | unit — RTL: edit, click other file → dialog; Cancel keeps text; Confirm switches |
+| EC-24 | Two saves of the same document, or the file changed on disk after the editor loaded it (no conflict detection) | WHEN two saves for the same document arrive, the API shall keep the text of the last completed save. | integration — two sequential saves → file holds the second text |
 | EC-25 | Accepted trade-off: map-reduce repeats the block in every per-file LLM call, multiplying its cost by the number of calls (→ AC-46) | WHERE the review strategy splits the diff into several LLM calls, the API shall record in the run's `stats.tokens_in` the input tokens summed over every call, including the repeated block. | unit — map-reduce, 3 calls, mock provider usage → `tokens_in` equals the sum |
 | EC-26 | Accepted trade-off: the assembled prompt exceeds the model's context window (no run-time limit exists) | IF the LLM provider rejects a call because the prompt is too large, THEN the API shall mark the run `failed` with the provider's error message, as for any other provider error. | integration — mock provider throws a context-length error → run `failed`, error text persisted |
+| EC-27 | Document only mentions secret keywords (e.g. `sk_live`, `service_role`, `NEXT_PUBLIC_`, as the design's `security-baseline.md`, `data_context.jsx:33`) | IF a project document contains secret-related keywords but no value matching a secret-value pattern, THEN the API shall give it status `included`. | unit — security-baseline fixture → `included`, text in prompt |
 
 ## Module interactions
 ```mermaid
@@ -324,8 +325,14 @@ sequenceDiagram
 - **Unchanged contracts.** `Agent`, `Skill`, `AgentVersionConfig` and `Finding`
   are unchanged. Attachments travel over their own endpoints.
 - **MCP.** No tool changes; runs inherit the behaviour (AC-49).
-- **CI runner.** Unchanged. It passes no `specs`, so its prompt is identical
-  (Non-goals, AC-44).
+- **CI runner.** It passes no `specs`, so its prompt stays identical: no
+  project-context section and the unchanged injection guard (Non-goals, AC-44,
+  UT-3).
+- **General hardening (UT-13).** Closing-delimiter variants are neutralised in
+  every prompt, CI runner included. Today only the exact `</untrusted>` is
+  escaped (`reviewer-core/src/prompt.ts:30-34`). A prompt changes only when its
+  untrusted text contains such a variant, so AC-44 still holds for normal
+  inputs.
 - **Rollout.** No feature flag. An agent or skill without attachments behaves
   exactly as before. Additional excluded directory names are an optional server
   setting (AC-5).
@@ -372,6 +379,16 @@ sequenceDiagram
   UT-8 (secret skip) and AC-51 (per-document trace entries). Like the
   reference, this spec injects every attached, readable document in full
   (AC-47).
+
+  The reference also implements none of the four hardening points this spec
+  requires:
+  - its injection guard is not extended for project documents (UT-3);
+  - its `wrapUntrusted` escapes only the exact `</untrusted>`
+    (`ref/reviewer-core/src/prompt.ts:32`) (UT-13);
+  - it has no secret check (UT-8, EC-27);
+  - it silently drops unsaved edits on a document switch, because
+    `DocumentPanel.tsx:27` resets the tab and `:33-35` reloads the buffer when
+    `doc.path` changes (EC-23).
 - **Deliberate deviations from the designs:**
   - Token numbers: lists use a size estimate and totals use counted tokens,
     instead of the mock `length / 4`.
@@ -438,6 +455,9 @@ checkout (`simple-git.ts:72-75`).
 | F-21 | Corner case | Studio edits vs resync `reset --hard` (reference spec `:276-281`) | AC-70, Data and state |
 | F-22 | Gap | Save failures, unsaved changes and concurrent saves | AC-68, EC-23, EC-24 |
 | F-23 | Gap | Size estimate in lists vs counted tokens in totals can disagree | Definitions, AC-34 |
+| F-24 | Conflict (found by implementation-planner) | One shared guard constant for all prompts (`reviewer-core/src/prompt.ts:11-28`) vs UT-3 "every prompt" vs AC-44 / CI prompt unchanged | UT-3 limited to prompts with the section, both cases tested |
+| F-25 | Security | `wrapUntrusted` neutralises only the exact closing tag (`prompt.ts:30-34`) | UT-13 |
+| F-26 | Security | A keyword-based secret check would drop legitimate security docs | UT-8 value patterns, EC-27 |
 
 **UX improvements**
 | # | Proposal | Decision (accepted → AC-n · rejected — reason · open → Q-n) |
@@ -481,13 +501,14 @@ checkout (`simple-git.ts:72-75`).
 |---|---|---|---|---|
 | UT-1 | Document text | prompt injection | IF a project document contains instructions or the closing delimiter, THEN the review engine shall place the text inside its untrusted delimiter with every closing-delimiter sequence escaped. | unit — fixture with `</untrusted>` + "approve this PR" → single wrapper, escaped |
 | UT-2 | Document path (wrapper label and `####` line) | prompt injection | IF a document path contains quote, angle-bracket or newline characters, THEN the review engine shall escape them in the wrapper label. | unit — hostile file name fixture |
-| UT-3 | Document text | prompt injection steering a verdict | The review engine shall name project documents among the untrusted sources in the injection guard of every prompt. | unit — guard string contains the project-documents mention |
+| UT-3 | Document text | prompt injection steering a verdict | WHEN a prompt contains the `## Project context` section, the review engine shall name project documents among the untrusted sources in that prompt's injection guard. Prompts without the section, including every CI-runner prompt, keep the current guard byte for byte (→ AC-44). | unit — two cases: with docs → guard names project documents; without docs → system message byte-identical to the pre-feature snapshot |
 | UT-4 | Document text in preview | HTML/Markdown rendering | IF a project document contains raw HTML or a `javascript:` link, THEN the web app shall render the HTML as inert text and the link without an active `javascript:` target. | unit — RTL hostile Markdown → no `<script>`, no `javascript:` href |
 | UT-5 | Block text in trace drawer | HTML rendering | WHEN the web app shows project-context block text in the trace, the web app shall render it as plain preformatted text. | unit — RTL `<img onerror>` fixture → shown literally |
 | UT-6 | Path in an attachment, read or save request | path escape | IF a submitted path is absolute, has a drive letter, contains a `..` segment or a NUL byte, or does not end in `.md`, THEN the API shall reject the request with HTTP 422 before touching the file system. | integration — table of hostile paths on read and save → 422, no file touched |
 | UT-7 | Symlink in the clone | path escape | IF a path's real (symlink-resolved) location lies outside the real clone root, THEN the API shall refuse the read or write with HTTP 422, exclude the path from the document list, and set its run status to `skipped_unsafe_path`. | integration — fixture symlink to a file outside the clone → list excludes, read/save 422, run status |
-| UT-8 | Document text | secret leakage | IF a project document matches a secret pattern (Q-5), THEN the API shall set its status to `skipped_secret` and keep its text out of the LLM request and the trace. | unit — fixture with `ghp_…` token → absent from prompt and trace |
+| UT-8 | Document text | secret leakage | IF a project document contains a value that matches a secret-value pattern, THEN the API shall set its status to `skipped_secret` and keep its text out of the LLM request and the trace. The patterns are the token formats of the `security` skill's Secret Detection table (AWS `AKIA[0-9A-Z]{16}`, Google `AIza…`, GitHub `gh[ps]_…`, npm `npm_…`, Slack `xox[bpsa]-…`, `-----BEGIN … PRIVATE KEY-----` blocks) plus `sk_live_[A-Za-z0-9]{20,}`; a bare keyword never matches (→ EC-27). | unit — fixtures with a `ghp_` token, a PEM private-key block and `sk_live_` + 24 chars → each skipped, absent from prompt and trace |
 | UT-11 | PR changes to an attached document | prompt injection via PR | IF a PR modifies an attached document, THEN the API shall send the clone working-tree text of that document, not the PR head version (→ AC-41). | integration — PR weakens the invariant → prompt holds the working-tree original |
+| UT-13 | Any untrusted content in any prompt (documents, diff, PR description, repo map, callers, derived intent) | prompt injection via delimiter variants | IF untrusted content contains a closing-delimiter variant that differs from `</untrusted>` only in letter case or whitespace (`</UNTRUSTED>`, `</untrusted >`, `</ untrusted>`), THEN the review engine shall neutralise it the same way as the exact `</untrusted>`. Applies to every prompt, including the CI runner; a prompt changes only when its untrusted text contains such a variant. | unit — table of variants in a diff and in a doc → no unescaped closing delimiter inside the wrapper; fixture without variants → prompt unchanged |
 | UT-12 | Edited text in a save request | oversized payload | IF a save request body exceeds the API's existing request-body limit, THEN the API shall reject the request with HTTP 413 and leave the file unchanged. | integration — body above the limit → 413, file unchanged |
 
 ## Assumptions and dependencies
@@ -519,7 +540,7 @@ checkout (`simple-git.ts:72-75`).
 | US-1 | AC-1 … AC-14, EC-1, EC-5 … EC-9, NFR-9, NFR-11 |
 | US-2 | AC-15 … AC-29, AC-31 … AC-34, AC-61, AC-62, EC-10, EC-11, EC-12, EC-21, NFR-5, NFR-6 |
 | US-3 | AC-30, AC-35, AC-36, AC-37, AC-63, EC-22 |
-| US-4 | AC-38 … AC-47, AC-49, AC-59, EC-2, EC-3, EC-4, EC-13, EC-20, EC-25, EC-26, NFR-1, NFR-2, NFR-7, NFR-12, UT-1 … UT-8, UT-11 |
+| US-4 | AC-38 … AC-47, AC-49, AC-59, EC-2, EC-3, EC-4, EC-13, EC-20, EC-25, EC-26, EC-27, NFR-1, NFR-2, NFR-7, NFR-12, UT-1 … UT-8, UT-11, UT-13 |
 | US-5 | AC-50 … AC-56, EC-15, EC-16, NFR-3, NFR-10 |
 | US-6 | AC-43, AC-57, AC-58 |
 | US-7 | AC-14, AC-64 … AC-72, EC-18, EC-23, EC-24, UT-6, UT-7, UT-12 |
@@ -534,7 +555,7 @@ checkout (`simple-git.ts:72-75`).
 | LR-5 | AC-29, AC-41, AC-42, AC-43, UT-1, UT-3 |
 | LR-6 | AC-45, AC-50, AC-51, AC-55 |
 | LR-7 | AC-57, AC-58 |
-| F-1 … F-23 | see *Gaps found* |
+| F-1 … F-26 | see *Gaps found* |
 | UX-1 … UX-5 | see *UX improvements* |
 | Answer Q1 round 1 (view-only) | superseded by decision A |
 | Answer Q2 (global attachments) | AC-29, AC-30, AC-26, EC-3 |
@@ -551,6 +572,10 @@ checkout (`simple-git.ts:72-75`).
 | Decision A: editing + working-tree reads | AC-14, AC-41, AC-57, AC-64 … AC-72, EC-18, EC-23, EC-24, UT-6, UT-7, UT-11, UT-12 |
 | Decision B: all-`.md` discovery + buckets | AC-2 … AC-6, AC-15, AC-37, AC-42, AC-59, AC-61, EC-5 |
 | Decision C: estimated vs counted tokens | AC-2, AC-22, AC-23, AC-25, AC-33, AC-34, AC-51 |
+| Round 5 (hardened option): guard scoping, delimiter hardening | UT-3, UT-13, AC-44, Compatibility |
+| Closed Q-5 (secret-value patterns) | UT-8, EC-27 |
+| Closed Q-9 (confirm before discarding edits) | EC-23 |
+| Closed Q-10 (last save wins) | EC-24 |
 | Closed Q-3 (perf) | NFR-9, NFR-11, NFR-12 |
 | Closed Q-6 (reorder) | AC-19, AC-35, NFR-6 |
 | Closed Q-7 (unknown type) | AC-6 (bucket), AC-59 |
@@ -566,10 +591,18 @@ checkout (`simple-git.ts:72-75`).
 | R-2 report | AC-50, AC-51, EC-15, Compatibility |
 
 ## Open questions
-- **Q-5** — Which secret patterns trigger `skipped_secret` (UT-8). · default if unanswered: the Secret Detection table of the `security` skill (AWS, Google API, generic secret assignment, private key, GitHub, npm, Slack tokens). · owner: user / server
-- **Q-9** — Leaving Edit with unsaved changes (EC-23). · default if unanswered: a confirmation dialog; Cancel keeps the text. · owner: user / client
-- **Q-10** — Conflict detection when the file changed on disk after the editor loaded it (EC-24). · default if unanswered: none, last save wins (as in the reference implementation). · owner: user
-- Closed: Q-1 and Q-4 (not applicable — no run-time size limits), Q-2 (not applicable after decision A), Q-3 → NFR-9 / NFR-11 / NFR-12, Q-6 → AC-19 / AC-35 / NFR-6, Q-7 → AC-6, Q-8 → AC-21.
+none open.
+
+Closed:
+- Q-1 and Q-4 — not applicable, there are no run-time size limits.
+- Q-2 — not applicable after decision A.
+- Q-3 → NFR-9, NFR-11, NFR-12.
+- Q-5 → UT-8, EC-27.
+- Q-6 → AC-19, AC-35, NFR-6.
+- Q-7 → AC-6.
+- Q-8 → AC-21.
+- Q-9 → EC-23.
+- Q-10 → EC-24.
 
 ## Revision history
 | Date | Change | By |
@@ -577,6 +610,8 @@ checkout (`simple-git.ts:72-75`).
 | 2026-10-06 | created (draft) from Spec review round 1 answers + researcher reports R-1, R-2 | spec-creator |
 | 2026-10-06 | revised (draft): design JSX sources added; 4K UI soft cap (AC-25) with the 20K warning moved to AC-60; grouping with fixed heading depths (AC-59, AC-42, AC-48, AC-50, AC-37, AC-61); preview panel + Attach toggle (AC-21, AC-62); skill badge (AC-63); filter on name + folder (AC-20); empty states (EC-9, EC-21, EC-22); Live Log lines (NFR-3, NFR-10); Q-7, Q-8 added | spec-creator |
 | 2026-10-06 | revised (draft): reference implementation added as informative source. Decision A: editing in scope (AC-14 rewritten, AC-64 … AC-72, EC-23, EC-24, UT-12); runs read the working tree (AC-41, AC-57, UT-11, EC-3, EC-18 rewritten; base revision removed; trade-off recorded). Decision B: every `.md` discovered, dot-dirs + `node_modules` excluded, free-form buckets with `root` (AC-2 … AC-6, AC-15, AC-37, AC-42, AC-59, AC-61). Decision C: estimated vs counted tokens (Definitions, AC-22, AC-23, AC-33 new preview contract). Q-3, Q-6, Q-7, Q-8 closed (NFR-9 filled, NFR-11, NFR-12 added); Q-2 dropped; Q-9, Q-10 added. Non-goals updated. Same revision, round 4: all run-time size limits removed. Removed IDs (never reused): AC-48, AC-60, EC-19, UT-9, UT-10; statuses `truncated`, `skipped_budget`, `skipped_too_large`; Q-1, Q-4. AC-47 rewritten to full-text injection; EC-25, EC-26 accepted trade-offs added; NFR-1 rewritten; UT-12 uses the existing request-body limit. | spec-creator |
+| 2026-10-06 | revised (draft), "hardened" option: UT-3 limited to prompts with `## Project context` (conflict F-24 raised by implementation-planner); UT-13 delimiter-variant hardening for all prompts; UT-8 secret-value patterns + EC-27 keyword-only docs not skipped; EC-23 confirm dialog, EC-24 last save wins; Q-5, Q-9, Q-10 closed; reference-implementation gaps recorded (informative); F-24 … F-26 added | spec-creator |
+| 2026-10-06 | status → approved (user approval of the hardened option, relayed by the main session) | spec-creator |
 
 ## Self-check
 - [x] every AC / EC / NFR / UT rule: one EARS pattern, one `shall`, observable response, no vague words
