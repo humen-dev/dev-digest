@@ -1,0 +1,15 @@
+{
+  "name": "Onboarding Tour nav entry opens the seeded tour; clone-gated Regenerate/Open stay hidden",
+  "description": "From the seeded repo's PR list, clicks the 'Onboarding Tour' sidebar nav entry and confirms the heading + a seeded section render (SPEC-03 AC-1). The seeded demo repo acme/payments-api has no local clone in the e2e stack, so the page shows the 'Clone the repository to regenerate' hint instead of an active Regenerate control, and the critical-path rows render without an Open button (EC-2, EC-3). Read-only, no model call — U7's seeded tour document is pre-generated.",
+  "steps": [
+    { "cmd": ["open", "{BASE}/"], "label": "load the app root" },
+    { "cmd": ["wait", "--url", "/pulls"], "label": "root redirects to the seeded repo's PR list" },
+    { "cmd": ["find", "text", "Onboarding Tour", "click"], "label": "WORKSPACE → Onboarding Tour in the sidebar" },
+    { "cmd": ["wait", "--url", "/tour"], "label": "navigate to the Onboarding Tour route" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "tour state fetch settles" },
+    { "cmd": ["wait", "--text", "Onboarding for payments-api"], "label": "page heading renders — AC-1" },
+    { "cmd": ["wait", "--text", "Architecture overview"], "label": "architecture overview section title renders" },
+    { "cmd": ["wait", "--text", "Shared Redis singleton — reuse this"], "label": "seeded critical path (src/lib/redis.ts) renders" },
+    { "cmd": ["wait", "--text", "Clone the repository to regenerate"], "label": "no local clone for the seeded repo — Regenerate is gated, EC-2" }
+  ]
+}
