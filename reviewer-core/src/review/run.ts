@@ -9,6 +9,7 @@ import type {
 } from '@devdigest/shared';
 import { Review as ReviewSchema } from '@devdigest/shared';
 import { assemblePrompt } from '../prompt.js';
+import type { ProjectContextDoc } from '../project-context.js';
 import { groundFindings, groundingSummary } from '../grounding.js';
 import { renderIntentForPrompt } from '../intent/render-for-review.js';
 import { applyScopeFilter, type ScopeFilterSummary } from '../intent/scope-filter.js';
@@ -59,8 +60,19 @@ export interface ReviewInput {
   skills?: string[];
   /** Curated memory items. */
   memory?: string[];
-  /** Project-context spec chunks (untrusted; delimiter-wrapped downstream). */
+  /**
+   * @deprecated Use `projectContext` instead. Project-context spec chunks
+   * (untrusted; delimiter-wrapped downstream). Ignored once `projectContext`
+   * has ≥ 1 doc.
+   */
   specs?: string[];
+  /**
+   * Attached project-context documents (SPEC-01; untrusted). Forwarded to
+   * `assemblePrompt` as `PromptParts.projectContext`, reused unchanged across
+   * every map-reduce chunk so each chunk's LLM call sees the same block.
+   * Empty/undefined → falls back to the deprecated `specs` slot.
+   */
+  projectContext?: ProjectContextDoc[];
   /**
    * Optional callers-of-changed-symbols digest (T1.3). Untrusted; rendered
    * before the diff section. Empty/undefined → section omitted.
@@ -161,6 +173,7 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     skills: input.skills,
     memory: input.memory,
     specs: input.specs,
+    projectContext: input.projectContext,
     callers: input.callers,
     repoMap: input.repoMap,
     prDescription: input.prDescription,

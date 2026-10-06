@@ -14,11 +14,27 @@ import { TraceSection } from "../TraceSection";
 import { ToolCallRow } from "../ToolCallRow";
 import { PromptBlock } from "../PromptBlock";
 import { FindingsSection } from "../FindingsSection";
+import { ProjectContextEntries } from "../ProjectContextEntries";
 import { Row, Stat } from "../atoms";
+
+/** Reset of the default <button> chrome so "Specs read" chips read as plain
+ *  labels until they are clicked (AC-56 expands the project-context block). */
+const specButtonStyle: React.CSSProperties = {
+  fontSize: 12,
+  color: "var(--text-secondary)",
+  background: "none",
+  border: "none",
+  padding: 0,
+  font: "inherit",
+  cursor: "pointer",
+  textDecoration: "underline dotted",
+};
 
 export function TraceBody({ trace, findings }: { trace: RunTrace; findings: FindingRecord[] }) {
   const t = useTranslations("runs");
   const stats = trace.stats;
+  const [specsOpen, setSpecsOpen] = React.useState(false);
+  const projectContext = trace.project_context ?? [];
   return (
     <>
       <TraceSection icon="Settings" title={t("trace.configuration")}>
@@ -42,9 +58,15 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
                 <span style={s.specsNone}>{t("trace.config.none")}</span>
               ) : (
                 trace.specs_read.map((sp, i) => (
-                  <span key={i} className="mono" style={s.spec}>
+                  <button
+                    key={i}
+                    type="button"
+                    className="mono"
+                    style={specButtonStyle}
+                    onClick={() => setSpecsOpen(true)}
+                  >
                     {sp}
-                  </span>
+                  </button>
                 ))
               )}
             </div>
@@ -92,7 +114,16 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
           <PromptBlock label={t("trace.prompt.repoMap")} text={trace.prompt_assembly.repo_map} color={PROMPT_COLORS.repoMap} />
         )}
         {trace.prompt_assembly.specs != null && (
-          <PromptBlock label={t("trace.prompt.specs")} text={trace.prompt_assembly.specs} color={PROMPT_COLORS.specs} />
+          <>
+            <PromptBlock
+              label={t("trace.prompt.specs")}
+              text={trace.prompt_assembly.specs}
+              color={PROMPT_COLORS.specs}
+              open={specsOpen}
+              onOpenChange={setSpecsOpen}
+            />
+            <ProjectContextEntries entries={projectContext} />
+          </>
         )}
         {trace.prompt_assembly.callers != null && (
           <PromptBlock label={t("trace.prompt.callers")} text={trace.prompt_assembly.callers} color={PROMPT_COLORS.callers} />
