@@ -101,19 +101,19 @@ describe("ContextTab (skill) — order, grouping, badge", () => {
     expect(setAttachedMutate).toHaveBeenCalledWith(["insights/a.md", "README.md", "server/b.md", "specs/c.md"]);
   });
 
-  it("shows the inherit note", () => {
+  it("shows the inherit note — AC-36", () => {
     renderTab();
     expect(
-      screen.getByText("Every agent that links this skill inherits the documents below, in this order, as part of its own effective context."),
+      screen.getByText("Any agent using this skill inherits these documents."),
     ).toBeInTheDocument();
   });
 });
 
 describe("ContextTab (skill) — empty / error states", () => {
-  it("shows 'No documents match' with a '+ Attach documents' button that clears the filter — EC-10/EC-22", () => {
+  it("shows the EC-22 no-row state with a '+ Attach documents' button that clears the filter", () => {
     renderTab();
     fireEvent.change(screen.getByLabelText("Filter documents…"), { target: { value: "zzz" } });
-    expect(screen.getByText("No documents match")).toBeInTheDocument();
+    expect(screen.getByText("No project context attached to this skill.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "+ Attach documents" }));
     expect(screen.getByLabelText("Filter documents…")).toHaveValue("");
   });

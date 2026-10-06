@@ -1,6 +1,6 @@
 {
   "row": {
-    "notFound": "Not found",
+    "notFound": "not found",
     "detach": "Detach",
     "viaSkill": "via skill {name}",
     "tokens": "≈ {count}",

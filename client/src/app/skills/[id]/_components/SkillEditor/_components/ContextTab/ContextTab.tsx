@@ -113,11 +113,11 @@ export function ContextTab({ skill }: { skill: Skill }) {
 
       {visibleRows.length === 0 ? (
         <DocsEmptyState
-          kind={filter.trim() ? "no-match" : "empty"}
+          kind="empty"
           icon="FileText"
-          title={filter.trim() ? t("context.noMatchTitle") : t("context.emptyTitle")}
-          ctaLabel={filter.trim() ? t("context.attachCta") : undefined}
-          onCta={filter.trim() ? () => setFilter("") : undefined}
+          title={t("context.emptyTitle")}
+          ctaLabel={t("context.attachCta")}
+          onCta={() => setFilter("")}
         />
       ) : (
         <div style={s.list}>

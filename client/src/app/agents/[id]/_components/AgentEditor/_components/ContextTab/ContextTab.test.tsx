@@ -101,9 +101,21 @@ describe("ContextTab (agent) — list, order, footer", () => {
     expect(screen.getByText("≈ 50")).toBeInTheDocument();
     expect(screen.getByText("≈ 70")).toBeInTheDocument();
     expect(screen.getByText("≈ 120 tokens")).toBeInTheDocument();
+    expect(
+      screen.getByText("Injected as an untrusted block (## Project context) into every run."),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Move down" })[0]!);
     expect(setAttachedMutate).toHaveBeenCalledWith(["b.md", "a.md"]);
+  });
+
+  it("shows the AC-61 helper text", () => {
+    renderTab();
+    expect(
+      screen.getByText(
+        "Documents are grouped by top-level folder — specs, docs, insights first, then other folders A–Z, root files last. Within a folder, earlier docs appear earlier in the assembled ## Project context block. Toggle to attach.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("reorders via native drag and drop — D7", () => {
@@ -140,7 +152,7 @@ describe("ContextTab (agent) — missing / inherited rows", () => {
     };
     renderTab();
 
-    expect(screen.getByText("Not found")).toBeInTheDocument();
+    expect(screen.getByText("not found")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Detach" }));
     expect(setAttachedMutate).toHaveBeenCalledWith([]);
   });
@@ -165,12 +177,21 @@ describe("ContextTab (agent) — token budget and error states", () => {
   it("shows the over-budget badge above 4,000 tokens and nothing at exactly 4,000 — AC-25", () => {
     previewState = { data: { cloned: true, documents: [], total_tokens: 4001 } };
     renderTab();
-    expect(screen.getByText("Over 4,000 tokens — large prompts can raise cost and latency.")).toBeInTheDocument();
+    expect(screen.getByText("over 4K soft cap")).toBeInTheDocument();
     cleanup();
 
     previewState = { data: { cloned: true, documents: [], total_tokens: 4000 } };
     renderTab();
-    expect(screen.queryByText("Over 4,000 tokens — large prompts can raise cost and latency.")).not.toBeInTheDocument();
+    expect(screen.queryByText("over 4K soft cap")).not.toBeInTheDocument();
+  });
+
+  it("shows the EC-21 empty state and Re-index requests a new walk", () => {
+    docsState = { data: { ...DOCS, documents: [], total: 0 }, isLoading: false, isError: false };
+    renderTab();
+    expect(screen.getByText("No documents found")).toBeInTheDocument();
+    expect(screen.getByText("Add markdown to the repo, then Re-index.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Re-index" }));
+    expect(refetchDocs).toHaveBeenCalledTimes(1);
   });
 
   it("shows 'Repository not cloned' — EC-1", () => {
