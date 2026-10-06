@@ -57,6 +57,13 @@ import { FsProjectDocs } from '../adapters/project-docs/index.js';
 import { DrizzleProjectContextRepository } from '../modules/project-context/repository.js';
 import { ProjectContextService } from '../modules/project-context/service.js';
 import type { ProjectDocsFs } from '../modules/project-context/ports.js';
+import { DrizzleOnboardingRepository } from '../modules/onboarding/repository.js';
+import { OnboardingTourService } from '../modules/onboarding/service.js';
+import type { OnboardingTourRepositoryPort, TourGitPort } from '../modules/onboarding/ports.js';
+import { GENERATION_TIMEOUT_MS } from '../modules/onboarding/constants.js';
+import { GitTreeReader } from '../adapters/git/tree.js';
+import { loadPromptTemplate } from './prompts.js';
+import { EXCLUDED_DIRS, MAX_FILE_SIZE } from '../modules/repo-intel/types.js';
 
 /**
  * DI container. One per app instance. Holds config, db, the JobRunner,
@@ -101,6 +108,10 @@ export interface ContainerOverrides {
    * file header).
    */
   projectDocsFs?: ProjectDocsFs;
+  /** Onboarding-tour persistence port — tests swap the port, not the service. */
+  onboardingRepo?: OnboardingTourRepositoryPort;
+  /** Onboarding-tour git reader (listTrackedFiles + readFileAt) — tests inject a fake. */
+  gitTree?: TourGitPort;
 }
 
 export class Container {
@@ -138,6 +149,8 @@ export class Container {
   private _priceBook?: PriceBook;
   private _projectDocsFs?: ProjectDocsFs;
   private _projectContextService?: ProjectContextService;
+  private _gitTree?: TourGitPort;
+  private _onboardingTourService?: OnboardingTourService;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -314,6 +327,42 @@ export class Container {
       fs: this.projectDocsFs,
       tokens: this.tokenizer,
       excludedDirs: this.config.projectDocsExcludedDirs,
+    }));
+  }
+
+  /**
+   * Onboarding-tour git reader: `listTrackedFiles` (GitTreeReader —
+   * `git ls-tree` at an arbitrary ref, adapters/git/tree.ts) merged with
+   * `readFileAt` (the existing `GitClient`, same clone-path convention) into
+   * the one structural `TourGitPort` the service depends on.
+   */
+  get gitTree(): TourGitPort {
+    if (this.overrides.gitTree) return this.overrides.gitTree;
+    if (!this._gitTree) {
+      const reader = new GitTreeReader(this.config.cloneDir);
+      const git = this.git;
+      this._gitTree = {
+        listTrackedFiles: (repo, ref) => reader.listTrackedFiles(repo, ref),
+        readFileAt: (repo, ref, path) => git.readFileAt(repo, ref, path),
+      };
+    }
+    return this._gitTree;
+  }
+
+  /** Onboarding tour — grounded five-section tour of an indexed repo (SPEC-03). */
+  get onboardingTourService(): OnboardingTourService {
+    return (this._onboardingTourService ??= new OnboardingTourService({
+      onboarding: this.overrides.onboardingRepo ?? new DrizzleOnboardingRepository(this.db),
+      repos: this.reposRepo,
+      git: this.gitTree,
+      repoIntel: this.repoIntel,
+      llm: (provider) => this.llm(provider),
+      resolveModel: (workspaceId) => this.featureModels.resolve(workspaceId, 'onboarding'),
+      tokenizer: this.tokenizer,
+      loadSystemPrompt: () => loadPromptTemplate('onboarding.system.md'),
+      excludedDirs: [...EXCLUDED_DIRS, ...this.config.projectDocsExcludedDirs],
+      maxFileBytes: MAX_FILE_SIZE,
+      timeoutMs: GENERATION_TIMEOUT_MS,
     }));
   }
 
