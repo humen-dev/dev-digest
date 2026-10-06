@@ -9,12 +9,14 @@ import { Button, Dropdown, ErrorState, Skeleton, Icon, Badge } from "@devdigest/
 import type { Agent } from "@devdigest/shared";
 import { AppShell } from "../../../components/app-shell";
 import { AgentCard } from "../_components/AgentCard";
-import { AgentEditor } from "./_components/AgentEditor";
+import { AgentEditor, TABS } from "./_components/AgentEditor";
 import { useAgents, useAgent, useUpdateAgent } from "../../../lib/hooks/agents";
 import { useAgentSkills } from "../../../lib/hooks/skills";
 import { ApiError } from "../../../lib/api";
 
-const VALID_TABS = ["config", "skills"];
+/** Derived from the editor's own tab list so a new tab can never be
+    silently rejected here (SPEC-01 Context tab regression). */
+const VALID_TABS = TABS.map((tb) => tb.key);
 
 /** One row in the agent rail — its own component so it can call `useAgentSkills`
     per-agent (a hook call inside the parent's .map() would break the rules of
