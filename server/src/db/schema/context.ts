@@ -6,6 +6,7 @@ import {
   boolean,
   jsonb,
   timestamp,
+  doublePrecision,
   vector,
   index,
   uniqueIndex,
@@ -121,6 +122,10 @@ export const onboarding = pgTable('onboarding', {
   repoId: uuid('repo_id')
     .primaryKey()
     .references(() => repos.id, { onDelete: 'cascade' }),
-  json: jsonb('json').notNull(),
+  json: jsonb('json').notNull(), // TourDocument (modules/onboarding/types.ts)
   generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
+  tourCommit: text('tour_commit'), // null = legacy row → "no tour" (SPEC-03 EC-19)
+  model: text('model'),
+  apiCostUsd: doublePrecision('api_cost_usd'),
+  durationMs: integer('duration_ms'),
 });

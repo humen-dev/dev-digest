@@ -11,7 +11,8 @@ import {
   SmartDiff,
   SmartDiffRole,
   Conformance,
-  Onboarding,
+  OnboardingTour,
+  OnboardingTourState,
   EvalRun,
   MemoryItem,
   RunTrace,
@@ -126,7 +127,7 @@ describe('AI contracts parse fixtures', () => {
     expect(SmartDiffRole.options).toEqual(['core', 'tests', 'wiring', 'docs', 'boilerplate']);
   });
 
-  it('Conformance / Onboarding / EvalRun / MemoryItem', () => {
+  it('Conformance / OnboardingTour / EvalRun / MemoryItem', () => {
     expect(() =>
       Conformance.parse({
         spec_id: 's1',
@@ -135,11 +136,40 @@ describe('AI contracts parse fixtures', () => {
         completeness_pct: 80,
       }),
     ).not.toThrow();
+    const tour = OnboardingTour.parse({
+      repo_id: 'r1',
+      tour_commit: 'abc1234',
+      generated_at: '2026-10-06T00:00:00.000Z',
+      tracked_file_count: 1201,
+      indexed_file_count: 1180,
+      model: 'deepseek/deepseek-v4-flash',
+      api_cost_usd: null,
+      duration_ms: 41000,
+      architecture: { overview: 'o', overview_paths: ['src/server.ts'], diagram: null },
+      critical_paths: [{ path: 'src/server.ts', note: 'n', importer_count: 3 }],
+      how_to_run: [{ command: 'pnpm dev', note: null, source: 'package.json' }],
+      guided_reading: [{ path: 'src/server.ts', reason: 'r', importer_count: null }],
+      first_tasks: [{ title: 't', target: 'src/health.ts', complexity: 'low', new_file: true }],
+      counters: {
+        critical_paths: { proposed: 1, dropped: 0 },
+        how_to_run: { proposed: 1, dropped: 0 },
+        guided_reading: { proposed: 1, dropped: 0 },
+        first_tasks: { proposed: 2, dropped: 1 },
+      },
+    });
     expect(() =>
-      Onboarding.parse({
-        sections: [{ kind: 'architecture', title: 'T', body: 'b', links: [] }],
+      OnboardingTourState.parse({
+        tour,
+        cloned: true,
+        index_status: 'full',
+        generating: false,
+        stale: false,
+        current_commit: 'abc1234',
       }),
     ).not.toThrow();
+    expect(() =>
+      OnboardingTour.parse({ sections: [{ kind: 'architecture', title: 'T', body: 'b', links: [] }] }),
+    ).toThrow();
     expect(() =>
       EvalRun.parse({
         recall: 0.82,

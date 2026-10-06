@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * Conformance, Onboarding, Eval, Memory, Conventions, Skills,
+ * Conformance, Eval, Memory, Conventions, Skills,
  * Agents and their DTOs.
  */
 
@@ -24,27 +24,6 @@ export const Conformance = z.object({
   completeness_pct: z.number().min(0).max(100),
 });
 export type Conformance = z.infer<typeof Conformance>;
-
-// ---- Onboarding ----
-export const OnboardingLink = z.object({
-  label: z.string(),
-  path: z.string(),
-});
-export type OnboardingLink = z.infer<typeof OnboardingLink>;
-
-export const OnboardingSection = z.object({
-  kind: z.string(),
-  title: z.string(),
-  body: z.string(), // markdown
-  diagram: z.string().nullish(), // mermaid
-  links: z.array(OnboardingLink),
-});
-export type OnboardingSection = z.infer<typeof OnboardingSection>;
-
-export const Onboarding = z.object({
-  sections: z.array(OnboardingSection),
-});
-export type Onboarding = z.infer<typeof Onboarding>;
 
 // ---- Eval ----
 export const EvalPerTrace = z.object({
