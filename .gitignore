@@ -30,3 +30,5 @@ test-results/
 
 # /impl run state (plan-tools state.json, saved agent reports)
 .claude/.impl/
+# /workflow-retro raw analyses and verified price maps
+.claude/.retro/

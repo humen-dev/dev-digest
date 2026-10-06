@@ -5,7 +5,8 @@
     "engineering-insights": "authoring skill, not a review lens",
     "mermaid-diagram": "authoring skill, not a review lens",
     "pr-self-review": "this skill — it does not review itself as a lens",
-    "impl": "orchestration command (/impl) — runs agents and the review loop, not a review lens"
+    "impl": "orchestration command (/impl) — runs agents and the review loop, not a review lens",
+    "workflow-retro": "retrospective command (/workflow-retro) — analyses agent runs, not a review lens"
   },
   "gate": {
     "gateFailOn": "critical",
