@@ -1,7 +1,7 @@
 # Spec: Project Context — attach repository docs to agents and skills
 
 Spec ID: SPEC-01
-Status: approved
+Status: implemented
 Created: 2026-10-06
 Approved: 2026-10-06 by user
 Modules: client · server · reviewer-core
@@ -612,6 +612,7 @@ Closed:
 | 2026-10-06 | revised (draft): reference implementation added as informative source. Decision A: editing in scope (AC-14 rewritten, AC-64 … AC-72, EC-23, EC-24, UT-12); runs read the working tree (AC-41, AC-57, UT-11, EC-3, EC-18 rewritten; base revision removed; trade-off recorded). Decision B: every `.md` discovered, dot-dirs + `node_modules` excluded, free-form buckets with `root` (AC-2 … AC-6, AC-15, AC-37, AC-42, AC-59, AC-61). Decision C: estimated vs counted tokens (Definitions, AC-22, AC-23, AC-33 new preview contract). Q-3, Q-6, Q-7, Q-8 closed (NFR-9 filled, NFR-11, NFR-12 added); Q-2 dropped; Q-9, Q-10 added. Non-goals updated. Same revision, round 4: all run-time size limits removed. Removed IDs (never reused): AC-48, AC-60, EC-19, UT-9, UT-10; statuses `truncated`, `skipped_budget`, `skipped_too_large`; Q-1, Q-4. AC-47 rewritten to full-text injection; EC-25, EC-26 accepted trade-offs added; NFR-1 rewritten; UT-12 uses the existing request-body limit. | spec-creator |
 | 2026-10-06 | revised (draft), "hardened" option: UT-3 limited to prompts with `## Project context` (conflict F-24 raised by implementation-planner); UT-13 delimiter-variant hardening for all prompts; UT-8 secret-value patterns + EC-27 keyword-only docs not skipped; EC-23 confirm dialog, EC-24 last save wins; Q-5, Q-9, Q-10 closed; reference-implementation gaps recorded (informative); F-24 … F-26 added | spec-creator |
 | 2026-10-06 | status → approved (user approval of the hardened option, relayed by the main session) | spec-creator |
+| 2026-10-06 | status → implemented (user instruction relayed by the main session; plan `docs/plans/project-context.md`, branch `L05-sdd`, commits c9443a3..HEAD; final plan-verifier: 348/360 MET, 0 NOT MET). Follow-ups (manual / post-merge, not yet verified): AC-58 real-model lesson scenario; AC-19 and AC-35 pointer drag-and-drop in a real browser; EC-23 confirm dialog in a real browser; e2e flows 14 and 15 run in progress at the time of this change | spec-creator |
 
 ## Self-check
 - [x] every AC / EC / NFR / UT rule: one EARS pattern, one `shall`, observable response, no vague words
