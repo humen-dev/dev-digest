@@ -238,6 +238,7 @@ describe('ReviewRunExecutor — project context (SPEC-01, U7)', () => {
     const lines = runBus.buffer(runId).map((e) => e.msg);
     expect(lines).toContain('Project context: docs/gone.md — skipped_missing');
     expect(lines).toContain('Pulled 0 memory items, 2 project specs');
+    expect(lines).toContain('Project context: 2 spec(s) injected, 1 missing');
     expect(lines.some((l) => l.startsWith('Project context: specs/a.md'))).toBe(false);
     expect(lines.some((l) => l.startsWith('Project context: docs/b.md'))).toBe(false);
   });

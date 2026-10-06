@@ -1058,6 +1058,7 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
           ],
           log: [
             { t: '00.10', kind: 'info', msg: 'Loading PR diff' },
+            { t: '00.14', kind: 'info', msg: 'Project context: 1 spec(s) injected, 0 missing' },
             { t: '00.15', kind: 'info', msg: 'Pulled 0 memory items, 1 project specs' },
             { t: '08.20', kind: 'result', msg: 'Citation grounding: 3/3 passed' },
           ],

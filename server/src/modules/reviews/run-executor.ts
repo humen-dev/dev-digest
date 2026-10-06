@@ -564,9 +564,11 @@ export class ReviewRunExecutor {
    * content or a stack trace (NFR-4).
    *
    * Non-`included` entries are logged one line each (`Project context:
-   * <path> — <status>`), then a summary line shared with the (currently
-   * always-empty) memory feature: `Pulled <n> memory items, <m> project
-   * specs` — NFR-3, NFR-10.
+   * <path> — <status>`, NFR-10), then a visible summary `Project context: <n>
+   * spec(s) injected, <m> missing` (the lesson's wording), then the line
+   * shared with the (currently always-empty) memory feature: `Pulled <n>
+   * memory items, <m> project specs` (NFR-3). Only paths, statuses and counts
+   * are logged, never document text (NFR-4).
    */
   private async buildProjectContext(
     workspaceId: string,
@@ -579,6 +581,8 @@ export class ReviewRunExecutor {
       for (const entry of resolved.entries) {
         if (entry.status !== 'included') runLog.info(`Project context: ${entry.path} — ${entry.status}`);
       }
+      const skipped = resolved.entries.length - resolved.docs.length;
+      runLog.info(`Project context: ${resolved.docs.length} spec(s) injected, ${skipped} missing`);
       runLog.info(`Pulled 0 memory items, ${resolved.docs.length} project specs`);
       return resolved;
     } catch (err) {
