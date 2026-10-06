@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ProjectContextEntry } from './project-context.js';
 
 /**
  * Run trace. The ENTIRE trace of one run is persisted as a SINGLE
@@ -105,6 +106,7 @@ export const RunTrace = z.object({
   raw_output: z.string(),
   memory_pulled: z.array(MemoryPulled),
   specs_read: z.array(z.string()),
+  project_context: z.array(ProjectContextEntry).nullish(),
   log: z.array(RunLogLine),
   intent: RunIntentInfo.nullish(),
 });
