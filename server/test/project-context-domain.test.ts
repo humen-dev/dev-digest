@@ -60,12 +60,14 @@ describe('isExcludedPath / isProjectDocPath — AC-3, AC-4, AC-5', () => {
 
 describe('containsSecretValue — UT-8, EC-27', () => {
   it('matches concrete secret shapes', () => {
-    expect(containsSecretValue('AWS key: AKIAABCDEFGHIJKLMNOP')).toBe(true);
+    expect(containsSecretValue('AWS key: ' + 'AKIA' + 'ABCDEFGHIJKLMNOP')).toBe(true);
     expect(containsSecretValue('key: AIza' + 'a'.repeat(35))).toBe(true);
     expect(containsSecretValue('token ' + 'ghp_' + 'a'.repeat(36))).toBe(true);
     expect(containsSecretValue('npm token ' + 'npm_' + 'a'.repeat(36))).toBe(true);
-    expect(containsSecretValue('slack ' + 'xoxb-1234567890')).toBe(true);
-    expect(containsSecretValue('-----BEGIN RSA PRIVATE KEY-----\nMIIB...\n-----END RSA PRIVATE KEY-----')).toBe(true);
+    expect(containsSecretValue('slack ' + 'xoxb-' + '1234567890')).toBe(true);
+    expect(
+      containsSecretValue('-----BEGIN RSA ' + 'PRIVATE KEY-----\nMIIB...\n-----END RSA PRIVATE KEY-----'),
+    ).toBe(true);
     expect(containsSecretValue('stripe ' + 'sk_live_' + 'a'.repeat(24))).toBe(true);
   });
 
