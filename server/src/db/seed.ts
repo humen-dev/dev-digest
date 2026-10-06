@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { parseSkillMarkdown } from '../modules/skills/domain/parse-markdown.js';
+import { renderProjectContext } from '@devdigest/reviewer-core';
 import {
   API_CONTRACT_REVIEWER_PROMPT,
   GENERAL_REVIEWER_PROMPT,
@@ -12,6 +13,20 @@ import {
   PERFORMANCE_REVIEWER_PROMPT,
   TEST_QUALITY_REVIEWER_PROMPT,
 } from './seed-prompts.js';
+
+/**
+ * SPEC-01 (U7) — demo text for the Security Reviewer's seeded run trace
+ * below: a single `specs/security-baseline.md` project-context doc, rendered
+ * through the SAME `renderProjectContext` the run executor uses, so the
+ * trace drawer shows a byte-real `## Project context` block instead of a
+ * hand-typed stand-in.
+ */
+const SECURITY_BASELINE_DOC = `# Security baseline
+
+- Never commit a real secret, API key, or token — rotate immediately if one lands in git history.
+- Every public route requires authentication unless explicitly documented as public.
+- Validate and sanitize every external input before it reaches a query, a shell command, or a template.
+`;
 
 /**
  * Bodies for the skills seeded onto the Test Quality Reviewer (L02 "Skills"
@@ -993,8 +1008,15 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       ])
       .returning({ id: t.agentRuns.id });
 
-    // One trace document (Security run) so the trace drawer shows the Cost tile.
+    // One trace document (Security run) so the trace drawer shows the Cost
+    // tile AND a populated `## Project context` section (SPEC-01, U7) — one
+    // included doc, `specs/security-baseline.md`, matching `specs_read` and
+    // `prompt_assembly.specs`.
     if (securityRun) {
+      const projectContextBlock = renderProjectContext([
+        { path: 'specs/security-baseline.md', text: SECURITY_BASELINE_DOC },
+      ]);
+      const securityBaselineTokens = Math.ceil(SECURITY_BASELINE_DOC.length / 4);
       await db.insert(t.runTraces).values({
         runId: securityRun.id,
         trace: {
@@ -1016,14 +1038,25 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
           },
           prompt_assembly: {
             system: SECURITY_REVIEWER_PROMPT,
+            specs: projectContextBlock,
             user: 'Review PR #482 — Add rate limiting to public API endpoints.',
           },
           tool_calls: [{ tool: 'review_file', args: 'all files', meta: 'single-pass', ms: 8200 }],
           raw_output: '{"verdict":"request_changes","score":38,"findings":[…]}',
           memory_pulled: [],
-          specs_read: [],
+          specs_read: ['specs/security-baseline.md'],
+          project_context: [
+            {
+              path: 'specs/security-baseline.md',
+              source: 'agent',
+              tokens: securityBaselineTokens,
+              status: 'included',
+              bucket: 'specs',
+            },
+          ],
           log: [
             { t: '00.10', kind: 'info', msg: 'Loading PR diff' },
+            { t: '00.15', kind: 'info', msg: 'Pulled 0 memory items, 1 project specs' },
             { t: '08.20', kind: 'result', msg: 'Citation grounding: 3/3 passed' },
           ],
         },
