@@ -12,6 +12,7 @@
     { "cmd": ["reload"], "label": "reload the page" },
     { "cmd": ["wait", "--load", "networkidle"], "label": "PR detail data settles after reload" },
     { "cmd": ["wait", "--text", "Adds a token-bucket rate limiter in front of the public webhook endpoint"], "label": "brief is reopened from storage after reload" },
+    { "cmd": ["scrollintoview", "ol button"], "label": "scroll the Review focus list into view (the page scrolls inside <main>; clicks off-viewport are lost)" },
     { "cmd": ["find", "text", "src/config.ts:12", "click"], "label": "click the src/config.ts:12 focus item" },
     { "cmd": ["wait", "--url", "tab=diff"], "label": "Files changed tab is active in the URL" },
     { "cmd": ["wait", "--url", "file=src%2Fconfig.ts"], "label": "the focused file is carried in the URL" },
