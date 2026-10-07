@@ -97,6 +97,30 @@
       "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23). SPEC-01 Project Context added contracts/project-context.ts and its index.ts export byte-identically in the server/ and client/ copies (verified by plan-verifier U0 and architecture-reviewer, 2026-10-06; plan docs/plans/project-context.md U0, §8).",
       "addedBy": "mgume",
       "addedAt": "2026-10-06"
+    },
+    {
+      "key": "DET-003|client/src/vendor/shared/contracts/knowledge.ts|vendored shared contract edited in a copy",
+      "reason": "SPEC-03 onboarding-tour contract (plan Wave 0): no upstream @devdigest/shared package; server and client copies edited identically and byte-identical (verified by plan-verifier and architecture-reviewer)",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-07"
+    },
+    {
+      "key": "DET-003|client/src/vendor/shared/contracts/onboarding-tour.ts|vendored shared contract edited in a copy",
+      "reason": "SPEC-03 onboarding-tour contract (plan Wave 0): no upstream @devdigest/shared package; server and client copies edited identically and byte-identical (verified by plan-verifier and architecture-reviewer)",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-07"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/contracts/knowledge.ts|vendored shared contract edited in a copy",
+      "reason": "SPEC-03 onboarding-tour contract (plan Wave 0): no upstream @devdigest/shared package; server and client copies edited identically and byte-identical (verified by plan-verifier and architecture-reviewer)",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-07"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/contracts/onboarding-tour.ts|vendored shared contract edited in a copy",
+      "reason": "SPEC-03 onboarding-tour contract (plan Wave 0): no upstream @devdigest/shared package; server and client copies edited identically and byte-identical (verified by plan-verifier and architecture-reviewer)",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-07"
     }
   ]
 }

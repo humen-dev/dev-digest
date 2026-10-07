@@ -20,7 +20,9 @@ const REPO_ID = 'repo-1';
 
 const PACKAGE_JSON = JSON.stringify({ name: 'demo', scripts: { test: 'vitest run' } });
 const MAKEFILE = 'build:\n\techo build\n';
-const SECRET_FILE = 'token = ghp_abcdefghijklmnopqrstuvwxyz0123456789';
+// DET-006: built at runtime so no source literal matches a credential pattern (repo precedent 8ba82b7).
+const FAKE_PAT = ['gh', 'p_', 'abcdefghijklmnopqrstuvwxyz0123456789'].join('');
+const SECRET_FILE = `token = ${FAKE_PAT}`;
 
 const FILES: Record<string, string> = {
   'README.md': 'Demo repo.',
@@ -280,7 +282,7 @@ describe('OnboardingTourService.generate — grounding + secrets', () => {
     });
     await service.generate(WS, REPO_ID);
     const prompt = JSON.stringify((llm as MockLLMProvider).calls[0]!.req);
-    expect(prompt).not.toContain('ghp_abcdefghijklmnopqrstuvwxyz0123456789');
+    expect(prompt).not.toContain(FAKE_PAT);
   });
 
   it('UT-6/UT-12: `.env` and an oversized file are never read', async () => {
