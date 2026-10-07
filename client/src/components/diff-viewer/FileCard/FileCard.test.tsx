@@ -1,12 +1,15 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, screen, cleanup, act } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import shellMessages from "../../../../messages/en/shell.json";
 import type { PrFile } from "@/lib/types";
 import type { DiffFindingOverlay } from "../findings";
 import { DiffViewer } from "../DiffViewer";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 const PATCH = "@@ -1,2 +1,3 @@\n const a = 1;\n-const b = 2;\n+const b = 3;\n+const c = 4;";
 // Same shape, offset so no gutter line number is "1" — avoids colliding with
@@ -22,6 +25,37 @@ function renderFiles(files: PrFile[], findings?: DiffFindingOverlay) {
     </NextIntlClientProvider>
   );
 }
+
+describe("FileCard deep-link target", () => {
+  it("expands a large card for the target file, highlights the line, and clears after 1.7 s", () => {
+    vi.useFakeTimers();
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const files: PrFile[] = [{ path: "big.ts", additions: 500, deletions: 0, patch: PATCH }];
+    render(
+      <NextIntlClientProvider locale="en" messages={{ shell: shellMessages }}>
+        <DiffViewer files={files} target={{ file: "big.ts", line: 2 }} />
+      </NextIntlClientProvider>
+    );
+    expect(screen.getByText("const b = 3;")).toBeInTheDocument();
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(document.querySelector("[data-target-highlight]")).not.toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(1700);
+    });
+    expect(document.querySelector("[data-target-highlight]")).toBeNull();
+  });
+
+  it("keeps a large card collapsed when the target names another file", () => {
+    const files: PrFile[] = [{ path: "big.ts", additions: 500, deletions: 0, patch: PATCH }];
+    render(
+      <NextIntlClientProvider locale="en" messages={{ shell: shellMessages }}>
+        <DiffViewer files={files} target={{ file: "other.ts", line: 2 }} />
+      </NextIntlClientProvider>
+    );
+    expect(screen.queryByText("const b = 3;")).not.toBeInTheDocument();
+  });
+});
 
 describe("FileCard findings overlay", () => {
   it("shows a dot, the blocker label and the card slot for a marker anchored to a rendered line", () => {

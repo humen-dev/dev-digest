@@ -22,6 +22,7 @@ import { intentKey } from "../../../../../lib/hooks/intent";
 import { useActiveRepo, useRepoNotFound } from "../../../../../lib/repo-context";
 import { ApiError } from "../../../../../lib/api";
 import { githubPrUrl } from "../../../../../lib/github-urls";
+import type { DiffTarget } from "@/lib/pr-diff-target";
 import type { FindingRecord } from "@devdigest/shared";
 
 export default function PRDetailPage() {
@@ -67,6 +68,12 @@ export default function PRDetailPage() {
     router.replace(`/repos/${repoId}/pulls/${number}${sp.toString() ? `?${sp.toString()}` : ""}`);
   };
   const setTab = (t: string) => setParam("tab", t);
+  // Brief link → Files changed at file/line. A real navigation (push), so Back
+  // returns to the Overview the reviewer came from; setTab stays replace.
+  const openDiffTarget = (target: DiffTarget) => {
+    const line = target.line != null ? `&line=${target.line}` : "";
+    router.push(`/repos/${repoId}/pulls/${number}?tab=diff&file=${encodeURIComponent(target.file)}${line}`);
+  };
 
   // Reviews come newest-first; each is its own run (grouped into accordions).
   const runs = reviews ?? [];
@@ -142,6 +149,8 @@ export default function PRDetailPage() {
             repoId={repoId}
             repoFullName={repoFullName}
             headSha={pr.head_sha}
+            changedPaths={pr.files.map((f) => f.path)}
+            onOpenDiffTarget={openDiffTarget}
           />
         )}
 
@@ -172,7 +181,15 @@ export default function PRDetailPage() {
           />
         )}
 
-        {tab === "diff" && <DiffTab prId={prId} pr={pr} repoFullName={repoFullName} />}
+        {tab === "diff" && (
+          <DiffTab
+            prId={prId}
+            pr={pr}
+            repoFullName={repoFullName}
+            targetFile={search.get("file")}
+            targetLine={search.get("line")}
+          />
+        )}
       </div>
 
       {prId && traceRunId && (

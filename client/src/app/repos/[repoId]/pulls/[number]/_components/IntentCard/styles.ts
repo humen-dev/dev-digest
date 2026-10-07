@@ -88,6 +88,11 @@ export const s = {
     fontSize: 12.5,
     color: "var(--text-muted)",
   } satisfies CSSProperties,
+  riskSlot: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTop: "1px solid var(--border)",
+  } satisfies CSSProperties,
   footerSpacer: { flex: 1 } satisfies CSSProperties,
   alert: {
     display: "flex",

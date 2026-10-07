@@ -7,6 +7,7 @@ import React from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@devdigest/ui";
 import type { PrFile } from "@/lib/types";
+import type { DiffTarget } from "@/lib/pr-diff-target";
 import { AUTO_EXPAND_MAX_LINES } from "../constants";
 import { parsePatch, type Line } from "../helpers";
 import {
@@ -37,16 +38,40 @@ export function FileCard({
   file,
   commenting,
   findings,
+  target,
 }: {
   file: PrFile;
   commenting?: DiffCommentApi;
   findings?: DiffFindingOverlay;
+  /** Deep-link target (SPEC-04); only acted on when it names this file. */
+  target?: DiffTarget | null;
 }) {
   const t = useTranslations("shell");
+  const tBrief = useTranslations("brief");
+  const isTargetFile = target?.file === file.path;
+  const targetLine = isTargetFile ? (target?.line ?? null) : null;
   const [open, setOpen] = React.useState(
-    (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES
+    isTargetFile || (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES
   );
   const lines = React.useMemo(() => parsePatch(file.patch), [file.patch]);
+  const headerRef = React.useRef<HTMLDivElement>(null);
+
+  // Index of the rendered new-side line the target points at (-1: not rendered).
+  const targetIndex = React.useMemo(
+    () =>
+      targetLine == null
+        ? -1
+        : lines.findIndex((ln) => (ln.kind === "add" || ln.kind === "ctx") && ln.newNo === targetLine),
+    [lines, targetLine],
+  );
+  const lineMissing = targetLine != null && targetIndex < 0;
+
+  React.useEffect(() => {
+    if (!isTargetFile) return;
+    setOpen(true);
+    // A rendered target line scrolls itself (CodeLine); otherwise land on the header.
+    if (targetIndex < 0) headerRef.current?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+  }, [isTargetFile, targetLine, targetIndex]);
 
   // Group this file's comments into threads, then split into ones we can anchor
   // to a rendered line vs. "outdated" (GitHub dropped the line / it's not here).
@@ -79,7 +104,11 @@ export function FileCard({
 
   return (
     <div style={s.fileCard}>
-      <div onClick={() => setOpen((o) => !o)} style={s.fileHeader}>
+      <div
+        ref={headerRef}
+        onClick={() => setOpen((o) => !o)}
+        style={isTargetFile ? { ...s.fileHeader, ...s.fileCardTarget } : s.fileHeader}
+      >
         <Icon.ChevronRight size={13} style={chevronFor(open)} />
         <Icon.FileText size={14} style={s.fileIcon} />
         <span className="mono" style={s.filePath}>
@@ -106,6 +135,11 @@ export function FileCard({
           </span>
         )}
       </div>
+      {lineMissing && (
+        <div role="status" style={s.targetNotice}>
+          {tBrief("nav.lineNotInDiff", { line: targetLine })}
+        </div>
+      )}
       {open && (
         <div style={s.fileBody}>
           {lines.length === 0 ? (
@@ -120,6 +154,7 @@ export function FileCard({
                 commenting={commenting}
                 markers={ln.newNo != null ? findingsByLine.get(ln.newNo) : undefined}
                 showFindingCards={showFindingCards}
+                isTarget={i === targetIndex}
               />
             ))
           )}

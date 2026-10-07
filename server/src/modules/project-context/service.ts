@@ -5,6 +5,7 @@ import type {
   ProjectDocument,
   ProjectDocumentContent,
   ProjectDocumentList,
+  ProjectDocStatus,
   ProjectDocumentUsage,
 } from '@devdigest/shared';
 import { bucketOf, groupByBucket } from '@devdigest/reviewer-core';
@@ -13,7 +14,7 @@ import { isProjectDocPath, isValidDocPathSyntax } from './domain/paths.js';
 import { containsSecretValue } from './domain/secrets.js';
 import { buildEffectiveList } from './domain/effective-list.js';
 import { ESTIMATED_TOKENS_BYTES_PER_TOKEN, MAX_LISTED_DOCS } from './constants.js';
-import type { ProjectContextRepository, ProjectDocsFs, TokenCounter } from './ports.js';
+import type { BriefDocReadResult, ProjectContextRepository, ProjectDocsFs, TokenCounter } from './ports.js';
 
 /**
  * Service surface consumed by the run executor (U7, §3.4). `entries` is the
@@ -46,6 +47,12 @@ function estimateTokens(text: string): number {
  */
 function isUsableDocPath(path: string, excludedDirs: readonly string[]): boolean {
   return isValidDocPathSyntax(path) && isProjectDocPath(path, excludedDirs);
+}
+
+/** Absolute path (POSIX root, drive letter, backslash root) or any `..` segment — never read. */
+function isUnsafeBriefPath(path: string): boolean {
+  if (path.startsWith('/') || path.startsWith('\\') || /^[a-zA-Z]:/.test(path)) return true;
+  return path.split(/[\\/]/).some((seg) => seg === '..');
 }
 
 /**
@@ -221,6 +228,74 @@ export class ProjectContextService {
       .map((e) => ({ path: e.path, text: textByPath.get(e.path)! }));
 
     return { cloned: clonePath != null, entries: grouped, docs };
+  }
+
+  // ---- PR Brief (SPEC-04) ---------------------------------------------------
+
+  /**
+   * Union of the effective attached paths of every ENABLED agent in the
+   * workspace, deduped, first occurrence wins (agent order, then each agent's
+   * effective-list order).
+   */
+  async workspaceAttachedPaths(workspaceId: string): Promise<string[]> {
+    const agentIds = await this.deps.repo.listEnabledAgentIds(workspaceId);
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const agentId of agentIds) {
+      const agentPaths = await this.deps.repo.getAgentDocs(agentId);
+      const skills = await this.deps.repo.linkedSkillDocs(agentId);
+      for (const { path } of buildEffectiveList(agentPaths, skills)) {
+        if (seen.has(path)) continue;
+        seen.add(path);
+        out.push(path);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Reads the given repo-relative docs for the brief prompt. Same status
+   * logic as `resolveEffective`, plus an up-front unsafe-path check (absolute
+   * path or `..` segment → `skipped_unsafe_path`, never read). Input order is
+   * preserved; document TEXT is never logged (NFR-4).
+   */
+  async readDocsForBrief(clonePath: string | null, paths: string[]): Promise<BriefDocReadResult[]> {
+    const out: BriefDocReadResult[] = [];
+    for (const path of paths) {
+      const skipped = (status: ProjectDocStatus): BriefDocReadResult => ({ path, status, text: null, tokens: null });
+
+      if (isUnsafeBriefPath(path)) {
+        out.push(skipped('skipped_unsafe_path'));
+        continue;
+      }
+      if (!clonePath) {
+        out.push(skipped('skipped_not_cloned'));
+        continue;
+      }
+      if (!isUsableDocPath(path, this.deps.excludedDirs)) {
+        out.push(skipped('skipped_missing'));
+        continue;
+      }
+      const result = await this.deps.fs.read(clonePath, path);
+      if (result.status !== 'ok') {
+        out.push(
+          skipped(
+            result.status === 'unsafe_path'
+              ? 'skipped_unsafe_path'
+              : result.status === 'unreadable'
+                ? 'skipped_unreadable'
+                : 'skipped_missing',
+          ),
+        );
+        continue;
+      }
+      if (containsSecretValue(result.text)) {
+        out.push(skipped('skipped_secret'));
+        continue;
+      }
+      out.push({ path, status: 'included', text: result.text, tokens: this.deps.tokens.count(result.text) });
+    }
+    return out;
   }
 
   // ---- shared guards --------------------------------------------------------

@@ -4,6 +4,7 @@
  * and never reaches into infrastructure (see the onion-architecture note in
  * `server/AGENTS.md`). The fs adapter lives in `src/adapters/project-docs/`.
  */
+import type { ProjectDocStatus } from '@devdigest/shared';
 
 export interface WalkedDoc { path: string /* POSIX, repo-relative */; sizeBytes: number }
 export type DocReadResult = { status: 'ok'; text: string } | { status: 'missing' | 'unreadable' | 'unsafe_path' };
@@ -18,7 +19,16 @@ export interface ProjectDocsFs {
 }
 export interface DocOwnerRef { id: string; name: string }
 export interface LinkedSkillDocs { skillName: string; enabled: boolean; body: string; paths: string[] }
+/** One document read for the PR Brief (SPEC-04); structurally the brief module's `BriefDocRead`. */
+export interface BriefDocReadResult {
+  path: string;
+  status: ProjectDocStatus;
+  text: string | null;
+  tokens: number | null;
+}
 export interface ProjectContextRepository {
+  /** Ids of the workspace's agents with `enabled = true`, in a stable order (created_at, id). */
+  listEnabledAgentIds(workspaceId: string): Promise<string[]>;
   getRepoClone(workspaceId: string, repoId: string): Promise<{ id: string; clonePath: string | null } | null>;
   agentExists(workspaceId: string, agentId: string): Promise<boolean>;
   skillExists(workspaceId: string, skillId: string): Promise<boolean>;
