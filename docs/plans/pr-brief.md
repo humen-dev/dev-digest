@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | draft |
+| Status | approved |
 | Goal | On a PR's Overview tab a reviewer generates (or reopens for free) a grounded brief — summary, Risk areas, Review focus — and one click on a focus item opens Files changed at that file/line (SPEC-04). |
 | Requirements source | [`specs/2026-10-07-pr-brief.md`](../../specs/2026-10-07-pr-brief.md) (SPEC-04, approved 2026-10-07) — input only, never edited here |
 | Execution mode | multi-agent (parallel waves) — chosen by the user |
@@ -468,7 +468,7 @@ export interface BriefDeps {
 | Kind | ui (→ `implementer-ui`) |
 | Wave | 1 |
 | Depends on | Wave 0 |
-| Owns (create/modify) | `.../pulls/[number]/_components/RiskAreas/**`, `.../_components/ReviewFocus/**` (component, `helpers.ts`, `constants.ts`, `styles.ts`, `index.ts`, tests) |
+| Owns (create/modify) | `client/src/app/repos/[repoId]/pulls/[number]/_components/RiskAreas/**`, `client/src/app/repos/[repoId]/pulls/[number]/_components/ReviewFocus/**` (component, `helpers.ts`, `constants.ts`, `styles.ts`, `index.ts`, tests) |
 | Must not touch | U4 / U6 / U8 files, messages |
 | Consumes | §3.1 `Risk`, `ReviewFocusItem`; §3.5 `DiffTarget`; `notify` |
 | Produces | `<RiskAreas risks changedPaths onNavigate(target: DiffTarget) variant="embedded"\|"card" />`, `<ReviewFocus items onNavigate />` |
@@ -503,7 +503,7 @@ export interface BriefDeps {
 | Kind | ui (→ `implementer-ui`) |
 | Wave | 1 |
 | Depends on | Wave 0 |
-| Owns (create/modify) | `.../_components/DiffTab/{DiffTab.tsx,helpers.ts,helpers.test.ts,DiffTab.test.tsx,constants.ts}`; `.../DiffTab/_components/RoleGroup/RoleGroup.tsx`; `client/src/components/diff-viewer/{DiffViewer/DiffViewer.tsx,FileCard/FileCard.tsx,FileCard/FileCard.test.tsx,CodeLine/CodeLine.tsx,styles.ts,constants.ts}` |
+| Owns (create/modify) | `client/src/app/repos/[repoId]/pulls/[number]/_components/DiffTab/{DiffTab.tsx,helpers.ts,helpers.test.ts,DiffTab.test.tsx,constants.ts}`; `client/src/app/repos/[repoId]/pulls/[number]/_components/DiffTab/_components/RoleGroup/RoleGroup.tsx`; `client/src/components/diff-viewer/{DiffViewer/DiffViewer.tsx,FileCard/FileCard.tsx,FileCard/FileCard.test.tsx,CodeLine/CodeLine.tsx,styles.ts,constants.ts}` |
 | Must not touch | `page.tsx`, OverviewTab, messages |
 | Consumes | §3.5 `DiffTarget`, `nav.*` keys |
 | Produces | `DiffTab` props `targetFile?: string \| null; targetLine?: string \| null` (raw URL values); `parseDiffTarget(file, line, changedPaths): { target: DiffTarget \| null; fileNotInDiff: boolean }` |
@@ -604,7 +604,7 @@ export interface BriefDeps {
 | Kind | ui (→ `implementer-ui`) |
 | Wave | 2 |
 | Depends on | U4, U5, U6 |
-| Owns (create/modify) | `.../_components/OverviewTab/{OverviewTab.tsx,styles.ts,OverviewTab.test.tsx}`; `.../_components/IntentCard/{IntentCard.tsx,styles.ts}`; `.../pulls/[number]/page.tsx` |
+| Owns (create/modify) | `client/src/app/repos/[repoId]/pulls/[number]/_components/OverviewTab/{OverviewTab.tsx,styles.ts,OverviewTab.test.tsx}`; `client/src/app/repos/[repoId]/pulls/[number]/_components/IntentCard/{IntentCard.tsx,styles.ts}`; `client/src/app/repos/[repoId]/pulls/[number]/page.tsx` |
 | Must not touch | U4/U5/U6 owned files, `VerdictBanner/**`, messages |
 | Consumes | U4 hooks + `PrBriefSection`; U5 `RiskAreas`, `ReviewFocus`; U6 `DiffTab` target props; `usePrIntent` |
 | Produces | final Overview layout; `?tab=diff&file=&line=` navigation |
