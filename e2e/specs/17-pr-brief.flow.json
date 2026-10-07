@@ -8,7 +8,7 @@
     { "cmd": ["wait", "--url", "/pulls/482"], "label": "navigate to the PR detail route" },
     { "cmd": ["wait", "--load", "networkidle"], "label": "PR detail data settles" },
     { "cmd": ["wait", "--text", "Adds a token-bucket rate limiter in front of the public webhook endpoint"], "label": "seeded brief summary is visible without generating" },
-    { "cmd": ["wait", "--text", "Review focus — read these first"], "label": "review focus section is visible" },
+    { "cmd": ["wait", "--text", "src/config.ts:12"], "label": "review focus lists the seeded src/config.ts:12 item (the block title is CSS-uppercased, so wait on an item)" },
     { "cmd": ["reload"], "label": "reload the page" },
     { "cmd": ["wait", "--load", "networkidle"], "label": "PR detail data settles after reload" },
     { "cmd": ["wait", "--text", "Adds a token-bucket rate limiter in front of the public webhook endpoint"], "label": "brief is reopened from storage after reload" },
