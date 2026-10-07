@@ -112,7 +112,11 @@ The unit is already built and committed; you get findings from `plan-verifier`
 Stop instead of working around it when: an input is missing; you need a file
 outside your *Owns* row; §3 contracts are wrong or insufficient; something your
 unit *Consumes* from an earlier wave does not exist; a skill cannot be followed
-without breaking ownership or contracts. Report what you did so far, and put the
+without breaking ownership or contracts; **a fix or build step forces you to pick
+a number the plan and spec do not give** (a timeout or retry budget, a limit, a
+split of a deadline) and the choice changes user-visible behaviour — return the
+options with their trade-off instead of choosing (`BLOCKED: needs a decision —
+<option A: effect> / <option B: effect>`). Report what you did so far, and put the
 blocker first under *Out of scope / follow-ups* as `BLOCKED: <what, which file,
 what you need>`.
 
@@ -120,7 +124,12 @@ what you need>`.
 
 Plans are 20–90 KB; reading one whole costs more than your unit. So:
 
-1. If the orchestrator pasted your unit block and §3 contracts, use them and
+**Never `Read` the plan file without `offset`/`limit`.** A whole-plan read in
+every agent of a wave is the single biggest duplicated cost of an `/impl` run.
+
+1. If the orchestrator pasted your unit block and §3 contracts — or gave you the
+   path of a unit file (e.g. `.claude/.impl/<slug>/unit-U3.txt`) — that is your
+   copy of the plan: read it, then read only the §3 line range it names, and
    skip to 3.
 2. Otherwise `Grep -n '^#{1,3} ' <plan>` for the heading map, then `Read` with
    `offset`/`limit` only: the header table (first ~15 lines, it has *Execution

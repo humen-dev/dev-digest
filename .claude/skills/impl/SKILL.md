@@ -105,7 +105,11 @@ For each wave, in order:
    units, compact report). Save `w<k>-verify.md`.
 5. **FAIL / INCOMPLETE** → group the not-MET rows by unit, launch that unit's
    agent with `mode: fix` and the rows as `findings` (ID, file:line, quoted
-   requirement), all units in parallel. Commit `fix(<slug>): wave <k> verify round <r>`,
+   requirement), all units in parallel. If a fix needs a change only you may make
+   (messages, vendored contract, migration — Wave-0 / orchestrator files), make it
+   and **commit it on its own first** (`fix(<slug>): wave <k> — orchestrator <what>`)
+   before launching the fix agents: mixed into their commit, the verifier reads it
+   as the unit crossing its *Must not touch* row and fails the round. Commit `fix(<slug>): wave <k> verify round <r>`,
    re-run `plan-verifier` with `previous: .claude/.impl/<slug>/w<k>-verify.md`.
    NOT VERIFIABLE rows that need Docker / a running stack are not a FAIL for this
    loop — collect them for Phase 5.
@@ -176,6 +180,10 @@ and ask (rule 6).
    then re-verify once more; still FAIL → ask.
 2. Plan §7 commands that need Docker or a running stack (`*.it.test.ts`,
    `./scripts/e2e.sh`, `pnpm db:migrate`): ask the user whether to run them now.
+   If e2e cannot run locally (on Windows the runner cannot spawn `agent-browser` —
+   `e2e/INSIGHTS.md`), say so and ask the user whether to push the branch so the
+   `e2e web` workflow runs in CI **before** `/pr-self-review` — pushing is the user's
+   call (rule 2), but finding a broken flow only after the PR costs another round.
 3. If the plan's Requirements source is a SPEC-NN spec: ask the user whether to
    mark it implemented now (same PR). On yes → `spec-creator` with
    `implemented SPEC-NN`, commit `docs(<slug>): SPEC-NN implemented`.
