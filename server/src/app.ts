@@ -91,9 +91,12 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await app.register(FastifySSEPlugin);
 
   // Global rate limit. Disabled under test so integration suites can hammer
-  // endpoints via inject(); per-route overrides live on the routes themselves.
+  // endpoints via inject(); per-route overrides live on the routes themselves
+  // (expensive LLM POSTs have their own tighter limits). A single PR detail page
+  // fires ~15 GETs on load, and every request of this local-first app shares one
+  // IP, so 120/min tripped after a handful of page loads (429 → "Couldn't load").
   if (config.nodeEnv !== 'test') {
-    await app.register(rateLimit, { max: 120, timeWindow: '1 minute' });
+    await app.register(rateLimit, { max: 1000, timeWindow: '1 minute' });
   }
 
   // Liveness check (no module, no DB, no rate limit).

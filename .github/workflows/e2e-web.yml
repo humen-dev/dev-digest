@@ -120,6 +120,16 @@ jobs:
           npm ci
           npm test
 
+      - name: Show API and web logs on failure
+        if: failure()
+        run: |
+          echo "::group::api.log (last 200 lines)"
+          tail -n 200 "$RUNNER_TEMP/api.log" || true
+          echo "::endgroup::"
+          echo "::group::web.log (last 100 lines)"
+          tail -n 100 "$RUNNER_TEMP/web.log" || true
+          echo "::endgroup::"
+
       - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
