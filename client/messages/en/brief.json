@@ -146,7 +146,8 @@
       "scope_touched": "{scope} — touched by this PR",
       "scope_not_touched": "{scope} — not touched by this PR"
     },
-    "loadError": "Couldn't load project documents."
+    "loadError": "Couldn't load project documents.",
+    "tokens": "{count} tok"
   },
   "nav": {
     "fileNotInDiff": "File not in this PR's diff",
