@@ -9,6 +9,7 @@ import { EXCLUDED_DIRS, MAX_FILE_SIZE } from '../src/modules/repo-intel/types.js
 import {
   DeferredLLMProvider,
   FakeTourGit,
+  HangingLLMProvider,
   InMemoryOnboardingRepo,
   fakeRepoIntel,
   type FakeRepoIntelOpts,
@@ -543,6 +544,108 @@ describe('OnboardingTourService — in-flight + timeout', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('M-1: a hung underlying call still frees the lock within the deadline — a retry does not 409', async () => {
+    vi.useFakeTimers();
+    try {
+      const llm = new HangingLLMProvider();
+      const { service } = build({ llmFactory: async () => llm, timeoutMs: 120_000 });
+
+      const first = service.generate(WS, REPO_ID);
+      const firstRejects = expect(first).rejects.toMatchObject({ code: 'generation_timeout', statusCode: 504 });
+      await vi.advanceTimersByTimeAsync(120_000);
+      await firstRejects;
+
+      // M-1 (revised): the underlying work is a single attempt (`maxRetries:
+      // 0`) bounded by what's left of the SAME deadline, so the `inFlight`
+      // lock frees within a small grace — not minutes later, as it did when
+      // the adapter's repair loop got the full budget per attempt.
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(service.isGenerating(REPO_ID)).toBe(false);
+
+      const second = service.generate(WS, REPO_ID);
+      const secondRejects = expect(second).rejects.not.toMatchObject({ code: 'generation_in_progress' });
+      await vi.advanceTimersByTimeAsync(120_000);
+      await secondRejects;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('M-1 (revised): the LLM call gets a single attempt with the whole remaining budget, not budget/3', async () => {
+    const llm = new MockLLMProvider('openai', { structuredBySchema: { OnboardingTourDraft: DRAFT } });
+    const { service } = build({ llm, timeoutMs: 120_000 });
+
+    await service.generate(WS, REPO_ID);
+
+    const req = (llm as MockLLMProvider).calls.find((c) => c.method === 'completeStructured')!.req as {
+      maxRetries?: number;
+      timeoutMs?: number;
+    };
+    expect(req.maxRetries).toBe(0); // no adapter repair — an invalid response fails normally (EC-10)
+    // ~120s, not a 3-way split (~40s) — the gather steps above take
+    // negligible real time, so this is close to the full budget.
+    expect(req.timeoutMs).toBeGreaterThan(100_000);
+    expect(req.timeoutMs).toBeLessThanOrEqual(120_000);
+  });
+
+  it('M-2: a 504 timeout is logged (it never was before)', async () => {
+    vi.useFakeTimers();
+    try {
+      const deferred = new DeferredLLMProvider();
+      const { service } = build({ llmFactory: async () => deferred, timeoutMs: 120_000 });
+      const { log, calls } = fakeLog();
+
+      const pending = service.generate(WS, REPO_ID, log);
+      const assertion = expect(pending).rejects.toMatchObject({ code: 'generation_timeout', statusCode: 504 });
+      await vi.advanceTimersByTimeAsync(120_000);
+      await assertion;
+
+      expect(calls.warn).toHaveLength(1);
+      const line = JSON.stringify(calls.warn[0]);
+      expect(line).toContain('"event":"onboarding.tour_failed"');
+      expect(line).toContain('"code":"generation_timeout"');
+      expect(line).toContain(`"repoId":"${REPO_ID}"`);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('M-2: a non-AppError failure is still logged, with code internal_error and the error message', async () => {
+    const onboarding = new InMemoryOnboardingRepo();
+    const { service } = build({
+      onboarding,
+      // A non-ConfigError, non-AppError failure deep inside the pipeline —
+      // today this is swallowed silently (M-2).
+      llmFactory: async () => {
+        throw new TypeError('boom: not an AppError');
+      },
+    });
+    const { log, calls } = fakeLog();
+
+    await expect(service.generate(WS, REPO_ID, log)).rejects.toThrow('boom: not an AppError');
+
+    expect(calls.warn).toHaveLength(1);
+    const line = JSON.stringify(calls.warn[0]);
+    expect(line).toContain('"event":"onboarding.tour_failed"');
+    expect(line).toContain('"code":"internal_error"');
+    expect(line).toContain('"message":"boom: not an AppError"');
+  });
+
+  it('M-2: attempts from the StructuredResult is included on both outcomes', async () => {
+    const llm = new MockLLMProvider('openai', { structuredBySchema: { OnboardingTourDraft: DRAFT } });
+    const { log: okLog, calls: okCalls } = fakeLog();
+    const { service: ok } = build({ llm });
+    await ok.generate(WS, REPO_ID, okLog);
+    expect((okCalls.info[0] as { attempts?: number }).attempts).toBe(1);
+
+    // A result that comes back but grounds to nothing still carries `attempts` (M-2).
+    const emptyLlm = new MockLLMProvider('openai', { structuredBySchema: { OnboardingTourDraft: EMPTY_DRAFT } });
+    const { log: failLog, calls: failCalls } = fakeLog();
+    const { service: fail } = build({ llm: emptyLlm });
+    await expect(fail.generate(WS, REPO_ID, failLog)).rejects.toMatchObject({ code: 'nothing_grounded' });
+    expect((failCalls.warn[0] as { attempts?: number }).attempts).toBe(1);
   });
 });
 

@@ -33,6 +33,29 @@ export const DRAFT_TEMPERATURE = 0.3;
 /** EC-12, NFR-3: generation wall-clock budget before a 504. */
 export const GENERATION_TIMEOUT_MS = 120_000;
 
+/**
+ * M-1 (revised): the `maxRetries` the service passes to the single
+ * `completeStructured` call. The adapter (src/adapters/llm/**, not owned
+ * here) would otherwise retry this many times on a schema-repair reprompt,
+ * each attempt wrapped in its own `timeoutMs` — so giving each attempt the
+ * full generation budget let the loop as a whole run up to
+ * `(maxRetries + 1) * timeoutMs`, several minutes for a hung/slow model,
+ * holding the `inFlight` lock the whole time (EC-12, NFR-3).
+ *
+ * Splitting the remaining budget across attempts was tried first and proved
+ * a worse regression: a real successful generation (single attempt) can
+ * take up to ~45s, well over a third of the 120s budget, so a 3-way split
+ * would time out *correct* single-attempt generations. Instead `maxRetries`
+ * is 0 — a single attempt gets the *whole* remaining budget as its
+ * `timeoutMs` (see `runGeneration`) — and adapter repair is simply not used;
+ * an invalid response fails normally (EC-10: error + Retry) rather than
+ * silently stacking attempts past the deadline.
+ */
+export const STRUCTURED_MAX_RETRIES = 0;
+
+/** A floor so a near-exhausted remaining budget still fails fast rather than with a ~0ms timeout. */
+export const MIN_STRUCTURED_TIMEOUT_MS = 1_000;
+
 const COMMAND_SOURCE_BASENAMES: ReadonlySet<string> = new Set([
   'package.json',
   'Makefile',

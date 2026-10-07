@@ -1,4 +1,4 @@
-import type { OnboardingTour, OnboardingTourState, RepoRef, TourIndexStatus } from '@devdigest/shared';
+import type { OnboardingTour, OnboardingTourState, RepoRef, StructuredResult, TourIndexStatus } from '@devdigest/shared';
 import { AppError, ConfigError, ExternalServiceError, NotFoundError } from '../../platform/errors.js';
 import { containsSecretValue } from '../_shared/secrets.js';
 import {
@@ -7,7 +7,9 @@ import {
   DRAFT_TEMPERATURE,
   isCommandSourcePath,
   MAX_EXCERPT_FILES,
+  MIN_STRUCTURED_TIMEOUT_MS,
   PROMPT_TOKEN_BUDGET,
+  STRUCTURED_MAX_RETRIES,
   TREE_RANK_POOL,
 } from './constants.js';
 import { groundTour, isEmptyTour, type GroundingContext } from './domain/grounding.js';
@@ -87,8 +89,12 @@ export class OnboardingTourService {
     }
     this.inFlight.add(repoId);
 
+    const started = this.now();
+    // M-1: the deadline the underlying work is bounded by too (see
+    // runGeneration's LLM-call budgeting) — not just this race's own timer.
+    const deadline = started + this.deps.timeoutMs;
     const state = { timedOut: false };
-    const work = this.runGeneration(workspaceId, repoId, repo, state, log).finally(() => {
+    const work = this.runGeneration(workspaceId, repoId, repo, started, deadline, state, log).finally(() => {
       this.inFlight.delete(repoId);
     });
 
@@ -96,6 +102,16 @@ export class OnboardingTourService {
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
         state.timedOut = true;
+        // M-2: this 504 was never logged before — the user saw nothing.
+        log?.warn(
+          {
+            event: 'onboarding.tour_failed',
+            repoId,
+            code: 'generation_timeout',
+            durationMs: Math.max(0, Math.round(this.now() - started)),
+          },
+          'onboarding tour generation failed',
+        );
         reject(new AppError('generation_timeout', 'Tour generation timed out.', 504));
       }, this.deps.timeoutMs);
     });
@@ -114,11 +130,15 @@ export class OnboardingTourService {
     workspaceId: string,
     repoId: string,
     repo: RepoBasics,
+    started: number,
+    deadline: number,
     state: { timedOut: boolean },
     log?: OpsLogger,
   ): Promise<OnboardingTour> {
-    const started = this.now();
     let tourCommit: string | null = null;
+    // Hoisted above the try so the catch below can still report it (M-2:
+    // "attempts" tells slow-model repair loops apart from a hard failure).
+    let result: StructuredResult<TourDraft> | undefined;
 
     try {
       if (!repo.clonePath) {
@@ -226,7 +246,15 @@ export class OnboardingTourService {
       );
       const messages = buildMessages(systemPrompt, input);
 
-      let result;
+      // M-1 (revised): a single attempt (`maxRetries: 0`) gets the WHOLE
+      // remaining budget as its `timeoutMs` — not a 1/(maxRetries+1) slice.
+      // A real successful generation can take up to ~45s in one attempt, so
+      // splitting the budget across adapter repair attempts (tried first)
+      // would time out correct single-attempt generations. No adapter
+      // repair means an invalid response fails normally (EC-10) instead of
+      // the repair loop silently stacking attempts past the 120s deadline
+      // (EC-12, NFR-3) and holding the `inFlight` lock for minutes.
+      const remainingMs = Math.max(MIN_STRUCTURED_TIMEOUT_MS, deadline - this.now());
       try {
         result = await llm.completeStructured({
           model: choice.model,
@@ -235,7 +263,8 @@ export class OnboardingTourService {
           messages,
           temperature: DRAFT_TEMPERATURE,
           maxTokens: DRAFT_MAX_TOKENS,
-          timeoutMs: this.deps.timeoutMs,
+          timeoutMs: remainingMs,
+          maxRetries: STRUCTURED_MAX_RETRIES,
         });
       } catch (err) {
         if (err instanceof AppError) throw err;
@@ -301,6 +330,7 @@ export class OnboardingTourService {
           durationMs: row.durationMs,
           counters: doc.counters,
           apiCostUsd: row.apiCostUsd,
+          attempts: result.attempts,
         },
         'onboarding tour generated',
       );
@@ -309,18 +339,25 @@ export class OnboardingTourService {
       if (!tour) throw new AppError('internal_error', 'Failed to build the generated tour.', 500);
       return tour;
     } catch (err) {
-      if (err instanceof AppError) {
-        log?.warn(
-          {
-            event: 'onboarding.tour_failed',
-            repoId,
-            commit: tourCommit,
-            code: err.code,
-            durationMs: Math.max(0, Math.round(this.now() - started)),
-          },
-          'onboarding tour generation failed',
-        );
-      }
+      // M-2: every failure gets a log line — not just AppErrors — with a code
+      // (or `internal_error` for an unexpected one) and the error's own
+      // message, never file text. `attempts` (from the StructuredResult) is
+      // included when the draft call already completed, so a failure after a
+      // slow repair loop can be told apart from one that never reached it.
+      const code = err instanceof AppError ? err.code : 'internal_error';
+      const message = err instanceof Error ? err.message : String(err);
+      log?.warn(
+        {
+          event: 'onboarding.tour_failed',
+          repoId,
+          commit: tourCommit,
+          code,
+          message,
+          durationMs: Math.max(0, Math.round(this.now() - started)),
+          attempts: result?.attempts,
+        },
+        'onboarding tour generation failed',
+      );
       throw err;
     }
   }

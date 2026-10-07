@@ -54,4 +54,13 @@ describe("TourNotices", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps the failure notice but shows a disabled 'Generating…' instead of Retry while a generation is still in flight — M-3", () => {
+    renderNotices({ errorMessage: "generation_timeout: timed out", regenerating: true });
+
+    expect(screen.getByText("generation_timeout: timed out")).toBeInTheDocument();
+    const btn = screen.getByRole("button", { name: "Generating…" });
+    expect(btn).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+  });
 });

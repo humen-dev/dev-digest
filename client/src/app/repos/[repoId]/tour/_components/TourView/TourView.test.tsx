@@ -97,14 +97,18 @@ const NEXT_TOUR: OnboardingTour = {
   architecture: { ...TOUR.architecture, overview: "New overview" },
 };
 
-function renderPage() {
-  return render(
+function page() {
+  return (
     <NextIntlClientProvider locale="en" messages={{ onboarding: messages }}>
       <ToastProvider>
         <TourView repoId="repo-1" />
       </ToastProvider>
-    </NextIntlClientProvider>,
+    </NextIntlClientProvider>
   );
+}
+
+function renderPage() {
+  return render(page());
 }
 
 beforeEach(() => {
@@ -193,6 +197,34 @@ describe("TourView — empty state and generation", () => {
     });
 
     expect(screen.getByText("New overview")).toBeInTheDocument();
+  });
+
+  it("shows a disabled 'Generating…' instead of the failure Retry when the GET still reports a generation in flight — M-3", async () => {
+    generateBehavior = "fail";
+    const { rerender } = renderPage();
+    fireEvent.click(screen.getByRole("button", { name: messages.generate.cta }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText("provider is down")).toBeInTheDocument();
+
+    // Simulate the hook's fix: on any POST error the GET is invalidated/refetched
+    // and comes back reporting the server-side run is still going.
+    tourState = { ...tourState!, generating: true };
+    rerender(page());
+
+    const generatingBtn = screen.getByRole("button", { name: messages.actions.generating });
+    expect(generatingBtn).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    // "Generate onboarding tour" is both the title and the enabled CTA's label
+    // (same copy) — assert no *enabled* button carries it, not that the text
+    // is gone (the title still reads the same).
+    expect(screen.queryByRole("button", { name: messages.generate.cta })).not.toBeInTheDocument();
+
+    // The server finished — the next poll flips `generating` back off.
+    tourState = { ...tourState, generating: false };
+    rerender(page());
+    expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
   });
 
   it("shows the in-progress notice on a 409 without touching the stored tour — EC-7, EC-8", async () => {

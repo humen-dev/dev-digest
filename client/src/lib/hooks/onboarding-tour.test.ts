@@ -135,4 +135,76 @@ describe("useGenerateTour", () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["onboarding-tour", "repo1"] });
   });
+
+  it("invalidates the GET on a non-409 error too, since a 504 timeout does not mean the server-side generation stopped — M-3", async () => {
+    vi.mocked(api.get).mockResolvedValue(STATE);
+    vi.mocked(api.post).mockRejectedValue(new ApiError("generation timed out", 504, "generation_timeout"));
+    const qc = makeClient();
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+    const wrapper = wrapperFor(qc);
+
+    const genHook = renderHook(() => useGenerateTour("repo1"), { wrapper });
+    await act(async () => {
+      try {
+        await genHook.result.current.mutateAsync();
+      } catch {
+        /* expected — asserted via the invalidation below */
+      }
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["onboarding-tour", "repo1"] });
+  });
+});
+
+describe("useOnboardingTour — polling while generating (M-3)", () => {
+  it("polls the GET while a generation is in flight and stops once the server reports it finished", async () => {
+    const generatingState: OnboardingTourState = { ...STATE, generating: true };
+    const idleState: OnboardingTourState = { ...STATE, tour: TOUR, generating: false };
+    vi.mocked(api.get)
+      .mockResolvedValueOnce(generatingState)
+      .mockResolvedValueOnce(generatingState)
+      .mockResolvedValueOnce(idleState);
+
+    // Fake timers from the start — `refetchInterval`'s setTimeout must be
+    // scheduled under the same fake clock we later advance, otherwise it is
+    // a real timer that `advanceTimersByTimeAsync` can never trigger. Asserting
+    // on the query cache (rather than the rendered hook result) sidesteps an
+    // unrelated fake-timer/React-scheduler render-lag artifact in this test
+    // harness — the cache is exactly what `useOnboardingTour` reads and what
+    // the real page re-renders from on a real clock.
+    const qc = makeClient();
+    const cache = () => qc.getQueryData<OnboardingTourState>(["onboarding-tour", "repo1"]);
+    vi.useFakeTimers();
+    try {
+      renderHook(() => useOnboardingTour("repo1"), { wrapper: wrapperFor(qc) });
+      // No real timers involved in the first fetch — just flush microtasks.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(api.get).toHaveBeenCalledTimes(1);
+      expect(cache()?.generating).toBe(true);
+
+      // Still generating after the first poll tick — keeps polling.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(4000);
+      });
+      expect(api.get).toHaveBeenCalledTimes(2);
+      expect(cache()?.generating).toBe(true);
+
+      // The server finished — the next poll reports generating:false and the
+      // interval stops (AC-32: the GET's flag decides, not the stale UI state).
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(4000);
+      });
+      expect(api.get).toHaveBeenCalledTimes(3);
+      expect(cache()?.generating).toBe(false);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10000);
+      });
+      expect(api.get).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

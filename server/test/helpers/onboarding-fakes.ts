@@ -158,3 +158,39 @@ export class DeferredLLMProvider implements LLMProvider {
     return (this.lastRequest?.messages as ChatMessage[] | undefined)?.map((m) => m.content).join('\n') ?? '';
   }
 }
+
+/**
+ * M-1: models the real adapter's shape (src/adapters/llm/openai.ts /
+ * anthropic.ts, not owned by this unit) WITHOUT importing it — the
+ * underlying call never resolves on its own ("hangs"), but each of the
+ * `maxRetries + 1` repair attempts is bounded by `timeoutMs`, exactly like
+ * the adapter's own `withRetry(withTimeout(...))` repair loop. So the
+ * promise rejects after `(maxRetries + 1) * timeoutMs` — the service's own
+ * budgeting of those two request fields (M-1 fix) is what keeps that total
+ * inside the generation deadline.
+ */
+export class HangingLLMProvider implements LLMProvider {
+  readonly id = 'openai' as const;
+  calls = 0;
+  lastRequest: StructuredRequest<unknown> | undefined;
+
+  async listModels(): Promise<ModelInfo[]> {
+    return [];
+  }
+  async complete(_req: CompletionRequest): Promise<CompletionResult> {
+    throw new Error('HangingLLMProvider.complete is not used by the onboarding tour');
+  }
+  async completeStructured<T>(req: StructuredRequest<T>): Promise<StructuredResult<T>> {
+    this.calls += 1;
+    this.lastRequest = req as StructuredRequest<unknown>;
+    const perAttemptMs = req.timeoutMs ?? 60_000;
+    const attempts = (req.maxRetries ?? 2) + 1;
+    await new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`simulated hang: timed out after ${perAttemptMs}ms × ${attempts} attempts`)), perAttemptMs * attempts);
+    });
+    throw new Error('unreachable');
+  }
+  async embed(): Promise<number[][]> {
+    return [];
+  }
+}

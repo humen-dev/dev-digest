@@ -2,14 +2,19 @@
    renders the state machine in strict priority order: loading skeleton
    (EC-25) → load error (EC-26) → a stored tour (header + notices +
    sections + TOC + footer) → not cloned (EC-1) → not index-ready (EC-35) →
-   the AC-29 empty state, or EC-11's failure variant of it. Gating the error
-   branch on `!state` rather than an `isError` flag is what keeps a stored
-   tour visible through a failed background refetch (EC-27): TanStack Query
-   keeps the last successful `data` on a background error, it only flips
-   `isError` — see `useOnboardingTour`'s EC-27 test in
-   `src/lib/hooks/onboarding-tour.test.ts` and the client INSIGHTS.md entry
-   on the same gotcha. Presentational sections are U4's TourSections; this
-   unit owns the orchestration around them. */
+   a generation in flight (AC-32) → the AC-29 empty state, or EC-11's
+   failure variant of it. Gating the error branch on `!state` rather than an
+   `isError` flag is what keeps a stored tour visible through a failed
+   background refetch (EC-27): TanStack Query keeps the last successful
+   `data` on a background error, it only flips `isError` — see
+   `useOnboardingTour`'s EC-27 test in `src/lib/hooks/onboarding-tour.test.ts`
+   and the client INSIGHTS.md entry on the same gotcha. The `generating`
+   branch sits ahead of the EC-11 failure branch for the same reason (M-3): a
+   generation error reported to the browser (e.g. a 504 timeout) does not
+   mean the server-side run stopped, so once the GET's `generating` flag
+   says it is still running, that — not the stale mutation error — decides
+   what the no-tour-yet state shows. Presentational sections are U4's
+   TourSections; this unit owns the orchestration around them. */
 "use client";
 
 import { useTranslations } from "next-intl";
@@ -141,6 +146,14 @@ export function TourView({ repoId }: { repoId: string }) {
             cta={t("actions.reanalyze")}
             onCta={() => resync.mutate()}
             ctaLoading={resync.isPending}
+          />
+        ) : generating ? (
+          <EmptyState
+            icon="Workflow"
+            title={t("generate.title")}
+            body={t("generate.body")}
+            cta={t("actions.generating")}
+            ctaLoading
           />
         ) : generateErrorMessage ? (
           <ErrorState body={generateErrorMessage} onRetry={() => generate.mutate()} />
