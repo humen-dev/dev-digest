@@ -346,18 +346,24 @@ export class OnboardingTourService {
       // slow repair loop can be told apart from one that never reached it.
       const code = err instanceof AppError ? err.code : 'internal_error';
       const message = err instanceof Error ? err.message : String(err);
-      log?.warn(
-        {
-          event: 'onboarding.tour_failed',
-          repoId,
-          commit: tourCommit,
-          code,
-          message,
-          durationMs: Math.max(0, Math.round(this.now() - started)),
-          attempts: result?.attempts,
-        },
-        'onboarding tour generation failed',
-      );
+      const fields = {
+        repoId,
+        commit: tourCommit,
+        code,
+        message,
+        durationMs: Math.max(0, Math.round(this.now() - started)),
+        attempts: result?.attempts,
+      };
+      // B-1: the race's own timeout callback already logged ONE
+      // `tour_failed` line for this generation (`state.timedOut`). The
+      // abandoned work settling afterwards with its own rejection is not a
+      // second failed outcome of the SAME request — log it as an info line
+      // for diagnosis instead of a second `tour_failed` warn.
+      if (state.timedOut) {
+        log?.info({ event: 'onboarding.tour_late_settled', ...fields }, 'onboarding tour settled after its own timeout');
+      } else {
+        log?.warn({ event: 'onboarding.tour_failed', ...fields }, 'onboarding tour generation failed');
+      }
       throw err;
     }
   }

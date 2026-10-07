@@ -612,6 +612,36 @@ describe('OnboardingTourService — in-flight + timeout', () => {
     }
   });
 
+  it('B-1: the abandoned work rejecting after its own 504 logs exactly one tour_failed', async () => {
+    vi.useFakeTimers();
+    try {
+      const deferred = new DeferredLLMProvider();
+      const { service } = build({ llmFactory: async () => deferred, timeoutMs: 120_000 });
+      const { log, calls } = fakeLog();
+
+      const pending = service.generate(WS, REPO_ID, log);
+      const assertion = expect(pending).rejects.toMatchObject({ code: 'generation_timeout', statusCode: 504 });
+      await vi.advanceTimersByTimeAsync(120_000);
+      await assertion;
+
+      // The underlying work (the race's loser) now rejects on its own —
+      // this must NOT add a second `tour_failed` line for the same request.
+      deferred.rejectWith(new Error('late provider failure'));
+      await vi.runOnlyPendingTimersAsync();
+
+      expect(calls.warn).toHaveLength(1); // B-1: still exactly one, from the timeout itself
+      expect(calls.warn.some((c) => JSON.stringify(c).includes('"event":"onboarding.tour_failed"'))).toBe(true);
+
+      // The late rejection is still visible, just not as a second failure.
+      expect(calls.info).toHaveLength(1);
+      const lateLine = JSON.stringify(calls.info[0]);
+      expect(lateLine).toContain('"event":"onboarding.tour_late_settled"');
+      expect(lateLine).toContain('late provider failure');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('M-2: a non-AppError failure is still logged, with code internal_error and the error message', async () => {
     const onboarding = new InMemoryOnboardingRepo();
     const { service } = build({
