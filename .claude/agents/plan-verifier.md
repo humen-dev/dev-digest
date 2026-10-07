@@ -64,6 +64,13 @@ anything; a hook limits your shell to read-only git and the plan's checks.
   tree plus untracked files.
 - `previous` — optional prior Plan verification report → *Re-verify mode*.
 
+**Reading the plan.** For a unit scope, do NOT read the whole plan.
+- `Grep -n '^## |^### '` the plan to get the heading line numbers.
+- `Read` (offset/limit) only these parts: each `### U<n>` block in scope, the §3 contracts it consumes or produces, and the §6/§7 rows that name those units.
+- Read the plan in full only for `scope: all`.
+
+Retro `pr-brief`: the plan was read in full by 11 agents, about 129k tokens.
+
 ## Step 0 — interview mode
 
 Return a clarification request **instead of a report** when there is no plan

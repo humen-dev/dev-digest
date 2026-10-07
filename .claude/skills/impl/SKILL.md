@@ -35,6 +35,12 @@ Tool: `node .claude/skills/impl/scripts/plan-tools.mjs` (below: `PT`) —
    `.claude/.impl/<slug>/<step>.md` (e.g. `w1-verify.md`, `r2-arch.md`) and pass
    **paths** to later agents (`previous`), not pasted reports. In chat keep one
    line per agent: verdict + counts.
+5a. **Never `cd` in your Bash.** Subagents inherit the orchestrator's cwd, and
+   `bash-scope-guard` lets an implementer run only `node scripts/agent-check.mjs …`
+   / `cd <package>` from the repo root. One `cd .claude/.impl/<slug>` left every
+   Wave-1 implementer unable to run its checks (retro `pr-brief`: 68 hook denials,
+   6 extra resumes). Use absolute paths, `git -C <root>`, `pnpm --dir <pkg>`, and
+   run `node scripts/agent-check.mjs` from the root.
 6. **Budgets.** ≤ 2 fix rounds per wave, ≤ 2 completeness rounds, ≤ 3 review
    rounds. Over budget → stop and ask the user (AskUserQuestion: accept as is /
    I fix it manually / one more round).
@@ -90,6 +96,7 @@ For each wave, in order:
    plan: docs/plans/<slug>.md
    unit: U<n>
    mode: build
+   cwd: <absolute repo root> — run checks from here (`node scripts/agent-check.mjs <pkg> <files>`)
    Unit block (from plan-tools — your copy of the plan; read §3 only by the line range given):
    <output of PT unit <plan> U<n>>
    [Orchestrator notes (subordinate to the plan): <notes>]

@@ -20,6 +20,12 @@ Runner details: [`../docs/hermetic-stack.md`](../docs/hermetic-stack.md).
 ## Assertion model
 - There are no separate "expect" calls: `wait --text` / `wait --url` **are** the
   assertions. If the text/URL never appears, the step times out and the flow fails.
+- `wait --text` matches the **rendered** text, so copy styled with CSS
+  `text-transform: uppercase` never matches its mixed-case source. Wait on an item,
+  a path or a summary instead.
+- `find … click` does not scroll the PR page's inner scroll container (`<main>`).
+  Add `scrollintoview <css>` before clicking anything below the fold, otherwise the
+  click is silently lost (`13-smart-diff.flow.json:21`, `17-pr-brief.flow.json`).
 
 ## Data assumptions
 - Flows read the **seeded demo** only: repo `acme/payments-api`, PR #482. They must

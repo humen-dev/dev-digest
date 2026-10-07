@@ -183,7 +183,18 @@ include your `*.it.test.ts` — only if Docker is up; say so if not),
 | client | ui | `tsc` + vitest (jsdom) | |
 | reviewer-core | engine | `tsc -p tsconfig.json` (`test/` is not in it) + vitest | |
 | mcp | mcp | `tsc -p tsconfig.json` + vitest | |
-| e2e | e2e | typecheck only | flows need a running stack — the orchestrator runs them |
+| e2e | e2e | typecheck only | flows need a running stack — see "e2e units" below |
+
+**e2e units — run your flow before reporting.** agent-check only typechecks a flow,
+and an untested flow has cost up to 3 CI rounds (retro `pr-brief`, flow 17).
+- On Windows, drive the flow's steps with the native binary
+  `<npm-global>/node_modules/agent-browser/bin/agent-browser-win32-x64.exe` (the npm
+  shim cannot be spawned). Run it against the running dev stack. A dev DB is not
+  freshly seeded, so open the seeded PR URL directly instead of `{BASE}/`.
+- Rules from `e2e/specs/flows.md`:
+  - `scrollintoview <css>` before clicking anything below the fold;
+  - never `wait --text` on CSS-uppercased copy.
+- If no stack is running, report the flow `NOT RUN` with the reason. Never write "Done".
 
 ## Step 4 — report
 
