@@ -145,10 +145,23 @@ describe("OverviewTab", () => {
     expect(risks.compareDocumentPosition(screen.getByTestId("blast-radius")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("brief, failed refetch with cached intent: error card and Risk areas both render", () => {
+    intent = { data: INTENT, isLoading: false, isError: true };
+    renderTab();
+    const risks = screen.getByRole("heading", { name: "Risk areas" });
+    const error = screen.getByText(/Couldn't load intent/);
+    expect(error.compareDocumentPosition(risks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("brief, intent loading: Risk areas render below the IntentCard skeleton", () => {
     intent = { data: undefined, isLoading: true, isError: false };
     renderTab();
-    expect(screen.getByRole("heading", { name: "Risk areas" })).toBeInTheDocument();
+    const risks = screen.getByRole("heading", { name: "Risk areas" });
+    // Left column = the section wrapping the IntentCard skeleton and the Risk areas card.
+    const leftColumn = risks.closest("section")!.parentElement!.closest("section")!;
+    const skeletonCard = leftColumn.firstElementChild!;
+    expect(skeletonCard).not.toContainElement(risks);
+    expect(skeletonCard.compareDocumentPosition(risks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("focus item click and risk ref click call onOpenDiffTarget — AC-74", () => {

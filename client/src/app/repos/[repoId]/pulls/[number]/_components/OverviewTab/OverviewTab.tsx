@@ -40,7 +40,9 @@ export function OverviewTab({
   // IntentCard renders `riskSlot` only once an intent is loaded, so the risks are
   // embedded only then. While intent is loading or failed, IntentCard keeps its
   // own state and the Risk areas card sits below it; with no intent it takes the slot.
-  const hasIntent = !!intentQuery.data?.intent;
+  // IntentCard checks isError before data, so a failed refetch with cached intent
+  // must also take the standalone path.
+  const hasIntent = !intentQuery.isError && !intentQuery.isLoading && !!intentQuery.data?.intent;
   const intentPending = intentQuery.isLoading || intentQuery.isError;
 
   return (
