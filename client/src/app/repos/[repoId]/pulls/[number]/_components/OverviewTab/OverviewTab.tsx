@@ -37,9 +37,11 @@ export function OverviewTab({
   const intentQuery = usePrIntent(prId);
   const brief = briefPage?.brief ?? null;
 
-  // Intent still loading / failed: keep IntentCard (it owns those states) so the
-  // Risk areas card only takes its slot once we know there is no intent.
-  const noIntent = !intentQuery.isLoading && !intentQuery.isError && !intentQuery.data?.intent;
+  // IntentCard renders `riskSlot` only once an intent is loaded, so the risks are
+  // embedded only then. While intent is loading or failed, IntentCard keeps its
+  // own state and the Risk areas card sits below it; with no intent it takes the slot.
+  const hasIntent = !!intentQuery.data?.intent;
+  const intentPending = intentQuery.isLoading || intentQuery.isError;
 
   return (
     <>
@@ -53,14 +55,7 @@ export function OverviewTab({
         <>
           <div style={s.twoColumn}>
             <section>
-              {noIntent ? (
-                <RiskAreas
-                  variant="card"
-                  risks={brief.risks}
-                  changedPaths={changedPaths}
-                  onNavigate={onOpenDiffTarget}
-                />
-              ) : (
+              {hasIntent ? (
                 <IntentCard
                   prId={prId}
                   variant="full"
@@ -73,6 +68,16 @@ export function OverviewTab({
                     />
                   }
                 />
+              ) : (
+                <>
+                  {intentPending && <IntentCard prId={prId} variant="full" />}
+                  <RiskAreas
+                    variant="card"
+                    risks={brief.risks}
+                    changedPaths={changedPaths}
+                    onNavigate={onOpenDiffTarget}
+                  />
+                </>
               )}
             </section>
             <section>

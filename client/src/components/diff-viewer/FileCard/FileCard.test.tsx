@@ -6,7 +6,10 @@ import type { PrFile } from "@/lib/types";
 import type { DiffFindingOverlay } from "../findings";
 import { DiffViewer } from "../DiffViewer";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 const PATCH = "@@ -1,2 +1,3 @@\n const a = 1;\n-const b = 2;\n+const b = 3;\n+const c = 4;";
 // Same shape, offset so no gutter line number is "1" — avoids colliding with
@@ -41,7 +44,6 @@ describe("FileCard deep-link target", () => {
       vi.advanceTimersByTime(1700);
     });
     expect(document.querySelector("[data-target-highlight]")).toBeNull();
-    vi.useRealTimers();
   });
 
   it("keeps a large card collapsed when the target names another file", () => {

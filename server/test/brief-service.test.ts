@@ -460,6 +460,19 @@ describe('BriefService.generate — inputs', () => {
     expect(prov.context_docs).toEqual([{ path: 'docs/a.md', status: 'skipped_not_cloned', tokens: null }]);
     expect(prov.missing_sources).toContain('no_context_docs');
   });
+
+  it('a throwing context-docs source degrades to no_context_docs instead of failing', async () => {
+    const { service, repo, llm, deps } = build({ attached: ['docs/a.md'] });
+    deps.contextDocs.listProjectDocs = async () => {
+      throw new Error('clone dir removed');
+    };
+    const page = await service.generate(WS, PR, {});
+    expect(page.status).toBe('generated');
+    expect(structuredCalls(llm)).toHaveLength(1);
+    const prov = repo.upserts[0]!.provenance;
+    expect(prov.context_docs).toEqual([]);
+    expect(prov.missing_sources).toContain('no_context_docs');
+  });
 });
 
 describe('BriefService.generate — refusals and failures', () => {

@@ -135,6 +135,22 @@ describe("OverviewTab", () => {
     expect(risks.compareDocumentPosition(blast) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("brief, intent query failed: IntentCard shows its error and Risk areas still render", () => {
+    intent = { data: undefined, isLoading: false, isError: true };
+    renderTab();
+    const risks = screen.getByRole("heading", { name: "Risk areas" });
+    expect(screen.getByText("Config parsing is loose")).toBeInTheDocument();
+    const error = screen.getByText(/Couldn't load intent/);
+    expect(error.compareDocumentPosition(risks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(risks.compareDocumentPosition(screen.getByTestId("blast-radius")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("brief, intent loading: Risk areas render below the IntentCard skeleton", () => {
+    intent = { data: undefined, isLoading: true, isError: false };
+    renderTab();
+    expect(screen.getByRole("heading", { name: "Risk areas" })).toBeInTheDocument();
+  });
+
   it("focus item click and risk ref click call onOpenDiffTarget — AC-74", () => {
     renderTab();
     fireEvent.click(screen.getByRole("button", { name: /src\/config\.ts:12.*new parser/ }));

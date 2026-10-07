@@ -354,8 +354,25 @@ export class BriefService {
     }
   }
 
-  /** Explicit `context_paths` in the given order, else the preselected candidates (AC-34, AC-35). */
+  /**
+   * Explicit `context_paths` in the given order, else the preselected candidates (AC-34, AC-35).
+   * Degrades like the other fact sources: a missing/broken clone or a read error yields no docs
+   * (→ `no_context_docs`) instead of failing the whole generation.
+   */
   private async gatherDocs(
+    workspaceId: string,
+    pull: BriefPull,
+    files: BriefPrFile[],
+    body: GenerateBriefBody,
+  ): Promise<BriefDocRead[]> {
+    try {
+      return await this.resolveDocs(workspaceId, pull, files, body);
+    } catch {
+      return [];
+    }
+  }
+
+  private async resolveDocs(
     workspaceId: string,
     pull: BriefPull,
     files: BriefPrFile[],

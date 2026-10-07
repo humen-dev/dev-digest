@@ -67,6 +67,20 @@ describe('fitToBudget', () => {
     expect(r.dropped.map((d) => d.kind)).toEqual(['blast_caller', 'blast_caller', 'cron']);
   });
 
+  it('renders the prompt O(log N) times per phase, not once per dropped item', () => {
+    const huge = fixture({ callers: 2000, crons: 0, endpoints: 0, files: 41, docs: 0 });
+    let calls = 0;
+    const counting = (i: BriefInput): number => {
+      calls += 1;
+      return unitCount(i);
+    };
+    const r = fitToBudget(huge, counting, unitCount(huge) - 1500);
+    expect(r.dropped).toHaveLength(1500);
+    expect(r.dropped[0]).toEqual({ kind: 'blast_caller', id: 'src/c1999.ts:2000' });
+    expect(r.fits).toBe(true);
+    expect(calls).toBeLessThan(40);
+  });
+
   it('does not mutate its input', () => {
     fitToBudget(base, unitCount, 180);
     expect(base.blast!.callers).toHaveLength(22);
