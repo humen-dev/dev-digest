@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { Icon } from "@devdigest/ui";
 import { DiffViewer, type DiffCommentApi, type DiffFindingOverlay } from "@/components/diff-viewer";
 import type { PrFile, SmartDiffRole } from "@devdigest/shared";
+import type { DiffTarget } from "@/lib/pr-diff-target";
 import { ROLE_META } from "../../constants";
 import { s, chevronFor, swatchFor } from "./styles";
 
@@ -18,16 +19,24 @@ export function RoleGroup({
   flaggedCount,
   commenting,
   findings,
+  target,
 }: {
   role: SmartDiffRole;
   files: PrFile[];
   flaggedCount: number;
   commenting?: DiffCommentApi;
   findings?: DiffFindingOverlay;
+  /** Deep-link target (SPEC-04): a group holding the target file opens. */
+  target?: DiffTarget | null;
 }) {
   const t = useTranslations("prReview");
   const meta = ROLE_META[role];
-  const [open, setOpen] = React.useState(meta.defaultOpen);
+  const hasTarget = !!target && files.some((f) => f.path === target.file);
+  const [open, setOpen] = React.useState(meta.defaultOpen || hasTarget);
+  // Still toggleable: only a (new) target forces the group open.
+  React.useEffect(() => {
+    if (hasTarget) setOpen(true);
+  }, [hasTarget, target?.file, target?.line]);
   const panelId = `role-group-${role}`;
 
   return (
@@ -57,7 +66,7 @@ export function RoleGroup({
       </button>
       {open && (
         <div id={panelId} style={s.body}>
-          <DiffViewer files={files} commenting={commenting} findings={findings} />
+          <DiffViewer files={files} commenting={commenting} findings={findings} target={target} />
         </div>
       )}
     </div>

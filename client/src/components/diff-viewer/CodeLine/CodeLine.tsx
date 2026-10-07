@@ -10,7 +10,7 @@ import { Icon, SEV } from "@devdigest/ui";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
 import { type Line } from "../helpers";
 import { worstSeverity, type DiffFindingMarker } from "../findings";
-import { LINE_LABEL_KEY } from "../constants";
+import { LINE_LABEL_KEY, TARGET_HIGHLIGHT_MS } from "../constants";
 import { s, lineRowFor, findingRowFor, lineSignFor, findingPillStyle, findingCardRailStyle } from "../styles";
 import { CommentThreadView } from "../CommentThreadView";
 import { InlineComposer } from "../InlineComposer";
@@ -22,6 +22,7 @@ export function CodeLine({
   commenting,
   markers,
   showFindingCards = true,
+  isTarget = false,
 }: {
   ln: Line;
   path: string;
@@ -30,10 +31,22 @@ export function CodeLine({
   markers?: DiffFindingMarker[];
   /** false keeps the severity bar/label but hides the finding cards. */
   showFindingCards?: boolean;
+  /** Deep-link target (SPEC-04): scroll to this row and highlight it briefly. */
+  isTarget?: boolean;
 }) {
   const t = useTranslations("shell");
   const [hover, setHover] = React.useState(false);
   const [composing, setComposing] = React.useState(false);
+  const [highlight, setHighlight] = React.useState(false);
+  const rowRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!isTarget) return;
+    rowRef.current?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    setHighlight(true);
+    const timer = setTimeout(() => setHighlight(false), TARGET_HIGHLIGHT_MS);
+    return () => clearTimeout(timer);
+  }, [isTarget]);
 
   if (ln.kind === "hunk") {
     return (
@@ -51,11 +64,19 @@ export function CodeLine({
 
   return (
     <div
-      style={cs.rowWrap}
+      ref={rowRef}
+      data-diff-line={ln.newNo ?? undefined}
+      style={isTarget ? { ...cs.rowWrap, ...s.lineTarget } : cs.rowWrap}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <div style={worst ? findingRowFor(ln.kind, SEV[worst].c) : lineRowFor(ln.kind)}>
+      <div
+        data-target-highlight={highlight ? "true" : undefined}
+        style={{
+          ...(worst ? findingRowFor(ln.kind, SEV[worst].c) : lineRowFor(ln.kind)),
+          ...(highlight ? s.lineTargetHighlight : null),
+        }}
+      >
         <span className="mono tnum" style={{ ...s.lineNo, position: "relative" }}>
           {showAdd && target && (
             <button

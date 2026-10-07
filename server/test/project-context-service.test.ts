@@ -44,8 +44,14 @@ class FakeRepo implements ProjectContextRepository {
   async skillExists(_ws: string, id: string) {
     return this.skillIds.has(id);
   }
-  async getAgentDocs() {
-    return this.agentDocs;
+  enabledAgentIds: string[] = [];
+  /** Per-agent override for the brief union tests; falls back to `agentDocs`. */
+  docsByAgent = new Map<string, string[]>();
+  async listEnabledAgentIds() {
+    return this.enabledAgentIds;
+  }
+  async getAgentDocs(agentId?: string) {
+    return (agentId !== undefined ? this.docsByAgent.get(agentId) : undefined) ?? this.agentDocs;
   }
   async replaceAgentDocs(_agentId: string, paths: string[]) {
     this.agentDocs = paths;
@@ -401,5 +407,86 @@ describe('ProjectContextService — NFR-4 (no document text in logs)', () => {
     } finally {
       spies.forEach((s) => s.mockRestore());
     }
+  });
+});
+
+describe('ProjectContextService PR Brief methods — AC-30, AC-36, EC-12, UT-6, UT-7', () => {
+  class BriefFs extends FakeFs {
+    unreadable = new Set<string>();
+    readCalls: string[] = [];
+    async read(root: string, relPath: string): Promise<DocReadResult> {
+      this.readCalls.push(relPath);
+      if (this.unreadable.has(relPath)) return { status: 'unreadable' };
+      return super.read(root, relPath);
+    }
+  }
+
+  let repo: FakeRepo;
+  let fs: BriefFs;
+
+  beforeEach(() => {
+    repo = new FakeRepo();
+    fs = new BriefFs();
+  });
+
+  it('reports one status per fixture, keeping input order — AC-36, EC-12', async () => {
+    fs.files.set('docs/ok.md', 'plain guidance');
+    fs.files.set('docs/leaky.md', `token: ${'gh' + 'p_'}${'a'.repeat(36)}`); // built at runtime — no literal secret in source
+    fs.unreadable.add('docs/broken.md');
+    const service = makeService(repo, fs);
+
+    const out = await service.readDocsForBrief(CLONE, [
+      'docs/ok.md',
+      'docs/gone.md',
+      '../../etc/passwd.md',
+      'docs/broken.md',
+      'docs/leaky.md',
+    ]);
+
+    expect(out.map((d) => [d.path, d.status])).toEqual([
+      ['docs/ok.md', 'included'],
+      ['docs/gone.md', 'skipped_missing'],
+      ['../../etc/passwd.md', 'skipped_unsafe_path'],
+      ['docs/broken.md', 'skipped_unreadable'],
+      ['docs/leaky.md', 'skipped_secret'],
+    ]);
+    expect(out[0]).toMatchObject({ text: 'plain guidance', tokens: 'plain guidance'.length });
+    for (const d of out.slice(1)) expect(d).toMatchObject({ text: null, tokens: null });
+  });
+
+  it('returns skipped_not_cloned for every safe path when there is no clone', async () => {
+    const out = await makeService(repo, fs).readDocsForBrief(null, ['docs/a.md']);
+    expect(out).toEqual([{ path: 'docs/a.md', status: 'skipped_not_cloned', text: null, tokens: null }]);
+    expect(fs.readCalls).toEqual([]);
+  });
+
+  it('rejects `..` and absolute paths without touching the filesystem — UT-7', async () => {
+    const out = await makeService(repo, fs).readDocsForBrief(CLONE, [
+      '../../etc/passwd.md',
+      'docs/../../x.md',
+      '/etc/passwd.md',
+      'C:/Windows/x.md',
+    ]);
+    expect(out.every((d) => d.status === 'skipped_unsafe_path')).toBe(true);
+    expect(fs.readCalls).toEqual([]);
+  });
+
+  it('marks an excluded directory as skipped_missing without reading', async () => {
+    const out = await makeService(repo, fs).readDocsForBrief(CLONE, ['node_modules/x/readme.md']);
+    expect(out[0]?.status).toBe('skipped_missing');
+    expect(fs.readCalls).toEqual([]);
+  });
+
+  it('workspaceAttachedPaths unions enabled agents only, deduped, first occurrence wins — AC-30', async () => {
+    repo.enabledAgentIds = ['a1', 'a2'];
+    repo.docsByAgent.set('a1', ['docs/one.md', 'docs/shared.md']);
+    repo.docsByAgent.set('a2', ['docs/shared.md', 'docs/two.md']);
+    repo.docsByAgent.set('disabled', ['docs/disabled.md']);
+
+    expect(await makeService(repo, fs).workspaceAttachedPaths(WORKSPACE)).toEqual([
+      'docs/one.md',
+      'docs/shared.md',
+      'docs/two.md',
+    ]);
   });
 });

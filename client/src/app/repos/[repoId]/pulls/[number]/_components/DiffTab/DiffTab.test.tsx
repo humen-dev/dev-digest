@@ -1,9 +1,10 @@
-import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
+import { render, screen, cleanup, fireEvent, within, act } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { FindingRecord, PrDetail, ReviewRecord, SmartDiffResponse } from "@devdigest/shared";
 import prReviewMessages from "../../../../../../../../messages/en/prReview.json";
 import shellMessages from "../../../../../../../../messages/en/shell.json";
+import briefMessages from "../../../../../../../../messages/en/brief.json";
 
 // A real hunk so the CRITICAL finding on line 12 anchors to a rendered line
 // (new-side numbering: header starts at 10, two context lines, one added).
@@ -180,13 +181,85 @@ afterEach(() => {
   smartDiffState = { data: SMART_DIFF, isLoading: false, isError: false };
 });
 
-function renderTab({ prId = "pr1", pr = PR }: { prId?: string | null; pr?: PrDetail } = {}) {
+function renderTab({
+  prId = "pr1",
+  pr = PR,
+  targetFile,
+  targetLine,
+}: { prId?: string | null; pr?: PrDetail; targetFile?: string | null; targetLine?: string | null } = {}) {
   return render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: prReviewMessages, shell: shellMessages }}>
-      <DiffTab prId={prId} pr={pr} repoFullName="acme/widgets" />
+    <NextIntlClientProvider
+      locale="en"
+      messages={{ prReview: prReviewMessages, shell: shellMessages, brief: briefMessages }}
+    >
+      <DiffTab
+        prId={prId}
+        pr={pr}
+        repoFullName="acme/widgets"
+        targetFile={targetFile}
+        targetLine={targetLine}
+      />
     </NextIntlClientProvider>,
   );
 }
+
+describe("DiffTab — deep-link target (SPEC-04)", () => {
+  const scrollIntoView = vi.fn();
+  // A big boilerplate file (> 200 changed lines → starts collapsed) with a real hunk.
+  const BIG_LOCK = { path: "pnpm-lock.yaml", additions: 300, deletions: 0, patch: "@@ -1,1 +1,3 @@\n a\n+b\n+c" };
+  const bigPr: PrDetail = { ...PR, files: [...PR.files.slice(0, 5), BIG_LOCK] };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    scrollIntoView.mockClear();
+    Element.prototype.scrollIntoView = scrollIntoView;
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("opens a collapsed boilerplate group and a >200-line card, scrolls to and briefly highlights the line (Smart order)", () => {
+    renderTab({ pr: bigPr, targetFile: "pnpm-lock.yaml", targetLine: "3" });
+
+    expect(screen.getByText("pnpm-lock.yaml")).toBeInTheDocument();
+    const row = screen.getByText("c", { selector: "span.mono" }).closest("[data-target-highlight]");
+    expect(row).not.toBeNull();
+    expect(scrollIntoView).toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(1700);
+    });
+    expect(document.querySelector("[data-target-highlight]")).toBeNull();
+
+    // Group stays toggleable.
+    fireEvent.click(screen.getByText("Boilerplate"));
+    expect(screen.queryByText("pnpm-lock.yaml")).not.toBeInTheDocument();
+  });
+
+  it("works in Original order and scrolls the header for a file-only target", () => {
+    renderTab({ pr: bigPr, targetFile: "pnpm-lock.yaml" });
+    fireEvent.click(screen.getByRole("radio", { name: "Original order" }));
+    expect(screen.getByText("a")).toBeInTheDocument();
+    expect(scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("shows 'Line 999 is not in the diff' at the file header", () => {
+    renderTab({ targetFile: "src/config.ts", targetLine: "999" });
+    expect(screen.getByText("Line 999 is not in the diff")).toBeInTheDocument();
+    expect(scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("shows the file-not-in-diff notice for an unknown path and ignores a bad line", () => {
+    renderTab({ targetFile: "../x", targetLine: "abc" });
+    expect(screen.getByText("File not in this PR's diff")).toBeInTheDocument();
+    expect(screen.queryByText("pnpm-lock.yaml")).not.toBeInTheDocument();
+
+    cleanup();
+    renderTab({ targetFile: "src/config.ts", targetLine: "abc" });
+    expect(screen.queryByText("File not in this PR's diff")).not.toBeInTheDocument();
+    expect(screen.queryByText(/is not in the diff/)).not.toBeInTheDocument();
+  });
+});
 
 describe("DiffTab — Smart order", () => {
   it("groups files by role in order, collapses docs/boilerplate, and counts flagged files (ignoring dismissed/superseded findings)", () => {

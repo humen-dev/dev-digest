@@ -31,6 +31,15 @@ export class DrizzleProjectContextRepository implements ProjectContextRepository
     return row !== undefined;
   }
 
+  async listEnabledAgentIds(workspaceId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: t.agents.id })
+      .from(t.agents)
+      .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.enabled, true)))
+      .orderBy(asc(t.agents.createdAt), asc(t.agents.id));
+    return rows.map((r) => r.id);
+  }
+
   async skillExists(workspaceId: string, skillId: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: t.skills.id })

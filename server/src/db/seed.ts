@@ -14,6 +14,7 @@ import {
   PERFORMANCE_REVIEWER_PROMPT,
   TEST_QUALITY_REVIEWER_PROMPT,
 } from './seed-prompts.js';
+import { SEED_PR_482_BRIEF } from './seed-brief.js';
 
 /**
  * SPEC-01 (U7) — demo text for the Security Reviewer's seeded run trace
@@ -668,6 +669,9 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       apiCostUsd: null,
     })
     .onConflictDoNothing();
+
+  // ---- seeded PR Brief for PR #482 (SPEC-04) ----
+  await db.insert(t.prBrief).values({ prId: pr!.id, json: SEED_PR_482_BRIEF }).onConflictDoNothing();
 
   // ---- PR #483 (control-experiment fixture for the Test Quality Reviewer) --
   // Adds `refundFee()` with two branches (expedited / not) but a test that

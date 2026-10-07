@@ -1,6 +1,32 @@
 import { describe, it, expect } from "vitest";
 import type { FindingRecord, PrFile, ReviewRecord, SmartDiffResponse } from "@devdigest/shared";
-import { buildRoleGroups, countFlaggedFiles, currentFindings, pathsWithFindings } from "./helpers";
+import { buildRoleGroups, countFlaggedFiles, currentFindings, parseDiffTarget, pathsWithFindings } from "./helpers";
+
+describe("parseDiffTarget", () => {
+  const paths = ["src/a.ts", "README.md"];
+
+  it("accepts an exact changed path and a positive integer line", () => {
+    expect(parseDiffTarget("src/a.ts", "12", paths)).toEqual({
+      target: { file: "src/a.ts", line: 12 },
+      fileNotInDiff: false,
+    });
+  });
+
+  it("ignores a non-positive or non-numeric line but keeps the file", () => {
+    for (const line of ["abc", "0", "-3", "1.5", "", null, undefined]) {
+      expect(parseDiffTarget("src/a.ts", line, paths).target).toEqual({ file: "src/a.ts", line: null });
+    }
+  });
+
+  it("flags a path that is not an exact changed path", () => {
+    expect(parseDiffTarget("../x", "3", paths)).toEqual({ target: null, fileNotInDiff: true });
+    expect(parseDiffTarget("src/A.ts", null, paths)).toEqual({ target: null, fileNotInDiff: true });
+  });
+
+  it("is a no-op without a file param", () => {
+    expect(parseDiffTarget(null, "3", paths)).toEqual({ target: null, fileNotInDiff: false });
+  });
+});
 
 function finding(over: Partial<FindingRecord> & Pick<FindingRecord, "id" | "file" | "review_id">): FindingRecord {
   return {
