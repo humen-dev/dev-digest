@@ -23,9 +23,11 @@ export interface IntentCardProps {
   variant: "full" | "compact";
   /** Compact card only: jump to the full card (Overview tab). */
   onViewDetails?: () => void;
+  /** Full card only: extra content (PR Brief risk areas) rendered below a divider. */
+  riskSlot?: React.ReactNode;
 }
 
-export function IntentCard({ prId, variant, onViewDetails }: IntentCardProps) {
+export function IntentCard({ prId, variant, onViewDetails, riskSlot }: IntentCardProps) {
   const t = useTranslations("brief");
   const { data, isLoading, isError, error, refetch } = usePrIntent(prId);
   const detect = useDetectIntent(prId);
@@ -135,6 +137,7 @@ export function IntentCard({ prId, variant, onViewDetails }: IntentCardProps) {
               </Button>
             </div>
           </div>
+          {riskSlot && <div style={s.riskSlot}>{riskSlot}</div>}
         </>
       ) : (
         <div style={s.compactActions}>

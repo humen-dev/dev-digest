@@ -61,6 +61,10 @@ import { DrizzleOnboardingRepository } from '../modules/onboarding/repository.js
 import { OnboardingTourService } from '../modules/onboarding/service.js';
 import type { OnboardingTourRepositoryPort, TourGitPort } from '../modules/onboarding/ports.js';
 import { GENERATION_TIMEOUT_MS } from '../modules/onboarding/constants.js';
+import { DrizzleBriefRepository } from '../modules/brief/repository.js';
+import { BriefService } from '../modules/brief/service.js';
+import type { BriefRepositoryPort } from '../modules/brief/ports.js';
+import { GENERATION_DEADLINE_MS } from '../modules/brief/constants.js';
 import { GitTreeReader } from '../adapters/git/tree.js';
 import { loadPromptTemplate } from './prompts.js';
 import { EXCLUDED_DIRS, MAX_FILE_SIZE } from '../modules/repo-intel/types.js';
@@ -112,6 +116,8 @@ export interface ContainerOverrides {
   onboardingRepo?: OnboardingTourRepositoryPort;
   /** Onboarding-tour git reader (listTrackedFiles + readFileAt) — tests inject a fake. */
   gitTree?: TourGitPort;
+  /** PR Brief persistence port — tests swap the port, not the service. */
+  briefRepo?: BriefRepositoryPort;
 }
 
 export class Container {
@@ -151,6 +157,7 @@ export class Container {
   private _projectContextService?: ProjectContextService;
   private _gitTree?: TourGitPort;
   private _onboardingTourService?: OnboardingTourService;
+  private _briefService?: BriefService;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -363,6 +370,46 @@ export class Container {
       excludedDirs: [...EXCLUDED_DIRS, ...this.config.projectDocsExcludedDirs],
       maxFileBytes: MAX_FILE_SIZE,
       timeoutMs: GENERATION_TIMEOUT_MS,
+    }));
+  }
+
+  /**
+   * PR Brief — grounded Why+Risk brief of one PR (SPEC-04). The context-docs
+   * port is an inline adapter over `projectContextService` (a 3-method object
+   * literal, same pattern as `AgentLinkerPort`), so `brief` imports nothing
+   * from `project-context`. The GitHub client is narrowed to `getIssue`
+   * (body normalized to `string | null`).
+   */
+  get briefService(): BriefService {
+    return (this._briefService ??= new BriefService({
+      briefs: this.overrides.briefRepo ?? new DrizzleBriefRepository(this.db),
+      blast: (workspaceId, prId) => this.blastService.get(workspaceId, prId),
+      smartDiff: (workspaceId, prId) => this.smartDiffService.get(workspaceId, prId),
+      github: async () => {
+        const client = await this.github();
+        return {
+          getIssue: async (repo, n) => {
+            const issue = await client.getIssue(repo, n);
+            return { title: issue.title, body: issue.body ?? null };
+          },
+        };
+      },
+      contextDocs: {
+        attachedPaths: (workspaceId) => this.projectContextService.workspaceAttachedPaths(workspaceId),
+        listProjectDocs: async (workspaceId, repoId) => {
+          const list = await this.projectContextService.list(workspaceId, repoId);
+          return {
+            cloned: list.cloned,
+            documents: list.documents.map((d) => ({ path: d.path, estimated_tokens: d.estimated_tokens })),
+          };
+        },
+        readDocs: (clonePath, paths) => this.projectContextService.readDocsForBrief(clonePath, paths),
+      },
+      llm: (provider) => this.llm(provider),
+      resolveModel: (workspaceId) => this.featureModels.resolve(workspaceId, 'risk_brief'),
+      tokenizer: this.tokenizer,
+      loadSystemPrompt: () => loadPromptTemplate('brief.system.md'),
+      deadlineMs: GENERATION_DEADLINE_MS,
     }));
   }
 
