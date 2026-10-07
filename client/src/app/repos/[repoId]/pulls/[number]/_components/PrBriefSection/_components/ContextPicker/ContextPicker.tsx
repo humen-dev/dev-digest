@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button, Checkbox, ErrorState, TextInput } from "@devdigest/ui";
 import { useBriefContextCandidates } from "@/lib/hooks/brief";
 import { useProjectDocs } from "@/lib/hooks/project-context";
-import { SEARCH_RESULT_LIMIT, TOKEN_UNIT } from "../../constants";
+import { SEARCH_RESULT_LIMIT } from "../../constants";
 import { effectiveSelection, searchProjectDocs, toggleSelection } from "../../helpers";
 import { s } from "../../styles";
 
@@ -58,7 +58,7 @@ export function ContextPicker({ prId, repoId, picked, onChange, disabled }: Cont
     SEARCH_RESULT_LIMIT,
   );
 
-  const tokensLabel = (n: number | undefined) => (n == null ? null : `${n.toLocaleString("en-US")} ${TOKEN_UNIT}`);
+  const tokensLabel = (n: number | undefined) => (n == null ? null : t("context.tokens", { count: n.toLocaleString("en-US") }));
 
   return (
     <div ref={rootRef} style={s.pickerWrap}>

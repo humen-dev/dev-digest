@@ -6,9 +6,6 @@ export const SHORT_SHA_LENGTH = 7;
 /** Feature id whose model/provider the brief uses (Settings → Models). */
 export const BRIEF_FEATURE_ID = "risk_brief";
 
-/** Unit label next to a token count. */
-export const TOKEN_UNIT = "tok";
-
 /** Max project documents offered by the picker search. */
 export const SEARCH_RESULT_LIMIT = 8;
 

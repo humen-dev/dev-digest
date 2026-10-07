@@ -3,7 +3,6 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import type { BriefProvenance } from "@devdigest/shared";
-import { TOKEN_UNIT } from "../../constants";
 import { s } from "../../styles";
 
 interface ContextDocsUsedProps {
@@ -28,7 +27,7 @@ export function ContextDocsUsed({ docs, droppedPaths }: ContextDocsUsedProps) {
                 <span className="mono">{d.path}</span>
                 {d.tokens != null && (
                   <span style={s.muted}>
-                    {d.tokens.toLocaleString("en-US")} {TOKEN_UNIT}
+                    {t("context.tokens", { count: d.tokens.toLocaleString("en-US") })}
                   </span>
                 )}
               </li>
