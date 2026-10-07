@@ -131,9 +131,13 @@ describe("SPEC-01 project-context trace block", () => {
     // Configuration is open by default — the chip is visible without extra clicks.
     fireEvent.click(screen.getByText("specs/security.md", { selector: "button" }));
 
-    // Open the (still-collapsed) Prompt assembly section — the chip pre-expanded the block within it.
-    fireEvent.click(screen.getByText("Prompt assembly"));
+    // One click opens the collapsed Prompt assembly section AND the block within it.
+    expect(screen.getByText(SPECS_LABEL)).toBeInTheDocument();
     expect(screen.getByText(/onerror/)).toBeInTheDocument();
+
+    // The section stays user-collapsible after the chip opened it.
+    fireEvent.click(screen.getByText("Prompt assembly"));
+    expect(screen.queryByText(SPECS_LABEL)).not.toBeInTheDocument();
   });
 
   it("renders a legacy trace without project-context entries, with no breakdown and no error — EC-15", () => {

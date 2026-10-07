@@ -34,6 +34,22 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
   const t = useTranslations("runs");
   const stats = trace.stats;
   const [specsOpen, setSpecsOpen] = React.useState(false);
+  const [promptOpen, setPromptOpen] = React.useState(false);
+  // AC-56: a "Specs read" chip opens Prompt assembly AND the project-context
+  // block, then brings the block into view — otherwise the expanded block sits
+  // inside a collapsed section further down the drawer and the click looks inert.
+  const specsRef = React.useRef<HTMLDivElement>(null);
+  const [revealSpecs, setRevealSpecs] = React.useState(false);
+  React.useEffect(() => {
+    if (!revealSpecs) return;
+    specsRef.current?.scrollIntoView?.({ block: "nearest" });
+    setRevealSpecs(false);
+  }, [revealSpecs]);
+  const openSpecsFromChip = () => {
+    setPromptOpen(true);
+    setSpecsOpen(true);
+    setRevealSpecs(true);
+  };
   const projectContext = trace.project_context ?? [];
   return (
     <>
@@ -63,7 +79,7 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
                     type="button"
                     className="mono"
                     style={specButtonStyle}
-                    onClick={() => setSpecsOpen(true)}
+                    onClick={openSpecsFromChip}
                   >
                     {sp}
                   </button>
@@ -93,7 +109,12 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
 
       <FindingsSection findings={findings} />
 
-      <TraceSection icon="FileText" title={t("trace.promptAssembly")} defaultOpen={false}>
+      <TraceSection
+        icon="FileText"
+        title={t("trace.promptAssembly")}
+        open={promptOpen}
+        onOpenChange={setPromptOpen}
+      >
         <PromptBlock label={t("trace.prompt.system")} text={trace.prompt_assembly.system} color={PROMPT_COLORS.system} />
         {trace.prompt_assembly.skills != null && (
           <PromptBlock
@@ -114,7 +135,7 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
           <PromptBlock label={t("trace.prompt.repoMap")} text={trace.prompt_assembly.repo_map} color={PROMPT_COLORS.repoMap} />
         )}
         {trace.prompt_assembly.specs != null && (
-          <>
+          <div ref={specsRef}>
             <PromptBlock
               label={t("trace.prompt.specs")}
               text={trace.prompt_assembly.specs}
@@ -123,7 +144,7 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
               onOpenChange={setSpecsOpen}
             />
             <ProjectContextEntries entries={projectContext} />
-          </>
+          </div>
         )}
         {trace.prompt_assembly.callers != null && (
           <PromptBlock label={t("trace.prompt.callers")} text={trace.prompt_assembly.callers} color={PROMPT_COLORS.callers} />
