@@ -88,6 +88,19 @@ describe("RiskAreas", () => {
     expect(screen.getAllByRole("button", { name: "src/a.ts:2" })).toHaveLength(1);
   });
 
+  it("applies the severity colour to the kind icon", () => {
+    renderRisks([
+      risk({ title: "H", severity: "high" }),
+      risk({ title: "M", severity: "medium" }),
+      risk({ title: "L", severity: "low" }),
+    ]);
+    const colorOf = (name: string) =>
+      screen.getByText(name).querySelector("svg")?.style.color;
+    expect(colorOf("H")).toBe("var(--crit)");
+    expect(colorOf("M")).toBe("var(--warn)");
+    expect(colorOf("L")).toBe("var(--info)");
+  });
+
   it("shows the empty text", () => {
     renderRisks([]);
     expect(screen.getByText("No notable risks flagged.")).toBeInTheDocument();

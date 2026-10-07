@@ -37,6 +37,21 @@ describe("ReviewFocus", () => {
     expect(onNavigate).toHaveBeenLastCalledWith({ file: "src/b.ts", line: null });
   });
 
+  it("items are focusable native buttons activated by Enter exactly once", () => {
+    const onNavigate = renderFocus([{ file: "src/a.ts", line: 12, reason: "r" }]);
+    const button = screen.getByRole("button");
+    expect(button).toBeInstanceOf(HTMLButtonElement);
+    expect(button).toHaveAttribute("type", "button");
+
+    button.focus();
+    expect(button).toHaveFocus();
+    // A browser turns Enter on a focused <button> into one click; jsdom does not.
+    fireEvent.keyDown(button, { key: "Enter" });
+    fireEvent.click(button);
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+    expect(onNavigate).toHaveBeenCalledWith({ file: "src/a.ts", line: 12 });
+  });
+
   it("shows the empty text", () => {
     renderFocus([]);
     expect(screen.getByText("No review focus items.")).toBeInTheDocument();

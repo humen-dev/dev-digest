@@ -76,7 +76,7 @@ export function DiffTab({ prId, pr, repoFullName, targetFile, targetLine }: Diff
     () => parseDiffTarget(targetFile, targetLine, filePaths),
     [targetFile, targetLine, filePaths],
   );
-  const flaggedPaths =React.useMemo(() => pathsWithFindings(findings), [findings]);
+  const flaggedPaths = React.useMemo(() => pathsWithFindings(findings), [findings]);
 
   const overlay: DiffFindingOverlay = React.useMemo(
     () => ({
