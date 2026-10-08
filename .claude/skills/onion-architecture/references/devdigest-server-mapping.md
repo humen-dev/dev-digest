@@ -37,6 +37,18 @@ Also outside the linter's reach: services are constructed in routes (`new Agents
 `new ReviewService(container)`) instead of coming from the container; repositories are concrete classes
 with no port; the `Tokenizer` and `DepGraph` ports are declared beside their adapters.
 
+Table ownership drift (rule 8, invisible to depcruise): `polling/routes.ts` inserts `pull_requests`
+and updates `repos`; `reviews/repository/pull.repo.ts` updates `pull_requests`. Do not add more; move
+them behind the `pulls` / `repos` ports when those modules get their ports (step 3).
+
+Barrel drift (rule 10, invisible to depcruise): the `conventions`, `intent`, `project-context`,
+`repo-intel` and `skills` barrels re-export their service, repository, mappers and routes. Nothing
+outside the composition root imports them that way today — keep it so; trim the barrels when touched.
+
+Published `types.ts` (rule 11): `blast/ports.ts`, `blast/types.ts`, `conventions/ports.ts` and
+`onboarding/ports.ts` import `repo-intel/types.ts` — the one published exception. No other module's
+`types.ts` is imported across modules today; keep it that way.
+
 Not yet in the code at all: `ports.ts` files, `TransactionRunner`/`Tx` (there is no
 `db.transaction` call anywhere), `<name>Service` container getters.
 

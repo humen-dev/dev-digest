@@ -26,7 +26,8 @@ source dependencies still point inward.
 ## Allowed imports
 
 Rows = the importing ring, columns = what it may import. "own" = the same module; other modules
-only through `index.ts`, `ports.ts`, `types.ts`.
+only through `index.ts` (see Barrels) and `ports.ts`; another module's `types.ts` is private except the
+published `repo-intel/types.ts` (rule 11).
 
 | Importer ↓ / imports → | 1 Domain | 2 Application | 3 Infrastructure | 4 Presentation |
 |---|---|---|---|---|
@@ -38,6 +39,31 @@ only through `index.ts`, `ports.ts`, `types.ts`.
 
 Outer rings may skip intermediate rings (a route may use a contract directly). Inner rings
 never reach outward.
+
+## Barrels
+
+`no-cross-module-internals` whitelists `src/modules/*/index.ts`, and several real barrels re-export
+everything (`export { XService } from './service.js'`, `export { XRepository } …`, mappers, routes).
+So `import { AgentsService } from '../agents/index.js'` passes CI while being exactly the coupling
+rule 7 forbids. Judge the **symbol**, not the path:
+
+| Imported through `../<other>/index.js` | Verdict |
+|---|---|
+| an interface / type from `ports.ts`; a `@devdigest/shared` contract re-exported by it | fine |
+| anything that comes from the other module's `types.ts` (request schemas, payloads, input shapes) | **violation** (rule 11) — except `repo-intel` |
+| constant, pure `domain/` function (no I/O, no rows) | fine |
+| `*Service` / `*Repository` class — even `import type` for a constructor dep | **violation** → declare the port you need in your `ports.ts`; the `Container` adapts the other module's service to it |
+| mapper (`toXDto`, `toXRecord`, `toXForReview`) — it takes the other module's rows | **violation** → ask the port for the contract you need; mapping stays in the owner |
+| routes plugin, `helpers.ts` export | **violation** |
+
+Search: `rg -n "from '\.\./[a-z-]+(/index)?\.js'" server/src/modules/<m>` → for each hit open the
+other module's `index.ts`, find where the symbol really lives (`service.ts`, `repository.ts`,
+`mappers.ts` …) and classify it with the table above. Report the import line **and** the file the
+symbol resolves to.
+
+Fix shape: `ports.ts` — `export interface AgentNames { namesFor(ws, ids): Promise<Map<string, string>> }`
+style, shaped for *your* use case and returning contracts; the `Container` getter builds it from the
+other module's service (`{ namesFor: (ws, ids) => agentsService.namesByIds(ws, ids) }`).
 
 ## Borderline cases
 

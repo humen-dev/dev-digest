@@ -34,6 +34,34 @@ that spans the tables a use case touches together is fine.
 Existing good shape: `modules/agents/repository.ts` — workspace-scoped, no HTTP, one owner for
 `agents`, `agent_versions` and the `agent_skills` link.
 
+## Table ownership
+
+Every table has **one owning module** — the module whose feature the table stores. Only the owner's
+repository may `insert`, `update` or `delete` its rows; that is what keeps invariants (status
+transitions, cached counters, cascades the owner relies on) in one place.
+
+| Table(s) | Owner |
+|---|---|
+| `repos` | `repos` |
+| `pull_requests`, `pr_files`, `pr_commits` | `pulls` |
+| `reviews`, `findings` | `reviews` |
+| `pr_intent` · `pr_brief` | `intent` · `brief` |
+| a new table | the module that introduces it (`db/schema/<module>.ts`) |
+
+- **Reads:** a read-only join onto a foreign table inside your own repository is fine (it returns
+  *your* contract). Prefer the owner's port when you need the owner's contract as is.
+- **Writes:** call the owner's port (e.g. `PullsPort.setStatus(...)`), exposed through the owner's
+  `index.ts`/`ports.ts` and injected via the `Container`. If the operation must be atomic with your own
+  writes, the **service** opens the transaction and passes `tx` to both repositories.
+- **Deciding *what* to write** (which rows to delete, which status to set) is a rule → `domain/`, not
+  the repository.
+- **Why a reviewer must check this:** depcruise sees only imports, and every repository legitimately
+  imports `db/schema`. Grep the diff: `rg -n "\.(insert|update|delete)\(t\." server/src/modules/<m>`
+  and compare each table with the owner list above.
+
+Smell → fix: `notifications/repository.ts` runs `db.update(t.pullRequests).set({ status })` → add
+`setStatus` to the `pulls` port and call it from the notifications **service**.
+
 ## Rows stay inside
 
 | Type | Where it may appear |
@@ -84,8 +112,41 @@ await this.deps.tx.run(async (tx) => {
 
 The Drizzle-backed `TransactionRunner` and the one helper that unwraps `tx ?? db` live in
 `src/db/`. **Create these when the first use case genuinely needs atomic multi-writes** — do not
-pre-build them. Do not hold a transaction open across an LLM or GitHub call: the connection is busy
-for the duration of the network round-trip.
+pre-build them.
+
+### Transaction trace
+
+A transaction may contain **only database work through repositories that take `tx`**. Why: the pooled
+connection is held for the whole callback (a slow GitHub/LLM call starves the pool), a network call
+cannot be rolled back (rollback leaves a posted comment / a sent message behind), and `JobRunner`
+writes its `jobs` row with **its own connection** — a job enqueued inside a transaction can start
+before the commit (reads data that is not there yet) and survives a rollback.
+
+The offending call is rarely written inside the callback itself. Trace it:
+
+1. **Find every boundary** in the change: `.transaction(`, `tx.run(`, any `TransactionRunner`, and every
+   method that *receives* a `tx: Tx` (it runs inside someone else's transaction).
+2. **List every call inside the callback** — awaited or not, including calls made through `this.<field>`,
+   destructured deps, closures and callbacks passed in as arguments.
+3. **Follow each call to a leaf**, file by file: private methods, module helper classes (`*.ts` next to
+   the service that wrap a port), constructor-injected collaborators (resolve what the `Container` passes
+   in), `domain/` functions that receive a callback. Stop when you reach:
+   - a repository method called with `tx` → fine;
+   - a pure function → fine;
+   - a port implemented by an adapter (`GitHubClient`, `LlmClient`, `GitClient`, embedder, URL fetcher,
+     filesystem), `jobs.enqueue`, an SSE/event emit, `setTimeout`/sleep, `withRetry`/`withTimeout` → **violation**.
+4. **Also flag** a repository write *inside* the callback that is called **without** `tx` (it escapes the
+   transaction and commits on its own), and a `withRetry` that wraps a whole transaction body containing
+   any of the above.
+5. **Report the chain**, not just the leaf: `ImportService.run → Enricher.enrich → LlmClient.complete`
+   (`service.ts:41 → enricher.ts:18`), so the author sees where to cut.
+
+Fix shape: **read & fetch → decide (pure) → `tx.run` with repository writes only → after commit:
+network calls, `jobs.enqueue`, SSE.** When the external effect must happen exactly when the writes
+commit, write an intent row inside the transaction (outbox) and let a job perform the call.
+
+A method that fetches first and opens the transaction afterwards is the **correct** pattern — do not
+flag it just because both appear in one method.
 
 ## pgvector and raw `sql`
 
