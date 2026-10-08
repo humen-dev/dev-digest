@@ -79,7 +79,8 @@
     "regenerate": "Re-run the brief for this PR",
     "retry": "Retry",
     "settingsLink": "Open Settings → Models",
-    "context": "Context"
+    "context": "Context",
+    "contextCount": "Context: {selected} of {total}"
   },
   "noKey": "No API key for {provider}.",
   "banner": {

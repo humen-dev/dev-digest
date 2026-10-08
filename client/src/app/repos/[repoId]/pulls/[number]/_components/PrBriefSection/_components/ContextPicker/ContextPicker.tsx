@@ -25,7 +25,8 @@ export function ContextPicker({ prId, repoId, picked, onChange, disabled }: Cont
   const [query, setQuery] = React.useState("");
   const rootRef = React.useRef<HTMLDivElement | null>(null);
 
-  const candidates = useBriefContextCandidates(prId, open);
+  // Always loaded (read-only GET, no model call) so the trigger can show "N of M".
+  const candidates = useBriefContextCandidates(prId, true);
   const projectDocs = useProjectDocs(open ? repoId : null);
 
   // Close on Escape / outside click while open (document-level listeners = external system).
@@ -70,7 +71,9 @@ export function ContextPicker({ prId, repoId, picked, onChange, disabled }: Cont
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
       >
-        {t("actions.context")}
+        {candidates.data
+          ? t("actions.contextCount", { selected: selection.length, total: candidateList.length + extraPaths.length })
+          : t("actions.context")}
       </Button>
 
       {open && (

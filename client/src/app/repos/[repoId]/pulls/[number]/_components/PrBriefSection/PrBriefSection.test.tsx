@@ -103,7 +103,8 @@ describe("PrBriefSection", () => {
     expect(screen.getByText("No brief yet")).toBeInTheDocument();
     expect(screen.getByText("Generate a Why+Risk brief for this PR.")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Context" }));
+    // The trigger counts selected vs available docs before the picker is opened.
+    fireEvent.click(screen.getByRole("button", { name: "Context: 1 of 2" }));
     expect(screen.getByRole("checkbox", { name: /specs\/a\.md/ })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("checkbox", { name: /client\/docs\/b\.md/ })).toHaveAttribute("aria-checked", "false");
     expect(screen.getByText("client — not touched by this PR")).toBeInTheDocument();
@@ -111,6 +112,7 @@ describe("PrBriefSection", () => {
     fireEvent.change(screen.getByLabelText("Search project documents"), { target: { value: "extra" } });
     fireEvent.click(screen.getByRole("button", { name: "docs/extra.md" }));
     expect(screen.getByRole("checkbox", { name: /docs\/extra\.md/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("button", { name: "Context: 2 of 3" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Generate brief" }));
     expect(generateMutate).toHaveBeenCalledTimes(1);
