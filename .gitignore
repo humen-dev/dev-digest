@@ -32,3 +32,7 @@ test-results/
 .claude/.impl/
 # /workflow-retro raw analyses and verified price maps
 .claude/.retro/
+
+# eval run outputs (skill-creator workspaces + evals/ runner results)
+.claude/skills/*-workspace/
+evals/.runs/

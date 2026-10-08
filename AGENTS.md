@@ -4,9 +4,8 @@ Context injected every session. Keep it a **map**: stack, commands, layout,
 non-default conventions, gotchas. Everything deep is a **link** below — Claude
 reads those files only when a task touches them. Keep ≤100 lines.
 
-Local-first AI PR review. **Standalone packages, not a workspace**: each has its
-own `package.json` + lockfile; cross-package code is shared via **tsconfig path
-aliases**, not published modules. Each package has its own `AGENTS.md`.
+Local-first AI PR review. **Standalone packages, not a workspace**: each has its own `package.json` +
+lockfile; cross-package code is shared via **tsconfig path aliases**, not published modules.
 
 ## Packages (each has its own AGENTS.md — read it when working there)
 - [`server/`](./server/AGENTS.md) — `@devdigest/api` · Fastify + Drizzle/Postgres · `:3001`
@@ -15,6 +14,7 @@ aliases**, not published modules. Each package has its own `AGENTS.md`.
 - [`e2e/`](./e2e/AGENTS.md) — `@devdigest/e2e` · deterministic agent-browser flows
 - [`mcp/`](./mcp/AGENTS.md) — `@devdigest/mcp` · local stdio MCP server over the API (registered in `.mcp.json`)
 - `@devdigest/shared` — Zod contracts, vendored into each package under `src/vendor/shared`
+- [`evals/`](./evals/AGENTS.md) — skill/agent eval suites (answer keys + hint-free fixtures; not a package)
 
 ## Toolchain
 Node ≥ 22 · **pnpm** ≥ 10 (server/client) · **npm** (reviewer-core/e2e/mcp) ·
