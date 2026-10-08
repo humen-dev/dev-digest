@@ -7,6 +7,11 @@ preloaded) from [`../AGENTS.md`](../AGENTS.md); read a spec when a task touches 
 Good fits: route request/response contracts, validation & error-envelope rules,
 rate-limit policy, security invariants (grounding, injection guard).
 
+New specs follow [`../../specs/_TEMPLATE.md`](../../specs/_TEMPLATE.md)
+(`YYYY-MM-DD-<feature-slug>.md`, global `SPEC-NN`, EARS criteria) and are written
+by the `spec-creator` agent; features spanning several modules go to the root
+[`../../specs/`](../../specs/README.md) instead. Existing free-form specs below stay as they are.
+
 ## Index
 - [`review-flow.md`](./review-flow.md) — review trigger, per-run lifecycle, determinism guarantees
 - [`cost-attribution.md`](./cost-attribution.md) — run cost persistence + API contracts

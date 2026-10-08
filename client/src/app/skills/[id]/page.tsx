@@ -1,5 +1,5 @@
 /* /skills/:id — Skill Editor. Left skill rail (SkillsListColumn) + the
-   4-tab SkillEditor (Config → Preview → Stats → Versions). Tab state lives in
+   SkillEditor (Config → Preview → Context → Stats → Versions). Tab state lives in
    ?tab=, mirroring /agents/[id]/page.tsx. */
 "use client";
 
@@ -9,11 +9,12 @@ import { useTranslations } from "next-intl";
 import { ErrorState, Skeleton } from "@devdigest/ui";
 import { AppShell } from "../../../components/app-shell";
 import { SkillsListColumn } from "../_components/SkillsListColumn";
-import { SkillEditor } from "./_components/SkillEditor";
+import { SkillEditor, TABS } from "./_components/SkillEditor";
 import { useSkill } from "../../../lib/hooks/skills";
 import { ApiError } from "../../../lib/api";
 
-const VALID_TABS = ["config", "preview", "stats", "versions"];
+/** Derived from the editor's own tab list (see /agents/[id]/page.tsx). */
+const VALID_TABS = TABS.map((tb) => tb.key);
 
 export default function SkillEditorPage() {
   const params = useParams<{ id: string }>();

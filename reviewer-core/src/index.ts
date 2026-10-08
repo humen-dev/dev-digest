@@ -19,6 +19,17 @@ export {
   type AssembledPrompt,
 } from './prompt.js';
 
+// Project-context block (SPEC-01): bucket grouping + untrusted-wrapped
+// rendering of repository docs attached to an agent/skill.
+export {
+  ROOT_BUCKET,
+  bucketOf,
+  compareBuckets,
+  groupByBucket,
+  renderProjectContext,
+  type ProjectContextDoc,
+} from './project-context.js';
+
 // Citation grounding — the mandatory mechanical gate for diff findings.
 export { groundFindings, groundingSummary, type GroundingResult } from './grounding.js';
 

@@ -1,0 +1,19 @@
+{
+  "name": "Run Trace drawer reveals the seeded Project context block for the Security Reviewer run",
+  "description": "PR #482 → Agent runs tab → Timeline's seeded Security Reviewer run (newest-first) → open its trace drawer → click its 'Specs read' chip, which opens the collapsed Prompt assembly section and the 'Project context — attached specs (untrusted)' block (AC-56), and confirm the attached specs/security-baseline.md text is visible (AC-53). The trace was seeded through the same renderProjectContext() the run executor uses (U7), so this is a byte-real block, not a hand-typed stand-in. Read-only, no model call.",
+  "steps": [
+    { "cmd": ["open", "{BASE}/"], "label": "load the app root" },
+    { "cmd": ["wait", "--url", "/pulls"], "label": "land on the PR list" },
+    { "cmd": ["find", "text", "Add rate limiting to public API endpoints", "click"], "label": "open the PR row" },
+    { "cmd": ["wait", "--url", "/pulls/482"], "label": "navigate to the PR detail route" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "PR detail data settles" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Agent runs"], "label": "switch to the Agent runs tab" },
+    { "cmd": ["wait", "--url", "tab=findings"], "label": "findings tab is active in the URL" },
+    { "cmd": ["wait", "--text", "Security Reviewer"], "label": "seeded Security Reviewer run renders in the Timeline (newest-first)" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Open run trace & logs"], "label": "open the newest run's trace drawer (Security Reviewer, ran 2 minutes ago)" },
+    { "cmd": ["wait", "--text", "Agent run · Security Reviewer"], "label": "drawer title confirms the Security Reviewer run" },
+    { "cmd": ["find", "text", "specs/security-baseline.md", "click"], "label": "click the 'Specs read' chip at the top of the drawer — opens Prompt assembly and the block (AC-56)" },
+    { "cmd": ["wait", "--text", "Project context — attached specs (untrusted)"], "label": "the project-context block label is visible" },
+    { "cmd": ["wait", "--text", "Never commit a real secret, API key, or token"], "label": "the attached specs/security-baseline.md text is visible — AC-53" }
+  ]
+}

@@ -1,17 +1,74 @@
 {
   "title": "Onboarding Tour",
-  "sections": "Sections",
-  "sectionCount": "{count} sections",
-  "regenerate": "Regenerate",
-  "regenerating": "Regenerating…",
-  "unknownError": "Unknown error",
+  "crumb": "Onboarding Tour",
+  "heading": "Onboarding for {repoName}",
+  "subtitle": "Generated from {files} files · last refreshed {ago} ago",
+  "subtitleIndexed": "· indexed {count}",
+  "sections": {
+    "architecture_overview": "Architecture overview",
+    "critical_paths": "Critical paths",
+    "how_to_run": "How to run locally",
+    "guided_reading": "Guided reading path",
+    "first_tasks": "First tasks",
+    "empty": "Nothing verified for this section. Regenerate to try again."
+  },
+  "toc": {
+    "title": "ON THIS PAGE",
+    "label": "On this page"
+  },
+  "actions": {
+    "generate": "Generate onboarding tour",
+    "regenerate": "Regenerate",
+    "generating": "Generating…",
+    "retry": "Retry",
+    "reanalyze": "Re-analyze",
+    "shareLink": "Share link",
+    "shareLinkAria": "Share link to the {section} section",
+    "copyMarkdown": "Copy as Markdown",
+    "copyAll": "Copy all",
+    "copy": "Copy",
+    "copyStep": "Copy step {n}",
+    "copied": "Copied",
+    "open": "Open",
+    "openAria": "Open {path} on GitHub",
+    "cloneToRegenerate": "Clone the repository to regenerate"
+  },
+  "toast": {
+    "linkCopied": "Link copied — opens on machines running DevDigest with this repo imported",
+    "copyFailed": "Couldn't copy to clipboard"
+  },
+  "paths": {
+    "importedBy": "imported by {count} files"
+  },
+  "tasks": {
+    "complexity": {
+      "low": "Low complexity",
+      "medium": "Medium complexity",
+      "high": "High complexity"
+    },
+    "newFile": "new file"
+  },
+  "stale": {
+    "banner": "This tour was generated from index {from}; the index is now at {to}."
+  },
+  "footer": "{model} · {cost} · {seconds} s · {dropped} items dropped as unverified",
   "generate": {
     "title": "Generate onboarding tour",
-    "body": "DevDigest indexes the repo and specs, then writes a 5-section guided tour: overview, architecture, key modules, getting started, and conventions & gotchas.",
-    "cta": "Generate onboarding tour",
-    "generating": "Generating…"
+    "body": "DevDigest indexes the repo and writes a guided tour: architecture, critical paths, how to run, a reading order, and first tasks. Takes 30–60s.",
+    "cta": "Generate onboarding tour"
   },
+  "notCloned": {
+    "title": "Repository not cloned",
+    "body": "The tour is generated from a local clone and its code index. Import the repository with a clone to generate one."
+  },
+  "notReady": {
+    "notIndexed": "This repository has not been indexed yet.",
+    "failed": "Indexing failed.",
+    "other": "The code index is not ready."
+  },
+  "inProgress": "A tour generation is already running for this repository.",
   "loadError": {
     "title": "Couldn’t load the onboarding tour"
-  }
+  },
+  "diagramAlt": "Architecture diagram"
 }

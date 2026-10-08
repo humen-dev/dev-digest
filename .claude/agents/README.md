@@ -2,8 +2,8 @@
 
 Project subagents for Claude Code. Each `*.md` file here is one agent: YAML
 frontmatter (name, description, model, tools, skills, hooks) + the system prompt.
-Claude Code loads them at session start; invoke one by name ("use the planner
-to …") or let the main session delegate to it.
+Claude Code loads them at session start; invoke one by name ("use the
+implementation-planner to …") or let the main session delegate to it.
 
 ## Catalog
 
@@ -11,9 +11,12 @@ to …") or let the main session delegate to it.
 |---|---|---|---|---|
 | [researcher](researcher.md) | sonnet | Finds facts in the repo or on the web and reports them with evidence | nothing | none |
 | [brainstormer](brainstormer.md) | opus | Shapes a raw idea into a Design brief: questions, 2–3 grounded approaches, a recommendation — before planning | nothing (no write/shell tools) | none |
-| [planner](planner.md) | opus | Turns a feature request into a Development Plan split into parallel work units | only `docs/plans/*.md` — `Write` only, no `Edit` (hook-enforced) | the 11 coding skills (same as implementer) |
-| [implementer](implementer.md) | sonnet | Implements one work unit of an approved plan | only the files its unit owns | the 11 coding skills (same as planner) |
-| [plan-verifier](plan-verifier.md) | opus | Checks the finished code against an approved plan item by item; PASS / FAIL / INCOMPLETE | nothing (Bash limited to read-only git + the plan's checks via `bash-scope-guard`) | none — the plan is the standard |
+| [spec-creator](spec-creator.md) | opus | Analyses designs (gaps, corner cases, module interactions, UX), asks the user first, then writes an EARS behaviour spec with a global SPEC-NN | only `specs/*.md` and `{client,server,reviewer-core,mcp}/specs/*.md` (hook-enforced `write-scope-guard`; no shell) | `ears-requirements`, `security`, `mermaid-diagram` |
+| [implementation-planner](implementation-planner.md) | opus | Reviews the requirements (never writes specs), asks questions + multi-agent vs single-agent, recommends improvements, then writes an Implementation Plan of work units | only `docs/plans/*.md` — `Write` only, no `Edit` (hook-enforced) | `ears-requirements` + the 11 coding skills (union of the implementers') |
+| [implementer](implementer.md) | sonnet | Implements one **engine / e2e / mcp** unit of an approved plan; holds the shared procedure all three implementers follow | only the files its unit owns (Bash limited via `bash-scope-guard implementer`) | `onion-architecture`, `zod`, `security` |
+| [implementer-backend](implementer-backend.md) | sonnet | Implements one **backend** (server) unit — reads `implementer.md` for the procedure | same | `onion-architecture`, `fastify-best-practices`, `drizzle-orm-patterns`, `zod`, `security` |
+| [implementer-ui](implementer-ui.md) | sonnet | Implements one **ui** (client) unit — reads `implementer.md` for the procedure | same | `frontend-ui-architecture`, `react-best-practices`, `next-best-practices`, `react-testing-library`, `zod` |
+| [plan-verifier](plan-verifier.md) | sonnet | Checks the finished code against an approved plan item by item; PASS / FAIL / INCOMPLETE | nothing (Bash limited to read-only git + the plan's checks via `bash-scope-guard`) | `ears-requirements` only (to read `S<NN>-*` rows) — the plan is the standard |
 | [test-writer](test-writer.md) | sonnet | Writes tests for a plan unit's §6 rows or an under-tested area (`backfill` or `tdd`) and runs them | only test files and test helpers (hook-enforced `write-scope-guard`; Bash limited to tests/typecheck) | `react-testing-library`, `frontend-ui-architecture`, `onion-architecture`, `fastify-best-practices`, `drizzle-orm-patterns`, `typescript-expert`, `zod` |
 | [architecture-reviewer](architecture-reviewer.md) | sonnet | Reviews a change set for file placement and import direction (depcruise first) | nothing (Bash limited to depcruise + read-only git via `bash-scope-guard`) | `onion-architecture`, `frontend-ui-architecture` |
 | [security-reviewer](security-reviewer.md) | opus | Reviews a change set for exploitable vulnerabilities (traced source → sink, OWASP) — never placement | nothing (Bash limited to read-only git via `bash-scope-guard`) | `security` |
@@ -23,55 +26,113 @@ The 11 coding skills: `onion-architecture`, `frontend-ui-architecture`,
 `fastify-best-practices`, `drizzle-orm-patterns`, `postgresql-table-design`,
 `react-best-practices`, `next-best-practices`, `react-testing-library`,
 `typescript-expert`, `zod`, `security` (see [../skills/README.md](../skills/README.md)).
-**Keep the `skills:` lists of `planner` and `implementer` identical** — the plan
-must only ask for practices the implementer is equipped to apply.
+**The planner's coding skills = the union of the three implementers' skills**
+(injected, or read on demand — `postgresql-table-design`, `typescript-expert`,
+and `security` for ui; table in [implementer.md](implementer.md)) — the plan must
+only ask for practices an implementer is equipped to apply. Implementers are split
+by Kind because injecting all 11 skills cost ~28k tokens per instance, most of it
+irrelevant to the unit. The planner-only `ears-requirements` teaches reading spec
+criteria, not a coding practice, so implementers do not need it.
 The five review/docs agents deliberately do **not** use the 11-skill list — each
-gets only the skills its narrow role needs — so the planner/implementer sync rule
+gets only the skills its narrow role needs — so the implementation-planner/implementer sync rule
 is unaffected by them.
 
 ## How they work together
 
+Step-by-step walkthrough with a worked example, failure routing and lifecycles:
+[`docs/sdd-workflow.md`](../../docs/sdd-workflow.md).
+
 ```mermaid
 flowchart TD
   R[Feature request] -->|idea still open| B[brainstormer]
-  B -->|"Design brief · user picks approach"| P[planner]
-  R -->|already concrete| P
+  B -->|"Design brief · user picks approach"| S[spec-creator]
+  R -->|"request + designs"| S
+  S -->|"Spec review:<br/>gaps · corner cases ·<br/>module interactions · UX"| SU{User answers}
+  SU -->|answers| S
+  S -. "research requests" .-> RX["researcher × N<br/>(parallel, run by main session)"]
+  RX -. reports .-> S
+  S -->|"specs/ or pkg/specs/<br/>YYYY-MM-DD-slug.md · draft"| SA{User approves spec}
+  SA -->|"approve SPEC-NN"| P[implementation-planner]
+  R -->|"small concrete request"| P
+  P -->|"Requirements review:<br/>questions · recommendations ·<br/>multi- or single-agent?"| U{User answers}
+  U -->|answers + mode| P
   P -->|"docs/plans/slug.md"| A{User approves plan}
-  A -->|approved| W0["Wave 0 — main session:<br/>contracts, schema + migration,<br/>deps, shared registries"]
-  W0 -->|"one unit each"| I["implementer × N<br/>(parallel, same checkout)"]
+  A -->|"approved → /impl &lt;plan&gt; (automated from here)"| W0["Wave 0 — main session:<br/>contracts, schema + migration,<br/>deps, shared registries"]
+  W0 -->|"one unit each, agent by Kind"| I["implementer-backend / -ui / implementer × N<br/>(multi-agent: parallel, same checkout;<br/>single-agent: sequential)"]
   I -->|reports| C[Main session commits the wave]
-  C -->|"every wave, mandatory"| V[plan-verifier]
-  V -->|"FAIL → fix the unit"| I
+  C -->|"every wave, mandatory<br/>scope = the wave's units (compact)"| V[plan-verifier]
+  V -->|"FAIL → mode: fix of the owner"| I
   V -->|"PASS · next wave"| I
-  V -->|"PASS · last wave"| O{Optional passes}
-  O -->|test gaps| TW[test-writer]
-  O -->|placement check| AR[architecture-reviewer]
-  O -->|exploitability check| SR[security-reviewer]
-  O -->|permanent docs| DW[doc-writer]
-  AR -->|request_changes| I
-  SR -->|request_changes| I
-  AR -->|"approve / comment"| PR[/pr-self-review → PR/]
-  SR -->|"approve / comment"| PR
-  TW -->|tests added| PR
-  DW -->|docs added| PR
-  O -->|skip| PR
+  V -->|"PASS · last wave"| VA["plan-verifier scope=all<br/>(full table, S-NN rows)"]
+  VA -->|"NOT MET incl. T-rows → mode: fix"| I
+  VA -->|"S-rows NOT MET as plan gap<br/>(no unit cites the criterion)"| P
+  VA -->|PASS| RV{"Reviews in parallel"}
+  RV --> AR[architecture-reviewer]
+  RV --> SR["security-reviewer<br/>(only if surface touched)"]
+  RV --> CR["bug review<br/>(pr-review-toolkit:code-reviewer)"]
+  AR & SR & CR -->|"CRITICAL / WARNING → owner, mode: fix"| I2[implementer fixes · commit]
+  I2 -->|"re-review with previous,<br/>fix range only (≤ 3 rounds)"| RV
+  AR & SR & CR -->|"nothing open"| RE["plan-verifier re-verify<br/>(previous = last report)"]
+  RE -->|PASS| SI["spec-creator implemented SPEC-NN<br/>(user OK · all S-rows MET)"]
+  SI --> PR[/pr-self-review → PR/]
+  PR -. optional .-> DW[doc-writer]
   P -. external facts .-> RS[researcher]
 ```
 
-- The **main session is the orchestrator** — it runs the planner, gets approval,
-  does Wave 0, fans out implementers, commits each wave, runs the checks below and
-  finally `/pr-self-review`.
+- **Spec and plan are manual, building is one command.** `spec-creator` and
+  `implementation-planner` are run by hand (their interviews need the user).
+  Once the plan is approved, [`/impl <plan>`](../skills/impl/SKILL.md) makes the
+  main session the orchestrator for everything below: Wave 0, implementer waves,
+  commits, verification, the review loop, re-verify and `/pr-self-review`.
 - Implementers of one wave run **in parallel in the same checkout**. Disjoint file
   ownership from the plan is what keeps them apart; they never touch git state,
   dependencies or `INSIGHTS.md`.
 - **`plan-verifier` is mandatory after every wave commit**, and only once no
-  implementer is still running (it reads a moving tree otherwise). `FAIL` goes
+  implementer is still running (it reads a moving tree otherwise). Per wave pass
+  `scope` = that wave's units (compact report: only non-MET rows); after the last
+  wave run `scope=all` (full table incl. the spec's `S<NN>-*` rows). `FAIL` goes
   back to the owning unit's implementer; re-run it with `previous` = the last
-  report (re-verify mode).
+  report (re-verify mode). It is also the **only full-suite run per wave** —
+  implementers run only related tests in multi-agent mode.
+- **Order after the last wave: verify → review loop → re-verify.** Reviewing
+  code the verifier would still reject wastes tokens on "this is missing" noise.
+  NOT MET rows — missing `T-*` tests included — go back to the owning unit in
+  `mode: fix` (its tests are in its *Owns*; `test-writer` is on demand only).
+  Review fixes can break plan items, so finish with a re-verify, then
+  `/pr-self-review`.
+- **Review loop.** Round 1: `architecture-reviewer` ∥ bug review ∥
+  `security-reviewer` (only when the diff touches its surface). CRITICAL and
+  WARNING go to the owning unit (`plan-tools owner`) in `mode: fix`; then only the
+  reviewers that had findings re-review with `previous` = their last report and
+  `range` = the fix commits. At most 3 rounds, then the user decides.
+- **A spec criterion no unit covers is a plan gap, not a code bug.** An
+  `S<NN>-*` row NOT MET because no unit cites that criterion (the verifier lists
+  it under *Missing* as `plan gap: S<NN>-…`) cannot be fixed by an implementer —
+  no unit owns files for it. Re-invoke `implementation-planner` with the plan
+  path and those rows: it adds unit(s) in a new wave without touching finished
+  units; then the normal wave loop runs for them. An `S<NN>-*` row NOT MET while a
+  unit *does* cite it is a code bug → that unit's implementer.
+- **Close the spec in the same PR.** After the final re-verify passes with every
+  `S<NN>-*` row MET, ask the user and run `spec-creator implemented SPEC-NN`
+  before `/pr-self-review`, so the status flip merges together with the code (a
+  rejected PR leaves the spec `approved`). Rows NOT VERIFIABLE (e.g. an e2e flow
+  needing Docker) are named to the user, who decides whether to mark it now.
+- **Implementer by Kind:** `backend` → `implementer-backend`, `ui` →
+  `implementer-ui`, `engine` / `e2e` / `mcp` → `implementer`. Paste the unit block
+  and the §3 contracts it consumes into the prompt so it does not read the whole
+  plan.
+- **Bug lane.** No project agent hunts logic bugs — `architecture-reviewer`
+  is placement only, `/pr-self-review` routes best-practice skills. `/impl` runs
+  `pr-review-toolkit:code-reviewer` (model sonnet) for correctness only; by hand,
+  `/code-review high` on the branch does the same job.
 - **`brainstormer` is optional and comes first** — use it when the request is
   still an idea; skip it when the request already fixes goal, behaviour and scope.
+- **`spec-creator` comes before planning** for any user-visible or cross-module
+  feature: its spec is the planner's *Requirements source* and its AC / EC / NFR
+  ids become `S<NN>-*` rows in `plan-verifier`. Small internal changes may go
+  straight to the planner.
 - **`test-writer`, `architecture-reviewer`, `security-reviewer` and `doc-writer`
-  are optional.** Use test-writer when the plan's §6 rows or an area lack tests;
+  are optional** (but recommended for any multi-wave feature). Use test-writer when the plan's §6 rows or an area lack tests;
   architecture-reviewer before `/pr-self-review` on larger or cross-package
   changes; security-reviewer whenever the diff touches routes, input, outbound
   fetches, paths, secrets, prompts or untrusted PR/issue/doc text (the two
@@ -85,7 +146,7 @@ flowchart TD
 - Units that touch `.claude/**` cannot go to `implementer` (it is forbidden
   there) — run them in `general-purpose` subagents or the main session.
 - `researcher` is standalone — use it whenever facts are needed (including while
-  designing new agents, as was done for planner/implementer).
+  designing new agents, as was done for implementation-planner/implementer).
 
 ---
 
@@ -106,7 +167,7 @@ Read-only investigator for CODEBASE / WEB / HYBRID questions.
 **Based on** — project-authored (commit `07c1f41`); no external sources were
 recorded for it. It builds on the standard Claude Code subagent mechanism
 ([docs](https://code.claude.com/docs/en/sub-agents)). The *interview mode* it
-introduced was later reused by `planner`.
+introduced was later reused by `implementation-planner`.
 
 ## brainstormer
 
@@ -119,9 +180,9 @@ Pre-planning idea shaper. Input: the raw request (text, screenshot, lesson brief
   defaults), at most three rounds, only about what the code can't answer.
 - Then a fixed **Design brief**: problem & goal, user-visible behaviour, 2–3
   approaches each grounded in existing code (`path:line`) with cost/risk, a
-  recommendation, constraints the planner must respect, out of scope, open questions.
+  recommendation, constraints the implementation-planner must respect, out of scope, open questions.
 - Never plans units, file ownership or waves — hand-off is explicit: the user
-  picks an approach, the main session passes the brief to `planner`.
+  picks an approach, the main session passes the brief to `implementation-planner`.
 - YAGNI: the smallest approach that meets the goal is recommended; extras go to
   *Out of scope / later*.
 
@@ -130,36 +191,118 @@ Pre-planning idea shaper. Input: the raw request (text, screenshot, lesson brief
 | Practice | Source |
 |---|---|
 | Understand context first, ask focused questions, propose 2–3 approaches with trade-offs and a recommendation, YAGNI, design before plan | [obra/superpowers — `brainstorming`](https://github.com/obra/superpowers/blob/main/skills/brainstorming/SKILL.md) |
-| Separate exploration from planning so the planner gets a settled goal | [Anthropic — Claude Code best practices (explore → plan → code)](https://www.anthropic.com/engineering/claude-code-best-practices) |
+| Separate exploration from planning so the implementation-planner gets a settled goal | [Anthropic — Claude Code best practices (explore → plan → code)](https://www.anthropic.com/engineering/claude-code-best-practices) |
 | Read-only tool list | [Claude Code — Create custom subagents](https://code.claude.com/docs/en/sub-agents) |
 
-## planner
+## spec-creator
 
-Writes `docs/plans/<slug>.md` following [`docs/plans/_TEMPLATE.md`](../../docs/plans/_TEMPLATE.md).
+Spec-Driven Development author. Input: the feature (request / Design brief), a
+mode (`create` · `revise <path>` · `approve SPEC-NN` · `implemented SPEC-NN` ·
+`supersede <path>`) and the design sources the user supplied (text, Figma link +
+exported PNG frames, existing code, a repository).
 
 **Design**
-- Read-only for code: `Edit`, `Bash`, `PowerShell`, `Agent`, `Skill` disallowed.
-  Only `Write` is granted — the planner authors its plan file and re-`Write`s it
-  whole to revise it; it never patches existing files. A frontmatter `PreToolUse`
-  hook ([planner-write-guard.mjs](../hooks/planner-write-guard.mjs)) denies any
-  path outside `docs/plans/*.md`.
-- Injects the same 11 coding skills as the implementer; the architecture skills
-  decide where every planned file lives.
-- Reads root + package `AGENTS.md` and `INSIGHTS.md` before planning.
-- Plan structure: context & decisions → affected modules → **contracts** →
+- Tools `Read, Grep, Glob, Write, Edit, WebSearch, WebFetch`; `Bash`, `PowerShell`,
+  `NotebookEdit`, `Agent`, `Skill` disallowed.
+  [`write-scope-guard.mjs spec-creator`](../hooks/write-scope-guard.mjs) allows only
+  `specs/*.md` and `{client,server,reviewer-core,mcp}/specs/*.md` (flat — no
+  sub-folders) and denies first `**/_TEMPLATE.md` and `e2e/**` (flows are tests).
+- Skills: `ears-requirements` (binding syntax and quality checklist for every
+  AC / EC / NFR / UT row), `security` (threats per untrusted input),
+  `mermaid-diagram` (Module interactions `sequenceDiagram`). No coding skills —
+  they would pull the spec toward *how*.
+- **Questions before the file:** the first reply is always a *Spec review* —
+  findings (`F-n`) from five lenses (gaps in the design, runtime corner cases,
+  module interactions with failure behaviour per hop, UX proposals to
+  accept/reject, NFR + verifiability) and ≤ 8 questions per round with options
+  and defaults, ≤ 3 rounds. Unanswered questions land in *Open questions* with
+  their default.
+- **Research via `researcher`:** subagents cannot spawn subagents, so the Spec
+  review may carry ≤ 4 *Research requests* (scope CODEBASE / WEB / HYBRID); the
+  main session runs one `researcher` per request in parallel and re-invokes
+  spec-creator (`revise`) with the reports, which are cited as provenance.
+- Reads `INSIGHTS.md` **only of the modules the feature touches**, never all of them.
+- Template [`specs/_TEMPLATE.md`](../../specs/_TEMPLATE.md): the course sections
+  (problem, goals/non-goals, user stories, EARS ACs, edge cases, NFRs, inputs and
+  provenance, untrusted inputs, open questions) plus **Module interactions**
+  (diagram + hop table), **Data and state**, **Compatibility and rollout**,
+  **Design review**, **Assumptions and dependencies**, **Traceability**,
+  **Revision history** and a **Self-check**. ACs carry **Priority** (Must /
+  Should / Could) and every requirement a **Verify by** (unit / integration / e2e
+  / manual / inspection + test shape); goals carry a success measure.
+- **Final self-check:** the agent re-reads the written file, ticks the in-file
+  *Self-check* only for true items and reports anything left unticked.
+- Placement: one module → `<pkg>/specs/`, several → root `specs/` (one spec per
+  feature). File `YYYY-MM-DD-<feature-slug>.md`; `Spec ID: SPEC-NN` is global
+  (highest existing + 1). Every new spec is added to its folder's `README.md` index.
+- Lifecycle: creates only `draft`; `approved` / `implemented` only on the user's
+  explicit instruction (only the `Status:` line changes). Approved/implemented
+  specs are immutable — a change is a new spec with `Supersedes:`, the old one gets
+  `superseded` + `Superseded by:`. Legacy free-form specs are never edited.
+- What, not how: no files, components, libraries or SQL in requirements; existing
+  contracts are cited with `path:line`. Untrusted inputs (PR text, repo files, LLM
+  output, web) each get an `IF … THEN … shall` rule.
+
+**Based on**
+
+| Practice | Source |
+|---|---|
+| EARS patterns (ubiquitous, event-driven, state-driven, unwanted behaviour, optional feature) | Mavin, Wilkinson, Harwood, Novak — *EARS*, IEEE RE'09 · course lesson L05 · this repo: [`ears-requirements`](../skills/ears-requirements/SKILL.md) |
+| Per-requirement quality characteristics (singular, verifiable, implementation-free) | INCOSE *Guide to Writing Requirements* (via `ears-requirements`) |
+| Spec template sections (problem, goals, stories, EARS ACs, edge cases, NFRs, provenance, untrusted inputs, open questions) | Course lesson L05 (project owner) |
+| Spec (what) separated from plan (how); clarify ambiguities with the user before planning; `[NEEDS CLARIFICATION]`-style open questions | [github/spec-kit — `specify`](https://github.com/github/spec-kit/blob/main/templates/commands/specify.md) · [`clarify`](https://github.com/github/spec-kit/blob/main/templates/commands/clarify.md) |
+| `tools` / `disallowedTools`, frontmatter `hooks` | [Claude Code — Create custom subagents](https://code.claude.com/docs/en/sub-agents) |
+| Folder per module + root `specs/` for cross-module, date-named files, global id, design-review lenses, `superseded` status | Specified by the project owner |
+
+## implementation-planner
+
+Formerly `planner`. Turns agreed requirements into `docs/plans/<slug>.md`
+following [`docs/plans/_TEMPLATE.md`](../../docs/plans/_TEMPLATE.md). Decides
+**how**, never **what**.
+
+**Design**
+- **No specification work.** Requirements are input — a spec in `<pkg>/specs/`,
+  a brainstormer Design brief, or the request. It never writes or extends specs,
+  no unit may own a file under `server|client|reviewer-core/specs/`, and it never
+  invents behaviour or acceptance criteria. Needed spec changes are listed in
+  §9 *Spec follow-ups* for the spec owner. (`e2e/specs/*.flow.json` are tests, so
+  units may own them.)
+- **Requirements review first** (interview mode): checks the requirements for
+  clarity, consistency (with specs, code, AGENTS/INSIGHTS), feasibility and
+  testability; returns a *Requirements review* block — findings with `path:line`,
+  optional recommendations (enter the plan only if the user accepts them) and
+  ≤ 4 questions with defaults — instead of a plan.
+- **Execution mode is always asked** unless the caller passes `mode`:
+  `multi-agent` (Wave 0 + parallel waves of disjoint units) or `single-agent`
+  (strictly sequential units). It recommends single-agent for small or chained
+  changes, multi-agent only when ≥ 3 units are genuinely independent.
+- Read-only for code and specs: `Edit`, `Bash`, `PowerShell`, `Agent`, `Skill`
+  disallowed. Only `Write` is granted — it authors its plan file and re-`Write`s it
+  whole to revise it. A frontmatter `PreToolUse` hook
+  ([implementation-planner-write-guard.mjs](../hooks/implementation-planner-write-guard.mjs))
+  denies any path outside `docs/plans/*.md`.
+- Injects all 11 coding skills — the union of the three implementers' sets (the architecture skills
+  decide where every planned file lives) plus planner-only `ears-requirements`:
+  each SPEC-NN criterion is read by its EARS pattern, the test that pattern needs
+  goes into §6, and a criterion that fails the skill's checklist is an
+  *Untestable / Unclear* finding for the spec owner — never rewritten in the plan.
+- Reads root + package `AGENTS.md`, `INSIGHTS.md` and the relevant `specs/` before planning.
+- Plan structure: header (Goal, **Requirements source**, **Execution mode**) →
+  context, requirements review & decisions → affected modules → **contracts** →
   **work units** (Kind, Wave, Depends on, **Owns**, Must not touch, Consumes,
   Produces, Checks, Steps, Acceptance criteria) → **waves** → test plan →
-  verification → risks → out of scope.
+  verification → risks → out of scope + spec follow-ups. Every requirement maps to
+  an acceptance criterion and vice versa.
 - DevDigest rules: contracts, migrations, dependencies and serialized files
   (`modules/index.ts`, `lib/api.ts`, i18n messages, `src/vendor/**`) go to
   Wave 0 or exactly one unit; a unit consumes only what an earlier wave produced.
-- Says "single unit, no parallelism" when the change is small.
 
 **Based on**
 
 | Practice | Source |
 |---|---|
 | Preloading skills via the `skills:` frontmatter field; per-agent `tools` / `disallowedTools`; frontmatter `hooks` | [Claude Code — Create custom subagents](https://code.claude.com/docs/en/sub-agents) |
+| Spec (what) is separate from the implementation plan (how); the plan is checked against the spec for ambiguity, conflicts and coverage before tasks are written | [github/spec-kit — `clarify`](https://github.com/github/spec-kit/blob/main/templates/commands/clarify.md) · [`plan`](https://github.com/github/spec-kit/blob/main/templates/commands/plan.md) |
 | Plan = goal, constraints, file map, then tasks each with exact **Files** and an **Interfaces** section (contracts consumed/produced) so tasks can be built in parallel; tasks sized as the smallest unit with its own test cycle | [obra/superpowers — `writing-plans`](https://github.com/obra/superpowers/blob/main/skills/writing-plans/SKILL.md) |
 | Plan names which agent reads/writes which files (explicit ownership boundaries) and the task dependencies/order | [VoltAgent/awesome-claude-code-subagents — `multi-agent-coordinator`](https://github.com/VoltAgent/awesome-claude-code-subagents/blob/main/categories/09-meta-orchestration/multi-agent-coordinator.md) |
 | Parallelize only genuinely independent work — multi-agent runs cost many times more tokens | [Claude blog — When to use multi-agent systems](https://claude.com/blog/building-multi-agent-systems-when-and-how-to-use-them) |
@@ -168,19 +311,27 @@ Writes `docs/plans/<slug>.md` following [`docs/plans/_TEMPLATE.md`](../../docs/p
 
 ## implementer
 
-Implements one unit; input is `plan` (path) + `unit` (id).
+Implements one unit; input is `plan` (path) + `unit` (id), ideally with the unit
+block and consumed §3 contracts pasted in. Three agents share one procedure
+(`implementer.md`): `implementer-backend`, `implementer-ui` and `implementer`
+(engine / e2e / mcp) differ only in their injected skills.
 
 **Design**
-- Injects the 11 coding skills; all are binding **while writing** code. The
-  package's architecture skill wins on where code lives. No separate
-  skill-by-skill review pass — architecture/depcruise review happens in
-  `/pr-self-review`.
+- Injects only its Kind's skills (others on demand via `Read`); all are binding
+  **while writing** code. The package's architecture skill wins on where code
+  lives. No separate skill-by-skill review pass.
+- Reads the plan by heading ranges (`Grep` + `Read offset/limit`), never whole.
+- Checks with [`scripts/agent-check.mjs`](../../scripts/agent-check.mjs):
+  typecheck with errors split into *your files* / *other files*, plus
+  `vitest related <owned files>`, JSON reporter condensed to a summary and the
+  first 5 failures. At most 3 fix rounds. Multi-agent: no full suite (the
+  verifier runs it once per wave); single-agent: `--full` once at the end.
 - Edits only its unit's *Owns* files; never reverts or "fixes" foreign files.
 - Shared checkout: git is read-only (`status`/`diff`/`log`), no dependency
   installs, no subagents, no push/PR.
-- Verification before reporting: package `typecheck` + tests — new tests pass
-  and **previously passing tests still pass**; failures only in another unit's
-  files are reported as *foreign*. Never skips or loosens a failing check.
+- Verification before reporting: typecheck + every test that imports its files
+  pass; failures only in another unit's files are reported as *foreign*. Never
+  skips or loosens a failing check.
 - Stops instead of working around a missing input, a foreign file, a wrong
   contract or a missing dependency — reported as `BLOCKED:`.
 - Report, in the language of the request:
@@ -189,7 +340,7 @@ Implements one unit; input is `plan` (path) + `unit` (id).
   ## Implementer result — <task id / short name>
   ### Changed
   ### Skills applied        (the Type set for the unit's kind)
-  ### Verification          (Tests / Typecheck: command → pass | fail)
+  ### Verification          (agent-check / full suite: command → pass | fail | not run)
   ### Out of scope / follow-ups
   ```
 
@@ -226,9 +377,13 @@ prior report → re-verify mode).
   <package>`, read-only git, `pnpm|npm` test/typecheck, `vitest run` (no `-u`,
   `--update`, `--coverage`), the server depcruise command and
   `node --test .claude/hooks/*.test.mjs`.
-- **No skills injected** — the plan is the only standard it judges against;
+- **No coding skills** — the plan is the only standard it judges against;
   injected coding skills would pull the report toward generic review. A plan item
   that names a skill is checked by `Read`-ing that skill file for that rule only.
+  The one injected skill is `ears-requirements`, used only for `S<NN>-*` rows: the
+  evidence must match the pattern's shape (WHILE: in *and* after the state; IF …
+  THEN: failure exercised; WHERE: on *and* off) or the row is PARTIAL. Spec
+  wording is never graded.
 - Model **opus**: it is the adversarial gate that decides whether a wave is done.
 - Implementer reports are unverified claims — it reads the diff and re-runs the
   checks itself. Every row carries `path:line` or `command → result` from this
@@ -280,7 +435,7 @@ prior report → re-verify mode).
 | Practice | Source | Why not |
 |---|---|---|
 | `permissionMode: plan` for reviewers | [Agent SDK — permissions](https://code.claude.com/docs/en/agent-sdk/permissions) | A tools allowlist plus a deterministic, tested hook is stricter than a permission mode. |
-| Injecting the coding skills | — | They pull the report toward generic code review; `architecture-reviewer` and `/pr-self-review` cover that. |
+| Injecting the coding skills | — | They pull the report toward generic code review; `architecture-reviewer` and `/pr-self-review` cover that. (`ears-requirements` is injected because it defines what evidence an `S<NN>-*` row needs, not how code should look.) |
 
 ## test-writer
 
@@ -539,11 +694,13 @@ The review/docs agents enforce their limits with two parametrized `PreToolUse`
 hooks instead of one hook per agent:
 
 - [`write-scope-guard.mjs <profile>`](../hooks/write-scope-guard.mjs) (`Write|Edit`)
-  — profiles `test-writer`, `doc-writer`. Repo-relative globs: **deny list first**,
+  — profiles `test-writer`, `doc-writer`, `spec-creator`. Repo-relative globs: **deny list first**,
   then allow list, anything else denied.
 - [`bash-scope-guard.mjs <profile>`](../hooks/bash-scope-guard.mjs) (`Bash`) —
-  profiles `test-writer`, `architecture-reviewer`, `security-reviewer` (read-only
-  git only), `plan-verifier`. An
+  profiles `implementer` (shared by all three implementers: agent-check, tests,
+  typecheck, depcruise, `pnpm db:generate --name <x>`), `test-writer`,
+  `architecture-reviewer`, `security-reviewer` (read-only git only),
+  `plan-verifier`. An
   **allowlist**: the command is split on `&&` `||` `;` `|` and newlines and every
   segment must match (`cd <package>` and read-only git are common to all). Before
   that, `<` / `>`, backticks, any `$`, background `&`, `tee` and env-assignment
@@ -563,7 +720,7 @@ hooks instead of one hook per agent:
   <profile>` in the agent's frontmatter `hooks` (always via `$CLAUDE_PROJECT_DIR`:
   a relative path breaks as soon as the session cwd leaves the repo root). Never add a default-allow.
 
-`planner-write-guard.mjs` is a separate, older single-purpose hook and stays as
+`implementation-planner-write-guard.mjs` is a separate, older single-purpose hook and stays as
 it is; migrating it onto `write-scope-guard` is out of scope.
 
 ## Adding or changing an agent
@@ -573,7 +730,8 @@ it is; migrating it onto `write-scope-guard` is out of scope.
 - Grant the fewest tools the role needs; enforce hard limits with a hook, not
   only with prompt text.
 - Reuse a scope-guard profile (or add one to `write-scope-guard` /
-  `bash-scope-guard`) instead of writing a new hook; `planner-write-guard` stays
+  `bash-scope-guard`) instead of writing a new hook; `implementation-planner-write-guard` stays
   separate (its migration is out of scope).
-- Changing the coding skill set → update `planner.md` and `implementer.md` together.
+- Changing the coding skill set → update `implementation-planner.md` and the
+  three implementer files (and the skills table in `implementer.md`) together.
 - Record the sources you relied on in this README.

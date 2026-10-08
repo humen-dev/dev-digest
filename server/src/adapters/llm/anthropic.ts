@@ -43,7 +43,9 @@ export class AnthropicProvider implements LLMProvider {
   private client: Anthropic;
 
   constructor(apiKey: string) {
-    this.client = new Anthropic({ apiKey });
+    // Retries are owned by `withRetry` around each call; the SDK's own default
+    // (maxRetries: 2) would multiply them into up to 12 requests per call.
+    this.client = new Anthropic({ apiKey, maxRetries: 0 });
   }
 
   async listModels(): Promise<ModelInfo[]> {

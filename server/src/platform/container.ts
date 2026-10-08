@@ -53,6 +53,21 @@ import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
 import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer/index.js';
 import { type UrlFetcher, HttpUrlFetcher } from '../adapters/url-fetcher/index.js';
+import { FsProjectDocs } from '../adapters/project-docs/index.js';
+import { DrizzleProjectContextRepository } from '../modules/project-context/repository.js';
+import { ProjectContextService } from '../modules/project-context/service.js';
+import type { ProjectDocsFs } from '../modules/project-context/ports.js';
+import { DrizzleOnboardingRepository } from '../modules/onboarding/repository.js';
+import { OnboardingTourService } from '../modules/onboarding/service.js';
+import type { OnboardingTourRepositoryPort, TourGitPort } from '../modules/onboarding/ports.js';
+import { GENERATION_TIMEOUT_MS } from '../modules/onboarding/constants.js';
+import { DrizzleBriefRepository } from '../modules/brief/repository.js';
+import { BriefService } from '../modules/brief/service.js';
+import type { BriefRepositoryPort } from '../modules/brief/ports.js';
+import { GENERATION_DEADLINE_MS } from '../modules/brief/constants.js';
+import { GitTreeReader } from '../adapters/git/tree.js';
+import { loadPromptTemplate } from './prompts.js';
+import { EXCLUDED_DIRS, MAX_FILE_SIZE } from '../modules/repo-intel/types.js';
 
 /**
  * DI container. One per app instance. Holds config, db, the JobRunner,
@@ -89,6 +104,20 @@ export interface ContainerOverrides {
   prHistoryRepo?: PrHistoryRepositoryPort;
   /** Prior-PR GitHub GraphQL source — tests inject a fake (never the network). */
   prHistorySource?: PrHistorySourcePort;
+  /**
+   * Project-docs filesystem adapter. Typed as the PORT (`ProjectDocsFs`), not
+   * the concrete `FsProjectDocs` — `adapters-not-into-modules` forbids the
+   * adapter from importing the port it implements, so this is the one place
+   * that checks the shapes actually match (see `adapters/project-docs/index.ts`
+   * file header).
+   */
+  projectDocsFs?: ProjectDocsFs;
+  /** Onboarding-tour persistence port — tests swap the port, not the service. */
+  onboardingRepo?: OnboardingTourRepositoryPort;
+  /** Onboarding-tour git reader (listTrackedFiles + readFileAt) — tests inject a fake. */
+  gitTree?: TourGitPort;
+  /** PR Brief persistence port — tests swap the port, not the service. */
+  briefRepo?: BriefRepositoryPort;
 }
 
 export class Container {
@@ -124,6 +153,11 @@ export class Container {
   private _tokenizer?: Tokenizer;
   private _urlFetcher?: UrlFetcher;
   private _priceBook?: PriceBook;
+  private _projectDocsFs?: ProjectDocsFs;
+  private _projectContextService?: ProjectContextService;
+  private _gitTree?: TourGitPort;
+  private _onboardingTourService?: OnboardingTourService;
+  private _briefService?: BriefService;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -279,6 +313,104 @@ export class Container {
     if (this.overrides.tokenizer) return this.overrides.tokenizer;
     this._tokenizer ??= new TiktokenTokenizer();
     return this._tokenizer;
+  }
+
+  /** Project-docs filesystem adapter (SPEC-01) — walk/read/write repo Markdown docs. */
+  get projectDocsFs(): ProjectDocsFs {
+    if (this.overrides.projectDocsFs) return this.overrides.projectDocsFs;
+    this._projectDocsFs ??= new FsProjectDocs();
+    return this._projectDocsFs;
+  }
+
+  /**
+   * Project Context — attachments, documents and the effective-context
+   * preview (SPEC-01). `tokens` reuses the `tokenizer` getter: `TokenCounter`
+   * (ports.ts) and `Tokenizer` (adapters/tokenizer) are the same
+   * `{ count(text): number }` shape.
+   */
+  get projectContextService(): ProjectContextService {
+    return (this._projectContextService ??= new ProjectContextService({
+      repo: new DrizzleProjectContextRepository(this.db),
+      fs: this.projectDocsFs,
+      tokens: this.tokenizer,
+      excludedDirs: this.config.projectDocsExcludedDirs,
+    }));
+  }
+
+  /**
+   * Onboarding-tour git reader: `listTrackedFiles` (GitTreeReader —
+   * `git ls-tree` at an arbitrary ref, adapters/git/tree.ts) merged with
+   * `readFileAt` (the existing `GitClient`, same clone-path convention) into
+   * the one structural `TourGitPort` the service depends on.
+   */
+  get gitTree(): TourGitPort {
+    if (this.overrides.gitTree) return this.overrides.gitTree;
+    if (!this._gitTree) {
+      const reader = new GitTreeReader(this.config.cloneDir);
+      const git = this.git;
+      this._gitTree = {
+        listTrackedFiles: (repo, ref) => reader.listTrackedFiles(repo, ref),
+        readFileAt: (repo, ref, path) => git.readFileAt(repo, ref, path),
+      };
+    }
+    return this._gitTree;
+  }
+
+  /** Onboarding tour — grounded five-section tour of an indexed repo (SPEC-03). */
+  get onboardingTourService(): OnboardingTourService {
+    return (this._onboardingTourService ??= new OnboardingTourService({
+      onboarding: this.overrides.onboardingRepo ?? new DrizzleOnboardingRepository(this.db),
+      repos: this.reposRepo,
+      git: this.gitTree,
+      repoIntel: this.repoIntel,
+      llm: (provider) => this.llm(provider),
+      resolveModel: (workspaceId) => this.featureModels.resolve(workspaceId, 'onboarding'),
+      tokenizer: this.tokenizer,
+      loadSystemPrompt: () => loadPromptTemplate('onboarding.system.md'),
+      excludedDirs: [...EXCLUDED_DIRS, ...this.config.projectDocsExcludedDirs],
+      maxFileBytes: MAX_FILE_SIZE,
+      timeoutMs: GENERATION_TIMEOUT_MS,
+    }));
+  }
+
+  /**
+   * PR Brief — grounded Why+Risk brief of one PR (SPEC-04). The context-docs
+   * port is an inline adapter over `projectContextService` (a 3-method object
+   * literal, same pattern as `AgentLinkerPort`), so `brief` imports nothing
+   * from `project-context`. The GitHub client is narrowed to `getIssue`
+   * (body normalized to `string | null`).
+   */
+  get briefService(): BriefService {
+    return (this._briefService ??= new BriefService({
+      briefs: this.overrides.briefRepo ?? new DrizzleBriefRepository(this.db),
+      blast: (workspaceId, prId) => this.blastService.get(workspaceId, prId),
+      smartDiff: (workspaceId, prId) => this.smartDiffService.get(workspaceId, prId),
+      github: async () => {
+        const client = await this.github();
+        return {
+          getIssue: async (repo, n) => {
+            const issue = await client.getIssue(repo, n);
+            return { title: issue.title, body: issue.body ?? null };
+          },
+        };
+      },
+      contextDocs: {
+        attachedPaths: (workspaceId) => this.projectContextService.workspaceAttachedPaths(workspaceId),
+        listProjectDocs: async (workspaceId, repoId) => {
+          const list = await this.projectContextService.list(workspaceId, repoId);
+          return {
+            cloned: list.cloned,
+            documents: list.documents.map((d) => ({ path: d.path, estimated_tokens: d.estimated_tokens })),
+          };
+        },
+        readDocs: (clonePath, paths) => this.projectContextService.readDocsForBrief(clonePath, paths),
+      },
+      llm: (provider) => this.llm(provider),
+      resolveModel: (workspaceId) => this.featureModels.resolve(workspaceId, 'risk_brief'),
+      tokenizer: this.tokenizer,
+      loadSystemPrompt: () => loadPromptTemplate('brief.system.md'),
+      deadlineMs: GENERATION_DEADLINE_MS,
+    }));
   }
 
   /**

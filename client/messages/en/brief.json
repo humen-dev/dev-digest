@@ -2,7 +2,7 @@
   "block": {
     "intent": "Intent",
     "blast": "Blast radius",
-    "risks": "Risks",
+    "risks": "Risk areas",
     "history": "PR history"
   },
   "noRisks": "No notable risks flagged.",
@@ -66,5 +66,92 @@
       "invalid_ref": "invalid reference",
       "limit_exceeded": "limit exceeded"
     }
+  },
+  "card": {
+    "title": "PR Brief"
+  },
+  "empty": {
+    "title": "No brief yet",
+    "body": "Generate a Why+Risk brief for this PR."
+  },
+  "actions": {
+    "generate": "Generate brief",
+    "regenerate": "Re-run the brief for this PR",
+    "retry": "Retry",
+    "settingsLink": "Open Settings → Models",
+    "context": "Context",
+    "contextCount": "Context: {selected} of {total}"
+  },
+  "noKey": "No API key for {provider}.",
+  "banner": {
+    "hint": "Verdict, findings and score come from the latest agent review; what / why / risks / review-focus come from the brief.",
+    "findings": "{count} findings",
+    "blockers": "{count} blockers",
+    "score": "Score {score}",
+    "tokens": "{in} → {out} tok",
+    "generated": "Generated {time} · {model}"
+  },
+  "outdated": "Outdated ({oldSha} → {newSha})",
+  "refused": {
+    "no_changed_files": "This PR has no changed files — nothing to brief.",
+    "over_budget": "The PR facts do not fit the brief input budget even after dropping optional inputs."
+  },
+  "failed": {
+    "title": "Couldn't generate the brief.",
+    "reason": {
+      "timeout": "The model did not answer in time.",
+      "llm_error": "The model call failed.",
+      "invalid_output": "The model returned an answer that did not match the brief format.",
+      "store_failed": "The brief could not be saved."
+    }
+  },
+  "error": {
+    "load": "Couldn't load the brief."
+  },
+  "risks": {
+    "empty": "No notable risks flagged.",
+    "expand": "Show details"
+  },
+  "focus": {
+    "title": "Review focus — read these first",
+    "empty": "No review focus items."
+  },
+  "missing": {
+    "title": "Missing data",
+    "intent_not_detected": "Intent not detected",
+    "intent_stale": "Intent is outdated for this commit",
+    "blast_unavailable": "Blast radius unavailable",
+    "blast_degraded": "Blast radius degraded ({reason})",
+    "no_linked_issue": "No linked issue",
+    "linked_issue_unresolved": "Linked issue could not be loaded",
+    "no_context_docs": "No context documents",
+    "pr_body_empty": "PR has no description",
+    "pr_body_truncated": "PR description truncated to 4,000 characters",
+    "issue_body_truncated": "Issue body truncated to 4,000 characters"
+  },
+  "dropped": {
+    "blast_caller": "Blast caller dropped by budget: {id}",
+    "cron": "Cron dropped by budget: {id}",
+    "endpoint": "Endpoint dropped by budget: {id}",
+    "changed_file": "Changed file dropped by budget: {id}",
+    "context_doc": "Context document dropped by budget: {id}",
+    "issue_body": "Issue body dropped by budget: {id}"
+  },
+  "context": {
+    "used": "Context documents used",
+    "droppedByBudget": "Dropped by budget",
+    "search": "Search project documents",
+    "reason": {
+      "pr_referenced": "Referenced by this PR",
+      "general": "General project document",
+      "scope_touched": "{scope} — touched by this PR",
+      "scope_not_touched": "{scope} — not touched by this PR"
+    },
+    "loadError": "Couldn't load project documents.",
+    "tokens": "{count} tok"
+  },
+  "nav": {
+    "fileNotInDiff": "File not in this PR's diff",
+    "lineNotInDiff": "Line {line} is not in the diff"
   }
 }

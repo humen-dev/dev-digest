@@ -1,0 +1,21 @@
+{
+  "name": "PR Brief on Overview — seeded brief persists and a focus click opens Files changed",
+  "description": "SPEC-04. From PR #482 Overview, the seeded brief (summary + 'Review focus — read these first') is visible without generating, survives a reload, and clicking the src/config.ts:12 focus item opens Files changed with ?tab=diff&file=src%2Fconfig.ts and the file content visible. Read-only seeded data (no model call). Assumes a freshly-seeded DB (see e2e/README.md).",
+  "steps": [
+    { "cmd": ["open", "{BASE}/"], "label": "load the app root" },
+    { "cmd": ["wait", "--url", "/pulls"], "label": "land on the PR list" },
+    { "cmd": ["find", "text", "Add rate limiting to public API endpoints", "click"], "label": "open the PR row" },
+    { "cmd": ["wait", "--url", "/pulls/482"], "label": "navigate to the PR detail route" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "PR detail data settles" },
+    { "cmd": ["wait", "--text", "Adds a token-bucket rate limiter in front of the public webhook endpoint"], "label": "seeded brief summary is visible without generating" },
+    { "cmd": ["wait", "--text", "src/config.ts:12"], "label": "review focus lists the seeded src/config.ts:12 item (the block title is CSS-uppercased, so wait on an item)" },
+    { "cmd": ["reload"], "label": "reload the page" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "PR detail data settles after reload" },
+    { "cmd": ["wait", "--text", "Adds a token-bucket rate limiter in front of the public webhook endpoint"], "label": "brief is reopened from storage after reload" },
+    { "cmd": ["scrollintoview", "ol button"], "label": "scroll the Review focus list into view (the page scrolls inside <main>; clicks off-viewport are lost)" },
+    { "cmd": ["find", "text", "src/config.ts:12", "click"], "label": "click the src/config.ts:12 focus item" },
+    { "cmd": ["wait", "--url", "tab=diff"], "label": "Files changed tab is active in the URL" },
+    { "cmd": ["wait", "--url", "file=src%2Fconfig.ts"], "label": "the focused file is carried in the URL" },
+    { "cmd": ["wait", "--text", "stripeKey"], "label": "the file content is visible in the diff" }
+  ]
+}

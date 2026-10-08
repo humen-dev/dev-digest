@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * PreToolUse hook (Write|Edit) for write-capable subagents — usage:
- *   node .claude/hooks/write-scope-guard.mjs <profile>   # test-writer | doc-writer
+ *   node .claude/hooks/write-scope-guard.mjs <profile>   # test-writer | doc-writer | spec-creator
  *
  * Each profile may write only a fixed set of repo-relative globs. Deny globs are
  * checked first (so a broad allow like `client/src/test/**` cannot reopen
@@ -47,6 +47,11 @@ const PROFILES = {
       'docs/skill-*/**',
     ],
     instead: 'write only README.md files, <package>/docs/**/*.md or docs/adr/**/*.md; report spec/AGENTS/plan drift as a follow-up for its owner instead of editing it.',
+  },
+  'spec-creator': {
+    allow: ['specs/*.md', '{client,server,reviewer-core,mcp}/specs/*.md'],
+    deny: ['**/_TEMPLATE.md', 'e2e/**'],
+    instead: 'write only Markdown specs directly in specs/ (cross-module) or <client|server|reviewer-core|mcp>/specs/ (one module), plus their README.md index; put code, plan or e2e changes into the spec as requirements or Open questions instead of making them.',
   },
 };
 

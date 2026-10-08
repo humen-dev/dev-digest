@@ -9,6 +9,7 @@ import { REVIEW_STRATEGY } from './constants.js';
 import { intentLogLine, renderSkillBlocks, taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
 import type { EnsureIntentResult, IntentForReviewPort } from '../intent/ports.js';
+import type { ResolvedProjectContext } from '../project-context/index.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -202,6 +203,14 @@ export class ReviewRunExecutor {
       // an independent feature, always attempted.
       const skillBlocks = await this.buildSkillBlocks(agent.id, runLog);
 
+      // SPEC-01 (U7) — resolve the agent's effective project-context docs
+      // ONCE, right before the engine call: this is the snapshot the run
+      // uses even if the attachment list or a doc's text changes mid-run
+      // (EC-13, EC-18). Best-effort: a `resolveEffective` failure never
+      // breaks the run (NFR-7) — `buildProjectContext` catches it and logs
+      // instead of throwing.
+      const projectContext = await this.buildProjectContext(workspaceId, agent.id, repo.clonePath, runLog);
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -222,6 +231,10 @@ export class ReviewRunExecutor {
         // Skills feature (L02) — enabled, ordered skill bodies. Omitted when
         // no skill is linked/enabled, matching the callers/repoMap contract.
         ...(skillBlocks.blocks.length ? { skills: skillBlocks.blocks } : {}),
+        // SPEC-01 (U7) — attached project-context docs; omitted when none
+        // resolved to `included` (empty/undefined → assemblePrompt falls
+        // back to the legacy `specs` slot, no behaviour change).
+        ...(projectContext.docs.length > 0 ? { projectContext: projectContext.docs } : {}),
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
@@ -303,7 +316,19 @@ export class ReviewRunExecutor {
         })),
         raw_output: outcome.raw,
         memory_pulled: [],
-        specs_read: [],
+        // SPEC-01 (U7) — `docs` is already included-only, grouped order
+        // (ResolvedProjectContext's contract); `entries` is the full
+        // grouped-order status trace, every skipped reason included. The
+        // trace's `project_context` is `ProjectContextEntry` (§3.1: path,
+        // source, tokens, status) — `entries` is `EffectiveContextDoc`
+        // (adds `bucket`, §3.4), so strip that field before persisting.
+        specs_read: projectContext.docs.map((d) => d.path),
+        project_context: projectContext.entries.map(({ path, source, tokens, status }) => ({
+          path,
+          source,
+          tokens,
+          status,
+        })),
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),
@@ -520,9 +545,49 @@ export class ReviewRunExecutor {
       tool_calls: [],
       raw_output: '',
       memory_pulled: [],
+      // EC-16 — a failed/cancelled run (or a pre-work failure in `failAll`)
+      // never resolved project context: the trace shows it explicitly absent,
+      // never a stale or partial snapshot.
       specs_read: [],
+      project_context: null,
       log: this.container.runBus.buffer(runId).map((e) => ({ t: e.t, kind: e.kind, msg: e.msg })),
       intent: null,
     };
+  }
+
+  /**
+   * SPEC-01 (U7) — resolve the agent's effective project-context docs through
+   * `container.projectContextService` (§3.4). Best-effort: a thrown error
+   * (repo lookup, fs adapter, …) is caught here so the review ALWAYS proceeds
+   * — with an empty project context, never a failed run (NFR-7) — and the
+   * failure reaches the Live Log as a message only, never as document
+   * content or a stack trace (NFR-4).
+   *
+   * Non-`included` entries are logged one line each (`Project context:
+   * <path> — <status>`, NFR-10), then a visible summary `Project context: <n>
+   * spec(s) injected, <m> missing` (the lesson's wording), then the line
+   * shared with the (currently always-empty) memory feature: `Pulled <n>
+   * memory items, <m> project specs` (NFR-3). Only paths, statuses and counts
+   * are logged, never document text (NFR-4).
+   */
+  private async buildProjectContext(
+    workspaceId: string,
+    agentId: string,
+    clonePath: string | null,
+    runLog: RunLogger,
+  ): Promise<ResolvedProjectContext> {
+    try {
+      const resolved = await this.container.projectContextService.resolveEffective(workspaceId, agentId, clonePath);
+      for (const entry of resolved.entries) {
+        if (entry.status !== 'included') runLog.info(`Project context: ${entry.path} — ${entry.status}`);
+      }
+      const skipped = resolved.entries.length - resolved.docs.length;
+      runLog.info(`Project context: ${resolved.docs.length} spec(s) injected, ${skipped} missing`);
+      runLog.info(`Pulled 0 memory items, ${resolved.docs.length} project specs`);
+      return resolved;
+    } catch (err) {
+      runLog.info(`Project context unavailable: ${(err as Error).message} — reviewing without it`);
+      return { cloned: clonePath != null, entries: [], docs: [] };
+    }
   }
 }

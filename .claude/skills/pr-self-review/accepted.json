@@ -67,6 +67,60 @@
       "reason": "Deliberate: at the author's request one PR ships the whole L03 lesson — subagent pipeline, Intent Layer and Smart Diff. Each part was planned, implemented in waves and verified separately (plan-verifier + architecture-reviewer per wave; docs/plans/intent-layer.md, docs/plans/smart-diff.md).",
       "addedBy": "mgume",
       "addedAt": "2026-09-27"
+    },
+    {
+      "key": "DET-007|.claude/hooks/bash-scope-guard.test.mjs|volume-wiping docker compose command added",
+      "reason": "Not an executed command: the string is an element of the deny-list fixture in bash-scope-guard.test.mjs that asserts the implementer Bash guard REFUSES 'docker compose down -v' (assertDenied). Removing it would drop the regression test for exactly the protection DET-007 exists for.",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-04"
+    },
+    {
+      "key": "DET-003|client/src/vendor/shared/contracts/project-context.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23). SPEC-01 Project Context added contracts/project-context.ts and its index.ts export byte-identically in the server/ and client/ copies (verified by plan-verifier U0 and architecture-reviewer, 2026-10-06; plan docs/plans/project-context.md U0, §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-06"
+    },
+    {
+      "key": "DET-003|client/src/vendor/shared/index.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23). SPEC-01 Project Context added contracts/project-context.ts and its index.ts export byte-identically in the server/ and client/ copies (verified by plan-verifier U0 and architecture-reviewer, 2026-10-06; plan docs/plans/project-context.md U0, §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-06"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/contracts/project-context.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23). SPEC-01 Project Context added contracts/project-context.ts and its index.ts export byte-identically in the server/ and client/ copies (verified by plan-verifier U0 and architecture-reviewer, 2026-10-06; plan docs/plans/project-context.md U0, §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-06"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/index.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23). SPEC-01 Project Context added contracts/project-context.ts and its index.ts export byte-identically in the server/ and client/ copies (verified by plan-verifier U0 and architecture-reviewer, 2026-10-06; plan docs/plans/project-context.md U0, §8).",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-06"
+    },
+    {
+      "key": "DET-003|client/src/vendor/shared/contracts/knowledge.ts|vendored shared contract edited in a copy",
+      "reason": "SPEC-03 onboarding-tour contract (plan Wave 0): no upstream @devdigest/shared package; server and client copies edited identically and byte-identical (verified by plan-verifier and architecture-reviewer)",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-07"
+    },
+    {
+      "key": "DET-003|client/src/vendor/shared/contracts/onboarding-tour.ts|vendored shared contract edited in a copy",
+      "reason": "SPEC-03 onboarding-tour contract (plan Wave 0): no upstream @devdigest/shared package; server and client copies edited identically and byte-identical (verified by plan-verifier and architecture-reviewer)",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-07"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/contracts/knowledge.ts|vendored shared contract edited in a copy",
+      "reason": "SPEC-03 onboarding-tour contract (plan Wave 0): no upstream @devdigest/shared package; server and client copies edited identically and byte-identical (verified by plan-verifier and architecture-reviewer)",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-07"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/contracts/onboarding-tour.ts|vendored shared contract edited in a copy",
+      "reason": "SPEC-03 onboarding-tour contract (plan Wave 0): no upstream @devdigest/shared package; server and client copies edited identically and byte-identical (verified by plan-verifier and architecture-reviewer)",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-07"
     }
   ]
 }

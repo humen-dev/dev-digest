@@ -9,6 +9,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import type { PrFile } from "@/lib/types";
+import type { DiffTarget } from "@/lib/pr-diff-target";
 import { type DiffCommentApi } from "../comments";
 import type { DiffFindingOverlay } from "../findings";
 import { s } from "../styles";
@@ -18,10 +19,12 @@ export function DiffViewer({
   files,
   commenting,
   findings,
+  target,
 }: {
   files: PrFile[];
   commenting?: DiffCommentApi;
   findings?: DiffFindingOverlay;
+  target?: DiffTarget | null;
 }) {
   const t = useTranslations("shell");
   if (!files || files.length === 0) {
@@ -30,7 +33,7 @@ export function DiffViewer({
   return (
     <div style={s.list}>
       {files.map((f) => (
-        <FileCard key={f.path} file={f} commenting={commenting} findings={findings} />
+        <FileCard key={f.path} file={f} commenting={commenting} findings={findings} target={target} />
       ))}
     </div>
   );

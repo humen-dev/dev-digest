@@ -442,6 +442,26 @@ export class RepoIntelRepository {
       .where(eq(t.fileEdges.repoId, repoId));
   }
 
+  /**
+   * Distinct importer count per path, restricted to `paths` — onboarding's
+   * `importer_count`. A path with no importers is simply absent from the
+   * result (never a zero row); the caller treats a missing key as 0.
+   */
+  async getImporterCounts(repoId: string, paths: string[]): Promise<Record<string, number>> {
+    if (paths.length === 0) return {};
+    const rows = await this.db
+      .select({
+        toFile: t.fileEdges.toFile,
+        count: sql<number>`count(distinct ${t.fileEdges.fromFile})::int`,
+      })
+      .from(t.fileEdges)
+      .where(and(eq(t.fileEdges.repoId, repoId), inArray(t.fileEdges.toFile, paths)))
+      .groupBy(t.fileEdges.toFile);
+    const out: Record<string, number> = {};
+    for (const r of rows) out[r.toFile] = r.count;
+    return out;
+  }
+
   /** `{path, percentile}` for the given paths (smart-diff / run-executor). */
   async getFileRankFor(repoId: string, paths: string[]): Promise<FileRankRow[]> {
     if (paths.length === 0) return [];

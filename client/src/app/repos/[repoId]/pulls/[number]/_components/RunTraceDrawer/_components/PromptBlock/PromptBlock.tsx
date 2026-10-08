@@ -25,15 +25,27 @@ export function PromptBlock({
   text,
   color,
   meta,
+  open: openProp,
+  onOpenChange,
 }: {
   label: string;
   text: string;
   color: string;
   /** Optional trailing note next to the label (e.g. an added-tokens count). */
   meta?: React.ReactNode;
+  /** Controlled open state (e.g. a "Specs read" chip expanding this block, AC-56).
+   *  Omit for the default uncontrolled click-to-toggle behaviour. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const t = useTranslations("runs");
-  const [open, setOpen] = React.useState(false);
+  const [openState, setOpenState] = React.useState(false);
+  const open = openProp ?? openState;
+  const toggleOpen = () => {
+    const next = !open;
+    onOpenChange?.(next);
+    if (openProp === undefined) setOpenState(next);
+  };
   const [full, setFull] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const copy = () => {
@@ -43,7 +55,7 @@ export function PromptBlock({
   };
   return (
     <div style={s.promptRow}>
-      <div onClick={() => setOpen((o) => !o)} style={s.promptHead}>
+      <div onClick={toggleOpen} style={s.promptHead}>
         <span style={s.promptDot(color)} />
         <span style={s.promptLabel}>{label}</span>
         {meta != null && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{meta}</span>}

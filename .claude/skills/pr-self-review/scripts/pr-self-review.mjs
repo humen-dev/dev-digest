@@ -470,7 +470,13 @@ function cmdReport(argv) {
     process.stderr.write('No run.json — run `pr-self-review run` first.\n');
     return 2;
   }
-  const fresh = currentSignature(ROOT);
+  // Re-derive the signature against the same base `run` used: a `run --base=<ref>`
+  // is recorded as `baseRef`, and checking it against the default base would
+  // always report a moved change set.
+  const defaultRefs = ['origin/main', 'main', 'HEAD'];
+  const baseOverride =
+    opt(argv, 'base') || (prev.baseRef && !defaultRefs.includes(prev.baseRef) ? prev.baseRef : undefined);
+  const fresh = currentSignature(ROOT, baseOverride);
   if (fresh.signature !== prev.signature) {
     process.stderr.write('The change set moved since the last run (signature ' + short(prev.signature) + ' -> ' + short(fresh.signature) + '). Re-run `run`.\n');
     return 2;

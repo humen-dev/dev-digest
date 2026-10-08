@@ -31,14 +31,26 @@ Docker (Postgres only). TypeScript 5.7 throughout.
   deliberate override is `PR_SELF_REVIEW_BYPASS=1`. Retire a false positive with
   `pr-self-review.mjs accept "<key>" --reason "…"` — never with a habitual bypass.
 - **Plan → implement (subagents in `.claude/agents/`):** optional `brainstormer`
-  turns a raw idea into a Design brief → `planner` writes
-  `docs/plans/<slug>.md` (template `_TEMPLATE.md`) → user approves → main session
-  does Wave 0 → one `implementer` per unit **in parallel in the same checkout**
-  (pass plan path + unit id; disjoint file ownership) → main session commits each
-  wave → `plan-verifier` (**mandatory** after every wave commit) → optional
-  `test-writer` / `architecture-reviewer` ∥ `security-reviewer` / `doc-writer` →
-  `/pr-self-review`.
-  Implementers never touch git state, deps or `INSIGHTS.md`.
+  turns a raw idea into a Design brief → `spec-creator` analyses the designs
+  (gaps, corner cases, module interactions, UX; facts via parallel `researcher`s
+  the main session runs on its requests) and, after the user's answers,
+  writes an EARS spec `<pkg>/specs/YYYY-MM-DD-<slug>.md` (cross-module: root
+  `specs/`; template `specs/_TEMPLATE.md`; user approves it) → `implementation-planner` reviews the
+  requirements (spec / brief — it never writes specs), asks questions + the
+  **multi-agent vs single-agent** choice, then writes `docs/plans/<slug>.md`
+  (template `_TEMPLATE.md`) → user approves. spec-creator and the planner run
+  **manually**; then **`/impl <plan> [notes] [designs]`** builds it: Wave 0 (main
+  session) → one implementer per unit, by Kind (`implementer-backend` ·
+  `implementer-ui` · `implementer` for engine/e2e/mcp) — **in parallel in the same
+  checkout** (multi-agent; disjoint file ownership) or sequentially (single-agent)
+  → commit per wave → `plan-verifier` (**mandatory** per wave, `scope=all` last;
+  NOT MET → `mode: fix` of the owner) → ≤ 3 review rounds (`architecture-reviewer`
+  ∥ bugs ∥ `security-reviewer` if touched; fixes → owning unit; re-review with
+  `previous`) → `plan-verifier` re-verify → user OK → `spec-creator implemented SPEC-NN`
+  (same PR) → `/pr-self-review`. `test-writer` / `doc-writer` only on demand. A
+  *plan gap* (spec row no unit covers) → `implementation-planner`, new wave.
+  Implementers never touch git state, deps or `INSIGHTS.md`; they check with
+  `node scripts/agent-check.mjs <pkg> <files>` (typecheck + related tests).
 - **Checks:** every package exposes `test` + `typecheck`; **`tsc --noEmit` is the
   lint gate** — there is no separate ESLint step, so a clean typecheck is required.
 
@@ -82,5 +94,7 @@ Docker (Postgres only). TypeScript 5.7 throughout.
 ## Deeper context — read the file when the task touches it (don't preload)
 - [`README.md`](./README.md) — full overview + architecture diagram + quick start
 - [`TESTING.md`](./TESTING.md) — cross-package test strategy & CI workflows
+- [`docs/sdd-workflow.md`](./docs/sdd-workflow.md) — full spec → plan → waves → verify → PR workflow
 - [`docs/`](./docs/) — repo-level docs (e.g. `agent-prompts/`)
 - Per-package `docs/` · `specs/` · `INSIGHTS.md` — linked from each package's AGENTS.md
+- [`specs/`](./specs/README.md) — cross-module specs only (global `SPEC-NN`, EARS) + the spec template

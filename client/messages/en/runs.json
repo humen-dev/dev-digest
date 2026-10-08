@@ -48,13 +48,25 @@
       "skillsTokens": "+{tokens, plural, one {# token} other {# tokens}}",
       "memory": "Memory (dynamic)",
       "repoMap": "Repo skeleton — repo-intel (dynamic)",
-      "specs": "Project context (dynamic)",
+      "specs": "Project context — attached specs (untrusted)",
       "callers": "Callers of changed symbols — repo-intel (dynamic)",
       "user": "User / diff (dynamic)",
       "copy": "Copy",
       "fullscreen": "Open fullscreen",
       "search": "Search in this block…",
       "noMatches": "No matches for “{q}”."
+    },
+    "projectContext": {
+      "tokens": "≈ {tokens} tokens",
+      "tokensUnknown": "—",
+      "status": {
+        "included": "included",
+        "skipped_missing": "missing",
+        "skipped_unreadable": "unreadable",
+        "skipped_secret": "secret",
+        "skipped_unsafe_path": "unsafe path",
+        "skipped_not_cloned": "not cloned"
+      }
     },
     "tools": {
       "args": "args",

@@ -12,6 +12,7 @@ import type {
   SmartDiffResponse,
   SmartDiffRole,
 } from "@devdigest/shared";
+import type { DiffTarget } from "@/lib/pr-diff-target";
 import { SMART_DIFF_ROLE_ORDER } from "./constants";
 
 /** `reviews` must be newest-first (usePrReviews' natural order). */
@@ -65,6 +66,24 @@ export function buildRoleGroups(files: PrFile[], smartDiff: SmartDiffResponse): 
   return SMART_DIFF_ROLE_ORDER
     .filter((role) => (byRole.get(role)?.length ?? 0) > 0)
     .map((role) => ({ role, files: byRole.get(role)! }));
+}
+
+const POSITIVE_INT_RE = /^\d+$/;
+
+/**
+ * Validates the raw `?file=` / `?line=` URL values (SPEC-04). `file` must equal a
+ * changed path exactly (no normalisation — `../x` is simply "not in the diff");
+ * `line` must be a positive integer, otherwise it is ignored (file-level target).
+ */
+export function parseDiffTarget(
+  file: string | null | undefined,
+  line: string | null | undefined,
+  changedPaths: Iterable<string>,
+): { target: DiffTarget | null; fileNotInDiff: boolean } {
+  if (!file) return { target: null, fileNotInDiff: false };
+  if (!new Set(changedPaths).has(file)) return { target: null, fileNotInDiff: true };
+  const n = line != null && POSITIVE_INT_RE.test(line) ? Number(line) : NaN;
+  return { target: { file, line: Number.isSafeInteger(n) && n > 0 ? n : null }, fileNotInDiff: false };
 }
 
 /** Distinct file paths carrying at least one current finding. */

@@ -1,12 +1,17 @@
 ---
 name: plan-verifier
 description: Plan-compliance gate for DevDigest. Use after EVERY wave commit (mandatory), once no implementer is still running, to check the finished code against an approved plan in docs/plans/<slug>.md item by item. Input — `plan` (required path), `scope` (`U<n>` or `all`), optional `range` (default merge-base with main..working tree) and optional `previous` (a prior report → re-verify mode). Returns a fixed "Plan verification" report with one traceability row per plan item (MET / PARTIAL / NOT MET / NOT VERIFIABLE, each with file:line or command evidence) and a PASS / FAIL / INCOMPLETE verdict. Read-only; runs only the plan's checks its Bash allowlist permits. It never substitutes a generic code review — for that use architecture-reviewer or /pr-self-review. Interview mode — without a plan path it returns a "Clarification needed" block; relay it and re-invoke.
-model: opus
+model: sonnet
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit, PowerShell, Agent, Skill, WebSearch, WebFetch
-# skills: none — the plan is the only standard this agent judges against.
+# No coding skills — the plan is the only standard this agent judges against.
 # Injected coding skills would pull the report toward generic review. When a plan
 # item names a skill, read that skill's file with Read for that item only.
+# ears-requirements is the one exception: it is used ONLY to read S<NN>-* rows
+# (what each EARS pattern means and which test shape proves it), never to grade
+# the spec's or the plan's wording.
+skills:
+  - ears-requirements
 hooks:
   PreToolUse:
     - matcher: "Bash"
@@ -52,11 +57,19 @@ anything; a hook limits your shell to read-only git and the plan's checks.
 ## Input
 
 - `plan` — path to `docs/plans/<slug>.md` (required)
-- `scope` — `U<n>` (that unit plus the §3 contracts it consumes/produces) or
-  `all` (every item in the plan). Default `all`.
+- `scope` — `U<n>` or a list `U2,U3,U5` (the units of one wave, plus the §3
+  contracts they consume/produce) or `all` (every item in the plan). Default
+  `all`. Unit scopes use *Compact mode* in the report.
 - `range` — optional git range; default `$(git merge-base main HEAD)`..working
   tree plus untracked files.
 - `previous` — optional prior Plan verification report → *Re-verify mode*.
+
+**Reading the plan.** For a unit scope, do NOT read the whole plan.
+- `Grep -n '^## |^### '` the plan to get the heading line numbers.
+- `Read` (offset/limit) only these parts: each `### U<n>` block in scope, the §3 contracts it consumes or produces, and the §6/§7 rows that name those units.
+- Read the plan in full only for `scope: all`.
+
+Retro `pr-brief`: the plan was read in full by 11 agents, about 129k tokens.
 
 ## Step 0 — interview mode
 
@@ -101,11 +114,12 @@ Assign IDs exactly as follows:
 | `T-<k>` | §6 Test plan | row / bullet |
 | `V-<k>` | §7 Verification | row / numbered item |
 | `R-<heading>-<k>` | free-form plan | requirement bullet or table row under that heading (`<heading>` = short kebab slug) |
+| `S<NN>-<AC\|EC\|NFR>-<k>` | the SPEC-NN spec named in the plan header *Requirements source* (only when `scope = all`) | spec acceptance criterion, edge case and NFR — MET only when the behaviour is shown in code or a test, not merely cited by a unit; an item no unit cites is NOT MET (plan gap) and is also listed under *Missing* as `plan gap: S<NN>-…` so the orchestrator routes it to `implementation-planner`, not to an implementer |
 
 Also turn the plan's stated goal (header *Goal* or a "requirements" list) into
-rows — `R-goal-<k>` — when it states something checkable. In `scope = U<n>`
+rows — `R-goal-<k>` — when it states something checkable. In `scope = U<n>` (or a unit list)
 include only that unit's rows plus the `C-*` it consumes or produces. Write down
-the item count before Step 3; the final table must have exactly that many rows.
+the item count before Step 3; the final table must have exactly that many rows (compact mode: the not-MET rows plus the IDs on the `MET (…)` line).
 
 ## Step 3 — determine the change set (read-only git)
 
@@ -126,7 +140,14 @@ Verdicts: **MET** · **PARTIAL** · **NOT MET** · **NOT VERIFIABLE** (with reas
 - **OWN**: the path exists *and* appears in the change set.
 - **MNT**: the path does not appear in the change set (`git diff --name-status`
   output quoted). Any change → NOT MET.
-- **AC / T / V / R**: find the code, test or output that satisfies it; cite it.
+- **AC / T / V / R / S**: find the code, test or output that satisfies it; cite it.
+- **S rows (EARS):** read the condition and the response per `ears-requirements`
+  and demand the evidence shape that skill names for the pattern — WHEN: trigger →
+  response; WHILE: response inside the state *and* gone after it; IF … THEN: the
+  failure/hostile case actually exercised; WHERE: behaviour with the feature on
+  *and* unchanged with it off; ubiquitous: holds for all relevant inputs. Evidence
+  for only half of that shape → PARTIAL. Use the row's *Verify by* when present.
+  Wording quality of the spec is never a finding here.
   Partly satisfied → PARTIAL with what is missing.
 - **Extra**: every changed file owned by no unit in scope (and not a plan-listed
   artefact) is listed under *Extra*.
@@ -140,7 +161,9 @@ Verdicts: **MET** · **PARTIAL** · **NOT MET** · **NOT VERIFIABLE** (with reas
 Run `U<n>-CHK-*` and `V-*` commands only when they match your allowlist
 (enforced by `.claude/hooks/bash-scope-guard.mjs plan-verifier`):
 
-- `cd server|client|reviewer-core|e2e`
+- `cd server|client|reviewer-core|e2e|mcp`
+- `node scripts/agent-check.mjs <pkg> --full [--it]` — **preferred** for suite +
+  typecheck runs: same commands, short output (summary + first failures)
 - read-only git: `git status|diff|log|show|merge-base|rev-parse|ls-files` (no `--output`)
 - `pnpm typecheck` · `pnpm test` · `pnpm exec vitest run [paths / --exclude …]`
   · `npm test` · `npm run typecheck` · `npx vitest run [paths]` (no `-u`,
@@ -181,6 +204,12 @@ still has one row per item and the header count stays complete.
 ### Checks run
 ### Out-of-plan observations (optional — never changes the verdict)
 ```
+
+**Compact mode (`scope = U<n>` or a list of a wave's units):** *Traceability*
+contains only the rows that are **not MET**, followed by one line
+`MET (<count>): <ID>, <ID>, …` — no evidence column for MET rows. The item count
+in the header still covers every item. This keeps the orchestrator's context
+small across waves. `scope = all` and re-verify mode always print the full table.
 
 - The header table has rows `Verdict`, `Plan shape`, `Items` (plus `Range`).
 - `BLOCKED:` items, if any, go first, before the header.

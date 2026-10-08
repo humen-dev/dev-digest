@@ -16,7 +16,7 @@ import type { PrDetail } from "@devdigest/shared";
 import { FindingCard } from "../FindingCard";
 import { SmartDiffHeader } from "./_components/SmartDiffHeader";
 import { RoleGroup } from "./_components/RoleGroup";
-import { buildRoleGroups, countFlaggedFiles, currentFindings, pathsWithFindings } from "./helpers";
+import { buildRoleGroups, countFlaggedFiles, currentFindings, parseDiffTarget, pathsWithFindings } from "./helpers";
 import { DEFAULT_ORDER, type OrderMode } from "./constants";
 import { s } from "./styles";
 
@@ -25,10 +25,14 @@ interface DiffTabProps {
   pr: PrDetail;
   /** github "owner/repo" (null until the repo is loaded) — passed through to FindingCard. */
   repoFullName: string | null;
+  /** Raw `?file=` / `?line=` URL values (SPEC-04); validated here. */
+  targetFile?: string | null;
+  targetLine?: string | null;
 }
 
-export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
+export function DiffTab({ prId, pr, repoFullName, targetFile, targetLine }: DiffTabProps) {
   const t = useTranslations("prReview");
+  const tBrief = useTranslations("brief");
   const { data: comments } = usePrComments(prId);
   const create = useCreatePrComment(prId);
   // One toggle for GitHub comments and review-finding cards: both visible by
@@ -68,6 +72,10 @@ export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
     const all = currentFindings(reviews ?? []);
     return all.filter((f) => filePaths.has(f.file));
   }, [reviews, filePaths]);
+  const { target, fileNotInDiff } = React.useMemo(
+    () => parseDiffTarget(targetFile, targetLine, filePaths),
+    [targetFile, targetLine, filePaths],
+  );
   const flaggedPaths = React.useMemo(() => pathsWithFindings(findings), [findings]);
 
   const overlay: DiffFindingOverlay = React.useMemo(
@@ -128,6 +136,13 @@ export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
         </div>
       )}
 
+      {fileNotInDiff && (
+        <div role="status" style={s.info}>
+          <Icon.Info size={15} />
+          <span>{tBrief("nav.fileNotInDiff")}</span>
+        </div>
+      )}
+
       {noReviewYet && (
         <div role="status" style={s.info}>
           <Icon.Info size={15} />
@@ -153,11 +168,12 @@ export function DiffTab({ prId, pr, repoFullName }: DiffTabProps) {
             flaggedCount={countFlaggedFiles(group.files, flaggedPaths)}
             commenting={commenting}
             findings={overlay}
+            target={target}
           />
         ))}
 
       {effectiveOrder === "original" && (
-        <DiffViewer files={pr.files} commenting={commenting} findings={overlay} />
+        <DiffViewer files={pr.files} commenting={commenting} findings={overlay} target={target} />
       )}
     </section>
   );

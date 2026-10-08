@@ -716,6 +716,16 @@ export class RepoIntelService implements RepoIntel {
     }
     return paths;
   }
+
+  /**
+   * Distinct importer count per path — onboarding's `importer_count`.
+   * `{}` when the flag is off or `paths` is empty; absent keys mean 0.
+   */
+  async getImporterCounts(repoId: string, paths: string[]): Promise<Record<string, number>> {
+    if (!this.container.config.repoIntelEnabled) return {};
+    if (paths.length === 0) return {};
+    return this.repo.getImporterCounts(repoId, paths);
+  }
 }
 
 /** How many top-ranked files seed `getCriticalPaths` dependency chains. */

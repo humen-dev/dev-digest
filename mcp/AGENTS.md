@@ -60,5 +60,6 @@ build step). **npm**, standalone package (not a pnpm workspace member).
 ## Deeper context — read the file when the task touches it (don't preload)
 - [`README.md`](./README.md) — the 5 tools, `.mcp.json` snippet, env vars
 - [`INSIGHTS.md`](./INSIGHTS.md) — accumulated gotchas & non-obvious learnings
+- [`specs/`](./specs/README.md) — behavior specs (tool contracts)
 - [`docs/plans/devdigest-mcp.md`](../docs/plans/devdigest-mcp.md) — the design plan (contracts, decisions)
 - [`../TESTING.md`](../TESTING.md) — cross-package test strategy

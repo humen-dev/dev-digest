@@ -9,6 +9,7 @@ import type {
 } from '@devdigest/shared';
 import { Review as ReviewSchema } from '@devdigest/shared';
 import { assemblePrompt } from '../prompt.js';
+import type { ProjectContextDoc } from '../project-context.js';
 import { groundFindings, groundingSummary } from '../grounding.js';
 import { renderIntentForPrompt } from '../intent/render-for-review.js';
 import { applyScopeFilter, type ScopeFilterSummary } from '../intent/scope-filter.js';
@@ -25,7 +26,7 @@ import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
  * (no DB, GitHub, fs, memory retrieval, intent, or persistence) — those stay in
  * the caller (server persists + streams SSE; runner posts + writes an artifact).
  *
- * Skill bodies / memory / specs are RESOLVED strings here: the caller turns
+ * Skill bodies / memory are RESOLVED strings here: the caller turns
  * AgentManifest skill slugs into bodies (DB in the studio, fs in the runner).
  */
 
@@ -59,8 +60,13 @@ export interface ReviewInput {
   skills?: string[];
   /** Curated memory items. */
   memory?: string[];
-  /** Project-context spec chunks (untrusted; delimiter-wrapped downstream). */
-  specs?: string[];
+  /**
+   * Attached project-context documents (SPEC-01; untrusted). Forwarded to
+   * `assemblePrompt` as `PromptParts.projectContext`, reused unchanged across
+   * every map-reduce chunk so each chunk's LLM call sees the same block.
+   * Empty/undefined → section omitted.
+   */
+  projectContext?: ProjectContextDoc[];
   /**
    * Optional callers-of-changed-symbols digest (T1.3). Untrusted; rendered
    * before the diff section. Empty/undefined → section omitted.
@@ -160,7 +166,7 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     system: input.systemPrompt,
     skills: input.skills,
     memory: input.memory,
-    specs: input.specs,
+    projectContext: input.projectContext,
     callers: input.callers,
     repoMap: input.repoMap,
     prDescription: input.prDescription,

@@ -28,6 +28,24 @@ export const s = {
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   } satisfies CSSProperties,
+  /** Keeps a scrolled-to file header clear of the sticky PR header. */
+  fileCardTarget: { scrollMarginTop: "var(--pr-detail-header-h)" } satisfies CSSProperties,
+  /** Notice at the file header when the deep-linked line is not in the diff. */
+  targetNotice: {
+    padding: "6px 12px",
+    fontSize: 12,
+    color: "var(--warn)",
+    borderTop: "1px solid var(--border)",
+  } satisfies CSSProperties,
+  /** Pulse on the deep-linked line; `scroll-margin` clears the sticky header. */
+  lineTarget: {
+    scrollMarginTop: "calc(var(--pr-detail-header-h) + 40px)",
+  } satisfies CSSProperties,
+  lineTargetHighlight: {
+    outline: "2px solid var(--accent)",
+    outlineOffset: -2,
+    background: "var(--accent-bg)",
+  } satisfies CSSProperties,
   fileStat: { fontSize: 12 } satisfies CSSProperties,
   addText: { color: "var(--code-add-text)" } satisfies CSSProperties,
   delText: { color: "var(--code-del-text)" } satisfies CSSProperties,

@@ -7,6 +7,11 @@ flow must do, independent of implementation. Linked (not preloaded) from
 Good fits: page/flow acceptance criteria, UI states, edge cases, a11y contracts.
 (Executable browser journeys live in [`../../e2e/specs`](../../e2e/specs).)
 
+New specs follow [`../../specs/_TEMPLATE.md`](../../specs/_TEMPLATE.md)
+(`YYYY-MM-DD-<feature-slug>.md`, global `SPEC-NN`, EARS criteria) and are written
+by the `spec-creator` agent; features spanning several modules go to the root
+[`../../specs/`](../../specs/README.md) instead. Existing free-form specs below stay as they are.
+
 ## Index
 - [`pages.md`](./pages.md) — route map + what each screen must show
 - [`cost-attribution.md`](./cost-attribution.md) — run cost in PR list, timeline, trace
