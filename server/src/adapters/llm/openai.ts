@@ -49,7 +49,9 @@ export class OpenAIProvider implements LLMProvider {
   private client: OpenAI;
 
   constructor(apiKey: string) {
-    this.client = new OpenAI({ apiKey });
+    // Retries are owned by `withRetry` around each call; the SDK's own default
+    // (maxRetries: 2) would multiply them into up to 12 requests per call.
+    this.client = new OpenAI({ apiKey, maxRetries: 0 });
   }
 
   async listModels(): Promise<ModelInfo[]> {

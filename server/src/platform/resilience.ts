@@ -32,12 +32,26 @@ export interface RetryOptions {
   onRetry?: (attempt: number, err: unknown) => void;
 }
 
+function isSdkConnectionError(err: unknown): boolean {
+  let proto: unknown = err !== null && typeof err === 'object' ? Object.getPrototypeOf(err) : null;
+  while (proto && proto !== Object.prototype) {
+    if ((proto as { constructor?: { name?: string } }).constructor?.name === 'APIConnectionError') return true;
+    proto = Object.getPrototypeOf(proto);
+  }
+  return false;
+}
+
 function defaultIsRetryable(err: unknown): boolean {
   const status =
     (err as { status?: number })?.status ??
     (err as { statusCode?: number })?.statusCode ??
     (err as { response?: { status?: number } })?.response?.status;
   if (typeof status === 'number') return status === 429 || status >= 500;
+  // The OpenAI / Anthropic SDKs report a dropped connection as `APIConnectionError`
+  // (no status; `err.name` is just "Error", so match the class chain, which also
+  // covers `APIConnectionTimeoutError`). Their clients run with maxRetries: 0,
+  // so this is the only retry.
+  if (isSdkConnectionError(err)) return true;
   // network-ish errors
   const code = (err as { code?: string })?.code;
   return code === 'ECONNRESET' || code === 'ETIMEDOUT' || code === 'ENOTFOUND';
