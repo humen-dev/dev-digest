@@ -41,13 +41,13 @@ export function RunsTable({
       <div role="row" style={s.header(columns)}>
         {selectable && <span role="columnheader" />}
         <span role="columnheader">{t("dashboard.table.ranAt")}</span>
-        <span role="columnheader" />
+        <span role="columnheader">{t("dashboard.table.version")}</span>
         <span role="columnheader">{t("dashboard.table.recall")}</span>
         <span role="columnheader">{t("dashboard.table.precision")}</span>
         <span role="columnheader">{t("dashboard.table.citation")}</span>
         <span role="columnheader">{t("dashboard.table.pass")}</span>
         <span role="columnheader">{t("dashboard.table.cost")}</span>
-        <span role="columnheader" />
+        <span role="columnheader">{t("dashboard.table.status")}</span>
       </div>
       {runs.map((run, i) => {
         const label = formatVersionLabel(run.agent_version, run.skills_delta, t);

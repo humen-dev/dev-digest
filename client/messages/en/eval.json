@@ -25,7 +25,9 @@
       "precision": "Precision",
       "citation": "Citation",
       "pass": "Pass",
-      "cost": "Cost"
+      "cost": "Cost",
+      "version": "Version",
+      "status": "Status"
     },
     "pass": "pass",
     "fail": "fail",
