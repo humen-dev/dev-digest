@@ -15,6 +15,7 @@ export {
   type AgentCase,
   type WorkflowCase,
   type QualityCase,
+  type ScenarioCase,
 } from "./dsl/case.js";
 
 // Lower-level pieces, exported for the occasional bespoke test.

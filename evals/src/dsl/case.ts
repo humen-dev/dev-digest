@@ -53,7 +53,87 @@ export type WorkflowCase =
       expectFileRead: string;
       tools?: string[];
       maxTurns?: number;
-    };
+    }
+  | ScenarioCase;
+
+/**
+ * Several checks over ONE real-harness session — so a bundle of related questions costs one
+ * session instead of one per check. Trace checks (reads / not-reads) and judged answer checks
+ * are merged into one per-check verdict, so repeat/delta still show WHICH check failed.
+ * Don't bundle negatives with positives that legitimately trigger them, and don't bundle
+ * skill activation / subagent dispatch — both change the rest of the session.
+ */
+export interface ScenarioCase {
+  kind: "scenario";
+  name: string;
+  prompt: string;
+  /** Path substrings that must appear among the files the session Read. */
+  expectReads?: string[];
+  /** Path substrings that must NOT appear among the files the session Read. */
+  expectNotReads?: string[];
+  /** Answer checks, scored by the judge on the session's final text. */
+  practices?: string[];
+  /** Also run the prompt in an empty dir with no on-disk config and judge the same practices.
+   *  Stored on the record as `control` — it shows whether a practice needs the repo at all. */
+  control?: boolean;
+  /** Share of checks that must pass (default 0.75). */
+  threshold?: number;
+  /** Read-only by default: no Skill/Agent, so nothing else in the harness is dispatched. */
+  tools?: string[];
+  maxTurns?: number;
+}
+
+const SCENARIO_TOOLS = ["Read", "Grep", "Glob"];
+const posixPath = (p: string) => p.replace(/\\/g, "/");
+
+function traceChecks(c: ScenarioCase, result: Result): Verdict["results"] {
+  const reads = result.filesRead.map(posixPath);
+  const hit = (s: string) => reads.find((r) => r.includes(s));
+  return [
+    ...(c.expectReads ?? []).map((s) => ({
+      practice: `reads ${s}`,
+      passed: Boolean(hit(s)),
+      evidence: hit(s) ?? `not read (reads: ${reads.length})`,
+    })),
+    ...(c.expectNotReads ?? []).map((s) => ({
+      practice: `does not read ${s}`,
+      passed: !hit(s),
+      evidence: hit(s) ?? "not read",
+    })),
+  ];
+}
+
+async function runScenario(c: ScenarioCase): Promise<void> {
+  const tools = c.tools ?? SCENARIO_TOOLS;
+  const threshold = c.threshold ?? 0.75;
+  const result = await workflowTask(c.prompt, { allowedTools: tools, maxTurns: c.maxTurns ?? 12 });
+  logTrace(c.name, result);
+
+  let verdict: Verdict | undefined;
+  let control: Record<string, unknown> | undefined;
+  try {
+    const judged = c.practices?.length ? (await llmJudge(result.text, c.practices)).results : [];
+    const results = [...traceChecks(c, result), ...judged];
+    const passed = results.filter((r) => r.passed).length;
+    verdict = { results, passed, total: results.length, score: results.length ? passed / results.length : 1 };
+    logVerdict(c.name, verdict);
+
+    if (c.control && c.practices?.length) {
+      const emptyCwd = mkdtempSync(join(tmpdir(), "eval-control-"));
+      const ctl = await runClaude(c.prompt, { allowedTools: tools, maxTurns: c.maxTurns ?? 12, cwd: emptyCwd, settingSources: [] });
+      const ctlVerdict = await llmJudge(ctl.text, c.practices);
+      logVerdict(`${c.name} [control]`, ctlVerdict);
+      control = { score: ctlVerdict.score, results: ctlVerdict.results.map(({ practice, passed }) => ({ practice, passed })) };
+    }
+  } finally {
+    // one record per scenario: the control rides along in `extra`, so it never pollutes the
+    // treatment's per-practice pass rates (both would share one nodeid otherwise)
+    record(c.name, { result, verdict, threshold, extra: control ? { control } : undefined });
+  }
+
+  expect(result.isError, "session ended in error").toBe(false);
+  expect(verdict!.score, JSON.stringify(verdict!.results.filter((r) => !r.passed))).toBeGreaterThanOrEqual(threshold);
+}
 
 /** Did a skill engage? Either an explicit Skill tool-call, or reading its SKILL.md. */
 export function activated(result: Result, skill: string): boolean {
@@ -105,7 +185,9 @@ export const runAgentCases = (agent: string, cases: AgentCase[]) => runQualityCa
 export function runWorkflowCases(cases: WorkflowCase[]): void {
   for (const c of cases) {
     test(c.name, async () => {
-      if (c.kind === "dispatch") {
+      if (c.kind === "scenario") {
+        await runScenario(c);
+      } else if (c.kind === "dispatch") {
         const result = await workflowTask(c.prompt, { maxTurns: c.maxTurns });
         logTrace(c.name, result);
         try {

@@ -216,6 +216,12 @@ How each `kind` asserts:
 | `dispatch` | `workflowTask` | `result.subagents` contains `expectSubagent` |
 | `activation` | `workflowTask` | `activated(result, skill) === shouldActivate` (positive **and** near-miss negative) |
 | `contrast` | treatment (real repo) **and** control (empty tmpdir, `settingSources:[]`) | `expectFileRead` read in treatment, NOT in control |
+| `scenario` | ONE `workflowTask` (read-only tools) for a bundle of checks; optional `control` run judged on the same practices | share of passed checks (`expectReads` / `expectNotReads` from the trace + judged `practices`) ≥ `threshold` (0.75). Every check is recorded separately; the control's result rides along in the record as `control` |
+
+Bundle related questions into one `scenario` to pay for one session instead of one per check.
+Keep negatives (`expectNotReads`, `shouldActivate: false`) out of bundles whose other questions
+legitimately trigger them, and keep `activation` / `dispatch` as their own cases — a loaded skill
+or a dispatched subagent changes the rest of the session. See `workflow/repo-context.cases.ts`.
 
 Workflow records carry an empty `practices[]` (no judge) but a full trace; `contrast` writes two
 records — `<label>:treatment` and `<label>:control`.
