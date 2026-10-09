@@ -14,7 +14,7 @@ lockfile; cross-package code is shared via **tsconfig path aliases**, not publis
 - [`e2e/`](./e2e/AGENTS.md) — `@devdigest/e2e` · deterministic agent-browser flows
 - [`mcp/`](./mcp/AGENTS.md) — `@devdigest/mcp` · local stdio MCP server over the API (registered in `.mcp.json`)
 - `@devdigest/shared` — Zod contracts, vendored into each package under `src/vendor/shared`
-- [`evals/`](./evals/AGENTS.md) — skill/agent eval suites (answer keys + hint-free fixtures; not a package)
+- [`evals/`](./evals/AGENTS.md) — `@devdigest/evals` · harness evals (skills, agents, workflow) · vitest + Agent SDK, CI on OpenRouter
 
 ## Toolchain
 Node ≥ 22 · **pnpm** ≥ 10 (server/client) · **npm** (reviewer-core/e2e/mcp) ·
