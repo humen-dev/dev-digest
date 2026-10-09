@@ -161,6 +161,8 @@ describe('eval executor', () => {
       { make: () => Object.assign(new Error('boom sk-secret'), { name: 'ExternalServiceError' }), reason: 'provider_error' },
       { make: () => new Error('OpenRouter structured output failed schema validation for x'), reason: 'invalid_output' },
       { make: () => Object.assign(new Error('sk-secret'), { name: 'TimeoutError' }), reason: 'timeout' },
+      { make: () => Object.assign(new Error('sk-secret'), { name: 'APIConnectionTimeoutError', status: 408 }), reason: 'timeout' },
+      { make: () => Object.assign(new Error('sk-secret'), { name: 'AbortError' }), reason: 'timeout' },
     ];
     for (const { make, reason } of cases) {
       const llm = stubLlm(async () => {

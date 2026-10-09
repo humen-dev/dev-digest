@@ -46,6 +46,8 @@ const PEM_BEGIN = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
 const PEM_END = /-----END [A-Z ]*PRIVATE KEY-----/;
 const PEM_SAME_LINE = /(-----BEGIN [A-Z ]*PRIVATE KEY-----)([\s\S]*?)(-----END [A-Z ]*PRIVATE KEY-----)/g;
 const PEM_BODY = /^[A-Za-z0-9+/=]+$/;
+/** A key body line is at least this long; a shorter one is accepted only as the last line before END. */
+const PEM_BODY_MIN = 16;
 const FILLER = 'X';
 
 /** Token shapes masked by `maskSecretsForStorage` (PEM blocks are handled separately). */
@@ -85,10 +87,15 @@ function maskPemBlocks(text: string): string {
   };
   /** Length of the diff marker + indentation (diff text) or the BEGIN prefix (plain text). */
   const keepOf = (line: string): number => (isDiff ? (/^[+\- ]\s*/.exec(line)?.[0].length ?? 0) : prefixLen);
-  const isBodyShaped = (line: string): boolean => {
-    const rest = isDiff ? line.slice(/^[+\- ]\s*/.exec(line)?.[0].length ?? 0) : line.trimStart();
-    return PEM_BODY.test(rest);
+  const bodyOf = (line: string): string =>
+    isDiff ? line.slice(/^[+\- ]\s*/.exec(line)?.[0].length ?? 0) : line.trimStart();
+  /** Body-shaped: base64 alphabet only, at least PEM_BODY_MIN chars (or any length when `allowShort`). */
+  const isBodyShaped = (line: string, allowShort = false): boolean => {
+    const rest = bodyOf(line);
+    return PEM_BODY.test(rest) && (allowShort || rest.length >= PEM_BODY_MIN);
   };
+  const lineAt = (idx: number): string | undefined =>
+    idx >= 0 && idx < lines.length ? stripLine(lines[idx] as string).line : undefined;
   const maskLine = (idx: number, line: string, cr: string): void => {
     const keep = keepOf(line);
     lines[idx] = line.slice(0, keep) + fill(line.length - keep) + cr;
@@ -103,7 +110,12 @@ function maskPemBlocks(text: string): string {
           prefixLen = 0;
           for (let j = i - 1; j >= 0; j--) {
             const prev = stripLine(lines[j] as string);
-            if (/^(@@|diff --git|--- |\+\+\+ )/.test(prev.line) || !isBodyShaped(prev.line)) break;
+            if (/^(@@|diff --git|--- |\+\+\+ )/.test(prev.line)) break;
+            if (j === i - 1 && !isBodyShaped(prev.line)) {
+              // The last body line may be short, but only after a full-width body line.
+              const before = lineAt(j - 1);
+              if (!isBodyShaped(prev.line, true) || before === undefined || !isBodyShaped(before)) break;
+            } else if (!isBodyShaped(prev.line)) break;
             maskLine(j, prev.line, prev.cr);
           }
         }
@@ -133,11 +145,19 @@ function maskPemBlocks(text: string): string {
     }
     if (PEM_END.test(line)) {
       inPem = false;
+      // A line that also carries a BEGIN marker (one-line key) goes through the closed-block logic.
+      if (PEM_BEGIN.test(line)) i--;
       continue;
     }
-    if (strictBody && !isBodyShaped(line)) {
-      inPem = false;
-      continue;
+    if (strictBody) {
+      const next = lineAt(i + 1);
+      const lastBeforeEnd = next !== undefined && PEM_END.test(next);
+      if (!isBodyShaped(line, lastBeforeEnd)) {
+        // Not key material: close the block and re-process this line as a closed-block line.
+        inPem = false;
+        i--;
+        continue;
+      }
     }
     // Keep the line's own diff marker and indentation; fill only the rest.
     maskLine(i, line, cr);

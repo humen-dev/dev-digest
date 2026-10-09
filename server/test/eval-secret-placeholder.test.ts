@@ -191,6 +191,43 @@ describe('maskSecretsForStorage', () => {
     expect(maskSecretsForStorage(solo)).toBe(solo);
   });
 
+  it('masks a one-line key at the start of the next hunk after an unterminated block', () => {
+    const oneLine = `+  "k": "-----BEGIN RSA ${pk}-----\\n${body[0]}\\n${body[1]}\\n-----END RSA ${pk}-----\\n",`;
+    const input = [
+      '@@ -1,2 +1,2 @@',
+      ` const M = '-----BEGIN RSA ${pk}-----';`,
+      '@@ -40,2 +40,2 @@',
+      oneLine,
+      ' after',
+    ].join('\n');
+    const out = maskSecretsForStorage(input);
+    for (const b of body) expect(out).not.toContain(b);
+    expectStructure(input, out);
+    expect(out.split('\n')[4]).toBe(' after');
+  });
+
+  it('opens a new block when a BEGIN-only line closes a strict carry-over', () => {
+    const input = [
+      '@@ -1,2 +1,2 @@',
+      ` const M = '-----BEGIN RSA ${pk}-----';`,
+      '@@ -40,2 +40,2 @@',
+      ` -----BEGIN RSA ${pk}-----`,
+      ' ' + body[0],
+      ' ' + body[1],
+      ` -----END RSA ${pk}-----`,
+    ].join('\n');
+    const out = maskSecretsForStorage(input);
+    for (const b of body) expect(out).not.toContain(b);
+    expectStructure(input, out);
+  });
+
+  it('does not mask short code lines above an END marker or in a carry-over', () => {
+    const input = ['@@ -1,4 +1,4 @@', '   else', '   return', ` -----END RSA ${pk}-----`].join('\n');
+    expect(maskSecretsForStorage(input)).toBe(input);
+    const carry = ['@@ -1,2 +1,2 @@', ` x = '-----BEGIN RSA ${pk}-----'`, '@@ -9,2 +9,2 @@', ' foo', ' bar'].join('\n');
+    expect(maskSecretsForStorage(carry)).toBe(carry);
+  });
+
   it('leaves text without secrets unchanged', () => {
     const text = 'mentions sk_live and service_role by name only';
     expect(maskSecretsForStorage(text)).toBe(text);

@@ -1,6 +1,6 @@
 import { reviewPullRequest } from '@devdigest/reviewer-core';
 import type { EvalCase, LLMProvider, StructuredRequest, StructuredResult } from '@devdigest/shared';
-import { EVAL_CASE_DEADLINE_MS, EVAL_CASE_REASON,EVAL_MAX_REPAIR_RETRIES, EVAL_TASK_LINE } from './constants.js';
+import { EVAL_CASE_DEADLINE_MS, EVAL_CASE_REASON, EVAL_MAX_REPAIR_RETRIES, EVAL_TASK_LINE } from './constants.js';
 import type { AgentSnapshot, DiffParser } from './ports.js';
 import type { CaseExecution } from './domain/scoring.js';
 
@@ -52,7 +52,7 @@ function withDeadline(llm: LLMProvider, deadline: number, now: () => number): LL
 function reasonOf(err: unknown): string {
   if (err instanceof EvalCaseError) return err.reason;
   if (!(err instanceof Error)) return EVAL_CASE_REASON.error;
-  if (err.name === 'TimeoutError') return EVAL_CASE_REASON.timeout;
+  if (/Timeout|^AbortError$/i.test(err.name)) return EVAL_CASE_REASON.timeout;
   if (err.name === 'ZodError' || /schema validation/i.test(err.message)) return EVAL_CASE_REASON.invalidOutput;
   const e = err as { status?: unknown; statusCode?: unknown; code?: unknown };
   if (
