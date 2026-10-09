@@ -121,3 +121,38 @@ d('seed(): Security Reviewer eval cases (AC-76)', () => {
     expect(await casesOf(agentId)).toHaveLength(7);
   });
 });
+
+d('seed(): heals a PR #482 seeded before pr_files carried patches', () => {
+  let pg: PgFixture;
+  beforeAll(async () => {
+    pg = await startPg();
+  });
+  afterAll(async () => {
+    await pg?.stop();
+  });
+
+  it('fills null patches and missing rows, then freezes the 7 cases', async () => {
+    const db = pg.handle.db;
+    const { workspaceId } = await seed(db);
+    const [pr] = await db
+      .select()
+      .from(t.pullRequests)
+      .where(and(eq(t.pullRequests.workspaceId, workspaceId), eq(t.pullRequests.number, 482)));
+    const files = await db.select().from(t.prFiles).where(eq(t.prFiles.prId, pr!.id));
+    const keep = files.slice(0, 4).map((f) => f.path);
+
+    // Reproduce an older dev DB: no eval cases, only 4 pr_files rows, all without a patch.
+    await db.delete(t.evalCases);
+    for (const f of files) {
+      if (keep.includes(f.path)) await db.update(t.prFiles).set({ patch: null }).where(eq(t.prFiles.id, f.id));
+      else await db.delete(t.prFiles).where(eq(t.prFiles.id, f.id));
+    }
+
+    await seed(db);
+
+    const healed = await db.select().from(t.prFiles).where(eq(t.prFiles.prId, pr!.id));
+    expect(healed).toHaveLength(files.length);
+    expect(healed.every((f) => typeof f.patch === 'string' && f.patch.length > 0)).toBe(true);
+    expect(await db.select().from(t.evalCases)).toHaveLength(SEED_EVAL_CASES.length);
+  });
+});
