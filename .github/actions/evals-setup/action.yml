@@ -1,8 +1,10 @@
 # Shared setup for every job in evals.yml: pnpm + Node + evals/ deps, and — when a key is passed —
 # the LiteLLM translating proxy on 127.0.0.1:4000 that the model evals talk to.
 #
-# The key is handed ONLY to the proxy container; eval sessions get a placeholder (see evals.yml),
-# so no agent can read the real key from its environment.
+# The key is passed only to the proxy container; eval sessions get a placeholder (see evals.yml),
+# so the key is not in any eval process's environment. This is NOT full isolation: the runner
+# user is in the docker group, so a process in the same job could still `docker inspect` the
+# container. Use a dedicated OpenRouter key with a low credit limit for CI.
 name: evals setup
 description: Install evals/ dependencies and optionally start the LiteLLM proxy
 

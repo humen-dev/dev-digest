@@ -73,8 +73,9 @@ env:
   EVAL_MODEL: ${{ inputs.model || vars.EVAL_MODEL || 'deepseek/deepseek-v4-flash' }}
   EVAL_WORKFLOW_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'google/gemini-3.6-flash' }}
   EVAL_JUDGE_MODEL: ${{ inputs.judge_model || vars.EVAL_JUDGE_MODEL || 'deepseek/deepseek-v4-pro' }}
-  # Eval sessions talk to the no-auth proxy with a placeholder key; the real key reaches only the
-  # proxy container (evals-setup) and the `check OpenRouter key` step.
+  # Eval sessions talk to the no-auth proxy with a placeholder key; the real key is passed only to
+  # the proxy container (evals-setup) and the `check OpenRouter key` step. Not full isolation (a
+  # job process can `docker inspect` the proxy) — use a dedicated, credit-limited key for CI.
   OPENROUTER_BASE_URL: http://localhost:4000
   OPENROUTER_API_KEY: via-proxy
   LITELLM_IMAGE: ghcr.io/berriai/litellm:v1.101.6
