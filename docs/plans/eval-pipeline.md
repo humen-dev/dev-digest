@@ -27,7 +27,7 @@ Recommendations, all **accepted**:
 - R2 — `renderSkillBlocks` moves to `_shared/skill-render.ts`.
 - R3 — a single `loadPrDiff` in the container behind a `PrDiffSource` port.
 - R4 — the fingerprint covers only skills actually sent to the prompt.
-- R5 — shared rate-limit `groupId: 'eval-run-start'`.
+- R5 — shared rate-limit `groupId: 'eval-run-start'`. **Superseded 2026-10-09 (user decision):** @fastify/rate-limit v11 with the in-memory LocalStore gives each route its own bucket even with `groupId` (`store.child()` per route), so each start route keeps its own 5/min bucket; see I-6.
 - R6 — server-side LCS prompt diff.
 
 **Interpretations recorded for plan-verifier.** Each deviates from or narrows the spec's literal wording.
@@ -41,7 +41,7 @@ Recommendations, all **accepted**:
 - **I-3 (UT-2, AC-20).** The frozen PR title and body both go only into the untrusted `prDescription` slot. The `task` line is a fixed constant with no PR text.
 - **I-4 (AC-11 + UT-8).** A generated name is truncated so that name plus suffix is ≤ 120 characters.
 - **I-5 (AC-49 + AC-47 / UT-4).** Manual create applies the same AC-8, AC-9 and AC-14/14a rules as edit.
-- **I-6 (AC-30).** The 5/min limit is one bucket shared by both start routes, keyed per IP. In this single-workspace local app, IP and workspace coincide.
+- **I-6 (AC-30).** **Revised 2026-10-09 (user decision):** each run-start route (`POST /agents/:id/eval-runs`, `POST /eval-runs/all`) has its own 5/min bucket, keyed per IP (in this single-workspace local app, IP and workspace coincide). Triggering stays bounded (≤10 starts/min in total, plus one in-flight run per agent). A shared bucket would need a custom store/plugin and is not planned.
 - **I-7 (AC-53, AC-52).** Compare recomputes all deltas, cost included, from the stored per-case outcomes of the cases common to both runs.
 - **I-8 (AC-29).** See OQ-1.
 
