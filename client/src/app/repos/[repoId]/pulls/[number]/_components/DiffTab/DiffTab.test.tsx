@@ -1,10 +1,12 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent, within, act } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { FindingRecord, PrDetail, ReviewRecord, SmartDiffResponse } from "@devdigest/shared";
 import prReviewMessages from "../../../../../../../../messages/en/prReview.json";
 import shellMessages from "../../../../../../../../messages/en/shell.json";
 import briefMessages from "../../../../../../../../messages/en/brief.json";
+import evalMessages from "../../../../../../../../messages/en/eval.json";
 
 // A real hunk so the CRITICAL finding on line 12 anchors to a rendered line
 // (new-side numbering: header starts at 10, two context lines, one added).
@@ -188,18 +190,20 @@ function renderTab({
   targetLine,
 }: { prId?: string | null; pr?: PrDetail; targetFile?: string | null; targetLine?: string | null } = {}) {
   return render(
-    <NextIntlClientProvider
-      locale="en"
-      messages={{ prReview: prReviewMessages, shell: shellMessages, brief: briefMessages }}
-    >
-      <DiffTab
-        prId={prId}
-        pr={pr}
-        repoFullName="acme/widgets"
-        targetFile={targetFile}
-        targetLine={targetLine}
-      />
-    </NextIntlClientProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <NextIntlClientProvider
+        locale="en"
+        messages={{ prReview: prReviewMessages, shell: shellMessages, brief: briefMessages, eval: evalMessages }}
+      >
+        <DiffTab
+          prId={prId}
+          pr={pr}
+          repoFullName="acme/widgets"
+          targetFile={targetFile}
+          targetLine={targetLine}
+        />
+      </NextIntlClientProvider>
+    </QueryClientProvider>,
   );
 }
 
