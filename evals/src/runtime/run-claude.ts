@@ -4,7 +4,7 @@
  */
 
 import { query, type Options } from "@anthropic-ai/claude-agent-sdk";
-import { EVAL_MODEL, MAX_TURNS, SPAWN_TOOLS } from "../config.js";
+import { EVAL_MODEL, MAX_TURNS, SPAWN_TOOLS, TURNS_SCALE } from "../config.js";
 import { REPO_ROOT } from "../artifacts/paths.js";
 import { sessionEnv } from "./env.js";
 
@@ -55,7 +55,8 @@ export async function runClaude(prompt: string, opts: RunOptions = {}): Promise<
   const model = opts.model ?? EVAL_MODEL;
   const options: Options = {
     model,
-    maxTurns: opts.maxTurns ?? MAX_TURNS,
+    // TURNS_SCALE > 1 on OpenRouter: non-Claude models spend one turn per file read
+    maxTurns: Math.ceil((opts.maxTurns ?? MAX_TURNS) * TURNS_SCALE),
     permissionMode: "bypassPermissions", // safe only because `tools` below restricts the set
     systemPrompt,
     // `allowedTools` only AUTO-APPROVES; under bypassPermissions every built-in tool stays usable

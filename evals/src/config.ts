@@ -25,6 +25,14 @@ export const EVAL_JUDGE_MODEL =
   process.env.EVAL_JUDGE_MODEL || (IS_OPENROUTER ? "deepseek/deepseek-v4-pro" : "claude-sonnet-5");
 export const MAX_TURNS = Number(process.env.EVAL_MAX_TURNS ?? "8");
 
+// --- Limits per provider ----------------------------------------------------
+// Case limits (maxTurns, the 240 s test timeout) were tuned on Claude, which batches several
+// reads into one turn. Gemini / DeepSeek read one file per turn and answer slower, so on
+// OpenRouter every session's turn budget is multiplied and the per-test timeout is raised.
+// Quality thresholds are NOT touched — only how long a model may work.
+export const TURNS_SCALE = Number(process.env.EVAL_TURNS_SCALE || (IS_OPENROUTER ? 2 : 1));
+export const TEST_TIMEOUT_MS = Number(process.env.EVAL_TEST_TIMEOUT || (IS_OPENROUTER ? 600_000 : 240_000));
+
 // --- Configuration tag ------------------------------------------------------
 // "candidate" = artifact injected (normal). "baseline" = no artifact (benchmark lift baseline).
 export const EVAL_CONFIG = process.env.EVAL_CONFIG ?? "candidate";

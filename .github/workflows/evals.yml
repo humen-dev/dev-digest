@@ -27,6 +27,8 @@
 #                        subagent dispatch)
 #   EVAL_JUDGE_MODEL     LLM judge for every tier                deepseek/deepseek-v4-pro
 # Repo variables: Settings → Secrets and variables → Actions → Variables.
+# Limits: on OpenRouter the evals engine doubles every turn budget and raises the per-test timeout
+# to 600 s (EVAL_TURNS_SCALE / EVAL_TEST_TIMEOUT override) — thresholds stay as they are.
 # Needs the OPENROUTER_API_KEY secret; without it (e.g. a fork PR) the model jobs are skipped.
 #
 # Untrusted values (skill/agent dir names and eval file names come from the PR) reach `run:`
@@ -129,7 +131,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.skills != '[]'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -160,7 +162,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.agents != '[]'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -192,7 +194,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.workflow != ''
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     continue-on-error: true
     defaults:
       run:

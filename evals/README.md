@@ -349,6 +349,8 @@ Cheap and orthogonal; the `TrendReporter` keeps writing test-level outcome rows 
 | `OPENROUTER_API_KEY` | unset | OpenRouter key, used only when `EVAL_PROVIDER=openrouter` |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api` | point at the LiteLLM proxy (`http://localhost:4000`) for non-Claude models |
 | `EVAL_MAX_TURNS` | `8` | max agent turns per case |
+| `EVAL_TURNS_SCALE` | `1` / openrouter: `2` | multiplies every session's turn budget (non-Claude models read one file per turn) |
+| `EVAL_TEST_TIMEOUT` | `240000` / openrouter: `600000` | per-test timeout, ms |
 | `EVAL_CONFIG` | `candidate` | `benchmark` sets this to `baseline` to skip artifact injection |
 | `EVAL_QUIET` | unset | suppress per-run trace spam during multi-run aggregation |
 
