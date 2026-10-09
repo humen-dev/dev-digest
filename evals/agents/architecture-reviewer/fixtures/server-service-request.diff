@@ -1,0 +1,39 @@
+diff --git a/server/src/modules/reviews/service.ts b/server/src/modules/reviews/service.ts
+--- a/server/src/modules/reviews/service.ts
++++ b/server/src/modules/reviews/service.ts
+@@ -1,9 +1,10 @@
++import type { FastifyRequest } from 'fastify';
+ import type { ReviewRepository } from './ports';
+ import { toReviewSummary } from './mappers';
+
+ export class ReviewService {
+   constructor(private readonly repo: ReviewRepository) {}
+
+-  async rerun(reviewId: string, userId: string) {
++  async rerun(req: FastifyRequest<{ Params: { id: string } }>) {
++    const reviewId = req.params.id;
++    const userId = (req as any).user.id as string;
+     const review = await this.repo.findById(reviewId);
+     if (!review) throw new Error('review not found');
+     await this.repo.markQueued(reviewId, userId);
+diff --git a/server/src/modules/reviews/routes.ts b/server/src/modules/reviews/routes.ts
+--- a/server/src/modules/reviews/routes.ts
++++ b/server/src/modules/reviews/routes.ts
+@@ -1,6 +1,6 @@
+ import type { FastifyPluginAsync } from 'fastify';
+ import { sql } from 'drizzle-orm';
+ import { db } from '../../db/client';
+
+ export const reviewRoutes: FastifyPluginAsync = async (app) => {
+   app.get('/reviews/stats', async () => db.execute(sql`select count(*) from reviews`));
+-  app.post('/reviews/:id/rerun', async (req) => app.container.reviews.rerun(req.params.id, req.user.id));
++  app.post('/reviews/:id/rerun', async (req) => app.container.reviews.rerun(req));
+ };
+diff --git a/server/src/modules/reviews/utils.ts b/server/src/modules/reviews/utils.ts
+new file mode 100644
+--- /dev/null
++++ b/server/src/modules/reviews/utils.ts
+@@ -0,0 +1,3 @@
++export function formatReviewTitle(prNumber: number, title: string): string {
++  return `#${prNumber} — ${title.trim()}`;
++}

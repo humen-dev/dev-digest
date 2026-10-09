@@ -1,0 +1,43 @@
+diff --git a/client/src/app/digests/_components/DigestCard/DigestCard.tsx b/client/src/app/digests/_components/DigestCard/DigestCard.tsx
+new file mode 100644
+--- /dev/null
++++ b/client/src/app/digests/_components/DigestCard/DigestCard.tsx
+@@ -0,0 +1,27 @@
++'use client';
++
++import type { DigestListItem } from '@devdigest/shared';
++import { shortSha } from '../../../../lib/format';
++import { CardTitle } from './styles';
++
++function formatAge(createdAt: string): string {
++  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
++  return days === 0 ? 'today' : `${days}d ago`;
++}
++
++export function DigestCard({ digest }: { digest: DigestListItem }) {
++  return (
++    <article>
++      <CardTitle>{digest.title}</CardTitle>
++      <p>
++        Last updated {formatAge(digest.createdAt)} · commit {shortSha(digest.headSha)}
++      </p>
++      {digest.hot && <span>Needs attention</span>}
++    </article>
++  );
++}
++
++export default DigestCard;
+diff --git a/client/src/app/digests/_components/DigestCard/index.ts b/client/src/app/digests/_components/DigestCard/index.ts
+new file mode 100644
+--- /dev/null
++++ b/client/src/app/digests/_components/DigestCard/index.ts
+@@ -0,0 +1 @@
++export { DigestCard } from './DigestCard';
+diff --git a/client/src/app/digests/_components/DigestCard/styles.ts b/client/src/app/digests/_components/DigestCard/styles.ts
+new file mode 100644
+--- /dev/null
++++ b/client/src/app/digests/_components/DigestCard/styles.ts
+@@ -0,0 +1,3 @@
++import { styled } from '@/vendor/ui/styled';
++
++export const CardTitle = styled('h3', { fontSize: 16, fontWeight: 600 });
