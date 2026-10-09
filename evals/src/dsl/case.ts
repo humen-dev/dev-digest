@@ -9,7 +9,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, expect } from "vitest";
-import { DEFAULT_THRESHOLD } from "../config.js";
+import { DEFAULT_THRESHOLD, EVAL_WORKFLOW_MODEL } from "../config.js";
 import { skillTask, agentTask, workflowTask } from "../tasks.js";
 import { runClaude, type Result, type RunOptions } from "../runtime/run-claude.js";
 import { patternMatch } from "../scoring/pattern-match.js";
@@ -120,7 +120,7 @@ async function runScenario(c: ScenarioCase): Promise<void> {
 
     if (c.control && c.practices?.length) {
       const emptyCwd = mkdtempSync(join(tmpdir(), "eval-control-"));
-      const ctl = await runClaude(c.prompt, { allowedTools: tools, maxTurns: c.maxTurns ?? 12, cwd: emptyCwd, settingSources: [] });
+      const ctl = await runClaude(c.prompt, { allowedTools: tools, maxTurns: c.maxTurns ?? 12, cwd: emptyCwd, settingSources: [], model: EVAL_WORKFLOW_MODEL });
       const ctlVerdict = await llmJudge(ctl.text, c.practices);
       logVerdict(`${c.name} [control]`, ctlVerdict);
       control = { score: ctlVerdict.score, results: ctlVerdict.results.map(({ practice, passed }) => ({ practice, passed })) };

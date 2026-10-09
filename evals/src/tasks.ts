@@ -8,7 +8,7 @@
  *     SYSTEMIC effect: does a skill activate, does a subagent dispatch, does CLAUDE.md matter.
  */
 
-import { IS_BASELINE, WORKFLOW_ALLOWED_TOOLS } from "./config.js";
+import { EVAL_WORKFLOW_MODEL, IS_BASELINE, WORKFLOW_ALLOWED_TOOLS } from "./config.js";
 import { runClaude, type RunOptions } from "./runtime/run-claude.js";
 import { skillContent, agentContent } from "./artifacts/load.js";
 
@@ -31,6 +31,7 @@ export function agentTask(prompt: string, agentName: string, opts: RunOptions = 
 /**
  * Run a prompt against the REAL on-disk harness (CLAUDE.md + project skills/agents loaded).
  * Use for workflow-level evals: skill activation, subagent dispatch, CLAUDE.md effect.
+ * Runs on EVAL_WORKFLOW_MODEL — the tier that needs a model which actually uses tools.
  * Ignores EVAL_CONFIG — the workflow tier has its own control-vs-treatment design.
  *
  * Safety: keep allowedTools a read-only allow-list (no Bash/Write/Edit) — a fresh session
@@ -39,6 +40,7 @@ export function agentTask(prompt: string, agentName: string, opts: RunOptions = 
 export function workflowTask(prompt: string, opts: RunOptions = {}) {
   return runClaude(prompt, {
     allowedTools: WORKFLOW_ALLOWED_TOOLS,
+    model: EVAL_WORKFLOW_MODEL,
     ...opts,
     settingSources: ["project"],
   });
