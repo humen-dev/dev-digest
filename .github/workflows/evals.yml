@@ -61,9 +61,8 @@ env:
   EVAL_MODEL: ${{ inputs.model || vars.EVAL_MODEL || 'deepseek/deepseek-v4-flash' }}
   EVAL_WORKFLOW_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'google/gemini-3.6-flash' }}
   EVAL_JUDGE_MODEL: ${{ inputs.judge_model || vars.EVAL_JUDGE_MODEL || 'deepseek/deepseek-v4-pro' }}
-  # The real key reaches ONLY the proxy container (see `start LiteLLM proxy`); eval sessions talk
-  # to the no-auth proxy, so no agent can read the key from its environment.
-  HAS_OPENROUTER_KEY: ${{ secrets.OPENROUTER_API_KEY != '' }}
+  # The real key reaches ONLY the `check` and `start LiteLLM proxy` steps; eval sessions talk to
+  # the no-auth proxy, so no agent can read the key from its environment.
   OPENROUTER_BASE_URL: http://localhost:4000
   LITELLM_IMAGE: ghcr.io/berriai/litellm:v1.101.6
 
@@ -106,9 +105,24 @@ jobs:
           --base "${{ github.event.pull_request.base.sha || 'origin/main' }}"
 
       # --- model evals (non-blocking) --------------------------------------------------------
+      # Secrets are read in a step env (always populated), not in workflow-level env.
+      - name: check OpenRouter key
+        id: key
+        if: steps.select.outputs.run == 'true'
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          if [ -n "$OPENROUTER_API_KEY" ]; then
+            echo "OPENROUTER_API_KEY is set (${#OPENROUTER_API_KEY} chars)"
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::OPENROUTER_API_KEY is empty or not available to this run — model evals skipped"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: start LiteLLM proxy
         id: proxy
-        if: steps.select.outputs.run == 'true' && env.HAS_OPENROUTER_KEY == 'true'
+        if: steps.key.outputs.present == 'true'
         continue-on-error: true
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -134,10 +148,6 @@ jobs:
       - name: report eval failures
         if: steps.proxy.outcome == 'failure' || steps.evals.outcome == 'failure'
         run: echo "::warning::model evals failed (non-blocking) — see the step log and the eval-results artifact"
-
-      - name: no OpenRouter key
-        if: steps.select.outputs.run == 'true' && env.HAS_OPENROUTER_KEY != 'true'
-        run: echo "::notice::OPENROUTER_API_KEY is not available — model evals skipped"
 
       - uses: actions/upload-artifact@v4
         if: always() && steps.evals.outcome != 'skipped'
