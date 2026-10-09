@@ -121,6 +121,12 @@
       "reason": "SPEC-03 onboarding-tour contract (plan Wave 0): no upstream @devdigest/shared package; server and client copies edited identically and byte-identical (verified by plan-verifier and architecture-reviewer)",
       "addedBy": "mgume",
       "addedAt": "2026-10-07"
+    },
+    {
+      "key": "DET-007|evals/workflow/repo-context.cases.ts|volume-wiping docker compose command added",
+      "reason": "Quiz prompt in an eval case asking whether 'down -v' is allowed; the eval asserts the agent refuses. Nothing executes it.",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-09"
     }
   ]
 }

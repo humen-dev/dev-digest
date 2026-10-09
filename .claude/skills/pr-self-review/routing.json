@@ -147,6 +147,11 @@
       "globs": ["**/src/vendor/shared/**"],
       "skills": ["zod", "typescript-expert"],
       "bundle": "crosscut"
+    },
+    {
+      "globs": ["**/package.json", "**/pnpm-lock.yaml", "**/package-lock.json"],
+      "skills": ["dependency-checker"],
+      "bundle": "crosscut"
     }
   ],
   "contentTriggers": [
