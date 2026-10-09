@@ -4,7 +4,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, EmptyState, ErrorState, Modal, Skeleton } from "@devdigest/ui";
 import { AppShell } from "@/components/app-shell";
@@ -21,7 +20,6 @@ import { s } from "./styles";
 export function EvalDashboardView() {
   const t = useTranslations("eval");
   const tc = useTranslations("common");
-  const router = useRouter();
   const { data, isError, refetch } = useEvalDashboard();
   const runAll = useRunAllEvals();
   const [confirming, setConfirming] = React.useState(false);
@@ -41,7 +39,10 @@ export function EvalDashboardView() {
 
   const { agents } = data;
   const recent = data.recent_runs.slice(0, RECENT_RUNS_LIMIT);
+  // While the POST is in flight the runs are already starting server-side, so the
+  // dialog cannot be dismissed (that would drop the result the user needs to see).
   const closeDialog = () => {
+    if (runAll.isPending) return;
     setConfirming(false);
     runAll.reset();
   };
@@ -129,7 +130,7 @@ export function EvalDashboardView() {
         {recent.length === 0 ? (
           <p style={s.muted}>{t("dashboard.noRuns")}</p>
         ) : (
-          <RunsTable runs={recent} showAgent onRowClick={(run) => router.push(`/eval/agents/${run.agent_id}`)} />
+          <RunsTable runs={recent} showAgent rowHref={(run) => `/eval/agents/${run.agent_id}`} />
         )}
       </div>
 
@@ -140,7 +141,7 @@ export function EvalDashboardView() {
           onClose={closeDialog}
           footer={
             <div style={s.footer}>
-              <Button kind="ghost" size="sm" onClick={closeDialog}>
+              <Button kind="ghost" size="sm" disabled={runAll.isPending} onClick={closeDialog}>
                 {runAll.data ? tc("actions.close") : tc("actions.cancel")}
               </Button>
               {!runAll.data && (
@@ -153,6 +154,11 @@ export function EvalDashboardView() {
         >
           <div style={s.dialogBody}>
             <span>{t("run.confirmAll", { agents: agents.length, executions: totalExecutions(agents) })}</span>
+            {runAll.isPending && (
+              <span role="status" style={s.muted}>
+                {t("status.running")}
+              </span>
+            )}
             {runAll.isError && (
               <span role="alert" style={s.error}>
                 {t("errors.generic")}

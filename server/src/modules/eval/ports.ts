@@ -99,7 +99,13 @@ export interface EvalRepositoryPort {
   failRun(id: string, reason: string): Promise<void>;
   getRun(ws: string, id: string): Promise<EvalRunDetail | null>;
   /** Newest first, no `per_case`, `skills_delta` = false. */
-  listRuns(ws: string, agentId: string): Promise<EvalRunRecord[]>;
+  listRuns(ws: string, agentId: string, limit?: number): Promise<EvalRunRecord[]>;
+  /**
+   * The newest `limitPerAgent` completed runs of each listed agent in one query
+   * (flat list, grouped by agent, newest first inside a group). No `per_case`,
+   * `skills_delta` = false. Agents outside `ws` yield nothing.
+   */
+  latestCompletedRuns(ws: string, agentIds: string[], limitPerAgent: number): Promise<EvalRunRecord[]>;
   /** No `per_case`. */
   recentRuns(ws: string, limit: number): Promise<EvalRunRecord[]>;
   completedOutcomes(ws: string, agentId: string, limit: number): Promise<{ run_id: string; per_case: EvalCaseOutcome[] }[]>;

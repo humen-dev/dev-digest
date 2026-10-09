@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { EvalRunRecord } from "@devdigest/shared";
-import { formatRunCost, formatRunTime, formatVersionLabel } from "../../../lib/eval-format";
+import { formatRunCost, formatRunTime, formatVersionLabel } from "@/lib/eval-format";
 import { AGENT_COLUMN, CHECKBOX_COLUMN, GRID_COLUMNS, METRIC_COLORS } from "./constants";
 import { MiniBar } from "./_components/MiniBar";
 import { s } from "./styles";
@@ -20,13 +21,14 @@ export function RunsTable({
   selectable = false,
   showAgent = false,
   onSelectionChange,
-  onRowClick,
+  rowHref,
 }: {
   runs: EvalRunRecord[];
   selectable?: boolean;
   showAgent?: boolean;
   onSelectionChange?: (selectedIds: string[]) => void;
-  onRowClick?: (run: EvalRunRecord) => void;
+  /** When set, the ran-at cell of each row is a real link to this URL (keyboard-operable). */
+  rowHref?: (run: EvalRunRecord) => string;
 }) {
   const t = useTranslations("eval");
   const [selected, setSelected] = useState<string[]>([]);
@@ -64,8 +66,7 @@ export function RunsTable({
           <div
             key={run.id}
             role="row"
-            onClick={onRowClick ? () => onRowClick(run) : undefined}
-            style={s.row(columns, isSelected, !!onRowClick, i === runs.length - 1)}
+            style={s.row(columns, isSelected, i === runs.length - 1)}
           >
             {selectable && (
               <span role="cell" onClick={(e) => e.stopPropagation()}>
@@ -83,7 +84,17 @@ export function RunsTable({
               </span>
             )}
             <span role="cell" className="mono tnum" style={s.mono}>
-              {time}
+              {rowHref ? (
+                <Link
+                  href={rowHref(run)}
+                  aria-label={`${showAgent ? `${run.agent_name} · ` : ""}${label} · ${time}`}
+                  style={s.link}
+                >
+                  {time}
+                </Link>
+              ) : (
+                time
+              )}
             </span>
             <span role="cell" className="mono" style={s.mono}>
               {label}

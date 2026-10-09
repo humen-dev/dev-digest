@@ -1,9 +1,21 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { EvalTrendPoint } from "@devdigest/shared";
 import messages from "../../../../messages/en/eval.json";
 import { MetricTrend } from "./MetricTrend";
+
+const plotted = vi.hoisted(() => ({ series: [] as { name: string; data: number[] }[] }));
+vi.mock("@devdigest/ui", async () => {
+  const actual = await vi.importActual<typeof import("@devdigest/ui")>("@devdigest/ui");
+  return {
+    ...actual,
+    LineChart: ({ series }: { series: { name: string; data: number[] }[] }) => {
+      plotted.series = series;
+      return null;
+    },
+  };
+});
 
 afterEach(cleanup);
 
@@ -45,5 +57,20 @@ describe("MetricTrend", () => {
     expect(within(rows[0]!).getByText("50%")).toBeInTheDocument();
     expect(within(rows[1]!).getByText("75%")).toBeInTheDocument();
     expect(within(rows[1]!).getByText("3 / 4 passing")).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "Version" })).toBeInTheDocument();
+  });
+
+  it("never plots an n/a metric as 0: the run with null precision is left out of the chart", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={{ eval: messages }}>
+        <MetricTrend points={POINTS} />
+      </NextIntlClientProvider>,
+    );
+    const precision = plotted.series.find((x) => x.name === "Precision");
+    expect(precision?.data).toEqual([0.6]);
+    for (const x of plotted.series) {
+      expect(x.data).toHaveLength(1);
+      expect(x.data).not.toContain(0);
+    }
   });
 });

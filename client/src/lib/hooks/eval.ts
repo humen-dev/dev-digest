@@ -146,7 +146,7 @@ export function useEvalRuns(agentId: string | null | undefined) {
 }
 
 /** One run with its per-case outcomes. Polls every 3 s only while `running`; when a
- *  previously-running run reaches a terminal status it invalidates the agent's
+ *  run first shows a terminal status (also on the very first fetch) it invalidates the agent's
  *  cases, runs and detail queries (AC-32). Keeps the last data on a failed poll. */
 export function useEvalRun(id: string | null | undefined) {
   const qc = useQueryClient();
@@ -155,7 +155,10 @@ export function useEvalRun(id: string | null | undefined) {
     queryFn: async () => {
       const prev = qc.getQueryData<EvalRunDetail>(evalRunKey(id ?? ""));
       const run = await api.get<EvalRunDetail>(`/eval-runs/${id}`);
-      if (prev?.status === "running" && run.status !== "running") {
+      // First terminal sighting: either running -> terminal, or no cached data yet
+      // (run already finished before the first poll / remount). Later refetches of a
+      // terminal run see a terminal `prev` and do not invalidate again.
+      if (run.status !== "running" && (prev === undefined || prev.status === "running")) {
         void invalidateAgentEval(qc, run.agent_id);
       }
       return run;

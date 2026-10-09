@@ -3,7 +3,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import type { EvalRunMetrics } from "@devdigest/shared";
-import { deltaTone, formatDeltaPoints, formatPercent } from "../../../lib/eval-format";
+import { deltaTone, formatDeltaPoints, formatPercent } from "@/lib/eval-format";
 import { s } from "./styles";
 
 export type MetricDeltas = Partial<

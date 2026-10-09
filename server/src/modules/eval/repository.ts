@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, getTableColumns, lt } from 'drizzle-orm';
+import { and, asc, count, desc, eq, getTableColumns, inArray, lt, lte, sql } from 'drizzle-orm';
 import type { EvalCase, EvalCaseOutcome, EvalRunDetail, EvalRunRecord } from '@devdigest/shared';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
@@ -317,13 +317,38 @@ export class EvalRepository implements EvalRepositoryPort {
     return row ? toRunDetail(row.run, row.agentName) : null;
   }
 
-  async listRuns(ws: string, agentId: string): Promise<EvalRunRecord[]> {
-    const rows = await this.db
+  async listRuns(ws: string, agentId: string, limit?: number): Promise<EvalRunRecord[]> {
+    const q = this.db
       .select({ run: runListColumns, agentName: t.agents.name })
       .from(t.evalRuns)
       .leftJoin(t.agents, eq(t.evalRuns.ownerId, t.agents.id))
       .where(and(eq(t.evalRuns.workspaceId, ws), eq(t.evalRuns.ownerId, agentId)))
       .orderBy(desc(t.evalRuns.ranAt), desc(t.evalRuns.id));
+    const rows = await (limit === undefined ? q : q.limit(limit));
+    return rows.map((r) => toRunRecord(r.run, r.agentName));
+  }
+
+  async latestCompletedRuns(ws: string, agentIds: string[], limitPerAgent: number): Promise<EvalRunRecord[]> {
+    if (agentIds.length === 0 || limitPerAgent <= 0) return [];
+    const rn = sql<number>`row_number() over (partition by ${t.evalRuns.ownerId} order by ${t.evalRuns.ranAt} desc, ${t.evalRuns.id} desc)`.as('rn');
+    const ranked = this.db
+      .select({ id: t.evalRuns.id, rn })
+      .from(t.evalRuns)
+      .where(
+        and(
+          eq(t.evalRuns.workspaceId, ws),
+          inArray(t.evalRuns.ownerId, agentIds),
+          eq(t.evalRuns.status, 'completed'),
+        ),
+      )
+      .as('ranked');
+    const rows = await this.db
+      .select({ run: runListColumns, agentName: t.agents.name })
+      .from(ranked)
+      .innerJoin(t.evalRuns, eq(t.evalRuns.id, ranked.id))
+      .leftJoin(t.agents, eq(t.evalRuns.ownerId, t.agents.id))
+      .where(lte(ranked.rn, limitPerAgent))
+      .orderBy(asc(t.evalRuns.ownerId), desc(t.evalRuns.ranAt), desc(t.evalRuns.id));
     return rows.map((r) => toRunRecord(r.run, r.agentName));
   }
 

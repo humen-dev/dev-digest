@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { EvalCaseOutcome } from '@devdigest/shared';
 import { AppError, ConfigError, NotFoundError } from '../src/platform/errors.js';
 import { EvalService } from '../src/modules/eval/service.js';
-import { EVAL_MAX_CASES, EVAL_STALE_RUN_MS } from '../src/modules/eval/constants.js';
+import { EVAL_AGENT_RUNS_MAX, EVAL_MAX_CASES, EVAL_RECENT_RUNS, EVAL_STALE_RUN_MS } from '../src/modules/eval/constants.js';
 import type { PrDiffSource } from '../src/modules/eval/ports.js';
 import { parseUnifiedDiff } from '../src/adapters/git/diff-parser.js';
 import {
@@ -305,7 +305,8 @@ describe('eval service — starting runs', () => {
     await r.service.idle();
     const run = await r.service.getRun(WS, run_id);
     expect(run.status).toBe('errored');
-    expect(run.error_reason).toBe('heartbeat store down');
+    expect(run.error_reason).toBe('internal_error');
+    expect(run.error_reason).not.toContain('heartbeat');
   });
 
   it('refusals create no run: in flight, no cases, missing key, too many cases', async () => {
@@ -490,6 +491,19 @@ describe('eval service — read paths', () => {
     expect(detail.latest!.id).toBe(second);
     expect(detail.previous!.id).toBe(first);
     expect(detail.runs.map((x) => x.id)).toEqual([second, first]);
+  });
+
+  it('dashboard asks for a bounded window of completed runs, never the whole history', async () => {
+    const { r, second } = await seeded();
+    const spy = vi.spyOn(r.repo, 'latestCompletedRuns');
+    const listSpy = vi.spyOn(r.repo, 'listRuns');
+    const dash = await r.service.dashboard(WS);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(WS, [r.agentId], EVAL_RECENT_RUNS + 1);
+    expect(listSpy).not.toHaveBeenCalled();
+    expect(dash.agents[0]!.latest!.id).toBe(second);
+    await r.service.agentDetail(WS, r.agentId);
+    expect(listSpy).toHaveBeenCalledWith(WS, r.agentId, EVAL_AGENT_RUNS_MAX);
   });
 
   it('compares two runs of one agent and refuses the same id or different agents', async () => {

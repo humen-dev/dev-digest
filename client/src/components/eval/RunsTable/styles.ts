@@ -20,18 +20,18 @@ export const s = {
     color: "var(--text-muted)",
     textTransform: "uppercase",
   }),
-  row: (columns: string, selected: boolean, clickable: boolean, last: boolean): CSSProperties => ({
+  row: (columns: string, selected: boolean, last: boolean): CSSProperties => ({
     display: "grid",
     gridTemplateColumns: columns,
     gap: 12,
     padding: "10px 16px",
     alignItems: "center",
     fontSize: 12.5,
-    cursor: clickable ? "pointer" : "default",
     background: selected ? "var(--bg-hover)" : "transparent",
     borderBottom: last ? "none" : "1px solid var(--border)",
   }),
   mono: { fontSize: 12 } satisfies CSSProperties,
+  link: { color: "inherit", textDecoration: "underline" } satisfies CSSProperties,
   muted: { color: "var(--text-muted)" } satisfies CSSProperties,
   status: (status: "running" | "completed" | "errored"): CSSProperties => ({
     fontWeight: 600,

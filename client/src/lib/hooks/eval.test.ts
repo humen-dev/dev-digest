@@ -6,8 +6,11 @@ import type { EvalCase, EvalRunDetail } from "@devdigest/shared";
 import { api } from "../api";
 import {
   EVAL_RUN_POLL_MS,
+  evalAgentKey,
   evalCasesKey,
+  evalDashboardKey,
   evalRunKey,
+  evalRunsKey,
   useCreateEvalCaseFromFinding,
   useEvalCases,
   useEvalRun,
@@ -118,4 +121,26 @@ describe("useEvalRun", () => {
     });
     expect(api.get).toHaveBeenCalledTimes(3);
   });
+
+  it.each(["completed", "errored"] as const)(
+    "invalidates the agent queries when the first GET is already %s, without looping",
+    async (status) => {
+      vi.mocked(api.get).mockResolvedValue(run(status));
+      const qc = makeClient();
+      const invalidate = vi.spyOn(qc, "invalidateQueries");
+      const { result } = renderHook(() => useEvalRun("run1"), { wrapper: wrapperFor(qc) });
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: evalAgentKey("ag1") }));
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: evalDashboardKey });
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: evalRunsKey("ag1") });
+      const calls = invalidate.mock.calls.length;
+
+      await act(async () => {
+        await result.current.refetch();
+      });
+      expect(api.get).toHaveBeenCalledTimes(2);
+      expect(invalidate.mock.calls.length).toBe(calls);
+    },
+  );
 });

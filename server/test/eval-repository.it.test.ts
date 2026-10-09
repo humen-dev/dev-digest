@@ -284,6 +284,35 @@ d('Eval repository (Testcontainers pg)', () => {
     expect((await repo.listRuns(ws, agent)).map((r) => r.id)).toEqual([newer, older]);
   });
 
+  it('latestCompletedRuns keeps the newest N completed runs per agent, no per_case, workspace-scoped', async () => {
+    const ws = await mkWorkspace();
+    const other = await mkWorkspace();
+    const a1 = await mkAgent(ws);
+    const a2 = await mkAgent(ws);
+    const mkDone = async (agent: string, minutesAgo: number) => {
+      const id = (await repo.insertRun({ workspace_id: ws, owner_id: agent, agent_version: 1, skills_fingerprint: [], case_ids: [] }))!;
+      await repo.completeRun(id, { metrics: METRICS, per_case: [OUTCOME], duration_ms: 1, cost_usd: null });
+      await pg.handle.db.update(t.evalRuns).set({ ranAt: new Date(Date.now() - minutesAgo * 60_000) }).where(eq(t.evalRuns.id, id));
+      return id;
+    };
+    const a1Runs = [await mkDone(a1, 30), await mkDone(a1, 20), await mkDone(a1, 10)]; // oldest first
+    const a2Runs = [await mkDone(a2, 5)];
+    // a non-completed run never counts toward the window
+    const failed = (await repo.insertRun({ workspace_id: ws, owner_id: a2, agent_version: 1, skills_fingerprint: [], case_ids: [] }))!;
+    await repo.failRun(failed, 'x');
+
+    const got = await repo.latestCompletedRuns(ws, [a1, a2], 2);
+    expect(got.filter((r) => r.agent_id === a1).map((r) => r.id)).toEqual([a1Runs[2], a1Runs[1]]);
+    expect(got.filter((r) => r.agent_id === a2).map((r) => r.id)).toEqual(a2Runs);
+    expect(got.every((r) => r.status === 'completed')).toBe(true);
+    expect(got[0]).not.toHaveProperty('per_case');
+    expect(got[0]).toMatchObject({ metrics: METRICS });
+
+    expect(await repo.latestCompletedRuns(other, [a1, a2], 2)).toEqual([]);
+    expect(await repo.latestCompletedRuns(ws, [], 2)).toEqual([]);
+    expect(await repo.listRuns(ws, a1, 2)).toHaveLength(2);
+  });
+
   it('reconcileStale errors only running runs whose heartbeat is older than the cutoff (AC-29, OQ-1)', async () => {
     const ws = await mkWorkspace();
     const a1 = await mkAgent(ws);
@@ -393,6 +422,7 @@ d('Eval repository (Testcontainers pg)', () => {
     expect(await repo.runningRun(other, agent)).toBeNull();
     expect(await repo.getRun(other, runId)).toBeNull();
     expect(await repo.listRuns(other, agent)).toEqual([]);
+    expect(await repo.latestCompletedRuns(other, [agent], 5)).toEqual([]);
     expect((await repo.recentRuns(other, 10)).map((r) => r.id)).not.toContain(runId);
     expect(await repo.completedOutcomes(other, agent, 10)).toEqual([]);
   });

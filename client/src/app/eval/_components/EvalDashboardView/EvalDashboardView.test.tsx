@@ -49,11 +49,13 @@ function agent(id: string, name: string, cases: number): EvalAgentSummary {
 
 let dashboard: EvalDashboard;
 const mutate = vi.fn();
+const reset = vi.fn();
 let runAllData: EvalRunAllResult | undefined;
+let runAllPending = false;
 
 vi.mock("@/lib/hooks/eval", () => ({
   useEvalDashboard: () => ({ data: dashboard, isError: false, refetch: vi.fn() }),
-  useRunAllEvals: () => ({ mutate, reset: vi.fn(), isPending: false, isError: false, data: runAllData }),
+  useRunAllEvals: () => ({ mutate, reset, isPending: runAllPending, isError: false, data: runAllData }),
 }));
 
 import { EvalDashboardView } from "./EvalDashboardView";
@@ -74,7 +76,9 @@ afterEach(() => {
   cleanup();
   push.mockClear();
   mutate.mockClear();
+  reset.mockClear();
   runAllData = undefined;
+  runAllPending = false;
 });
 
 describe("EvalDashboardView", () => {
@@ -106,6 +110,29 @@ describe("EvalDashboardView", () => {
     expect(within(trend).getAllByRole("row")).toHaveLength(1 + 3 * 2);
     expect(within(trend).getAllByText("50%")).toHaveLength(3);
     expect(within(trend).getAllByText("80%")).toHaveLength(3);
+  });
+
+  it("makes each recent run a keyboard-reachable link to the agent page", () => {
+    setup();
+    const recentTable = screen.getAllByRole("table")[2]!;
+    const links = within(recentTable).getAllByRole("link");
+    expect(links).toHaveLength(20);
+    expect(links[0]).toHaveAttribute("href", "/eval/agents/a1");
+  });
+
+  it("keeps the dialog open and Cancel disabled while the Run all request is pending", () => {
+    runAllPending = true;
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Run all agents" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("status")).toHaveTextContent("running");
+    const cancel = within(dialog).getByRole("button", { name: "Cancel" });
+    expect(cancel).toBeDisabled();
+    fireEvent.click(cancel);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(reset).not.toHaveBeenCalled();
   });
 
   it("renders Run all refusals with the values from details, generic when they are missing", () => {

@@ -5,6 +5,7 @@ import type {
   EvalRunRecord,
   EvalSkillRef,
 } from '@devdigest/shared';
+import { EVAL_PROMPT_DIFF_MAX_CELLS } from '../constants.js';
 import { runCost, scoreRun } from './scoring.js';
 
 type PromptDiffLine = { op: 'add' | 'remove' | 'same'; text: string };
@@ -25,6 +26,16 @@ export function promptLineDiff(a: string, b: string): PromptDiffLine[] {
   const my = y.slice(start, endY);
   const n = mx.length;
   const m = my.length;
+
+  // Too large for the LCS table: coarse, deterministic diff of the differing middle.
+  if ((n + 1) * (m + 1) > EVAL_PROMPT_DIFF_MAX_CELLS) {
+    return [
+      ...x.slice(0, start).map((text): PromptDiffLine => ({ op: 'same', text })),
+      ...mx.map((text): PromptDiffLine => ({ op: 'remove', text })),
+      ...my.map((text): PromptDiffLine => ({ op: 'add', text })),
+      ...x.slice(endX).map((text): PromptDiffLine => ({ op: 'same', text })),
+    ];
+  }
 
   // lcs[i][j] = LCS length of mx[i..] and my[j..]
   const lcs: Uint32Array[] = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));

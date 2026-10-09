@@ -72,6 +72,8 @@ function fill(n: number): string {
 /** Masks PEM private-key bodies line by line, keeping BEGIN/END lines, line count, lengths and diff prefixes. */
 function maskPemBlocks(text: string): string {
   const lines = text.split('\n');
+  // Only unified-diff text carries per-line markers worth keeping (PR body etc. does not).
+  const isDiff = /^(diff --git |@@ )/m.test(text);
   let inPem = false;
   let prefixLen = 0;
   for (let i = 0; i < lines.length; i++) {
@@ -102,7 +104,13 @@ function maskPemBlocks(text: string): string {
       inPem = false;
       continue;
     }
-    lines[i] = line.slice(0, prefixLen) + fill(line.length - prefixLen) + cr;
+    if (isDiff) {
+      // Keep the line's own diff marker and indentation; fill only the rest.
+      const keep = /^[+\- ]\s*/.exec(line)?.[0].length ?? 0;
+      lines[i] = line.slice(0, keep) + fill(line.length - keep) + cr;
+    } else {
+      lines[i] = line.slice(0, prefixLen) + fill(line.length - prefixLen) + cr;
+    }
   }
   return lines.join('\n');
 }

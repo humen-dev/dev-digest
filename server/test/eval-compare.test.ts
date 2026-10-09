@@ -76,6 +76,21 @@ describe('eval compare', () => {
     expect(mid.filter((l) => l.op === 'add').map((l) => l.text)).toEqual(['6']);
   });
 
+  it('prompt diff above the cell cap is coarse (all remove, then all add) and fast', () => {
+    const lines = (tag: string) => Array.from({ length: 3000 }, (_, i) => `${tag}-${i}`);
+    const a = ['head', ...lines('old'), 'tail'].join('\n');
+    const b = ['head', ...lines('new'), 'tail'].join('\n');
+    const t0 = Date.now();
+    const d = promptLineDiff(a, b);
+    expect(Date.now() - t0).toBeLessThan(1000);
+    expect(d).toHaveLength(3000 * 2 + 2);
+    expect(d[0]).toEqual({ op: 'same', text: 'head' });
+    expect(d.at(-1)).toEqual({ op: 'same', text: 'tail' });
+    expect(d.slice(1, 3001).every((l) => l.op === 'remove')).toBe(true);
+    expect(d.slice(3001, 6001).every((l) => l.op === 'add')).toBe(true);
+    expect(promptLineDiff(a, b)).toEqual(d);
+  });
+
   it('null prompt -> prompt_diff null + missing_snapshot_versions', () => {
     const o = detail('o', 3, [outcome('a', true)]);
     const n = detail('n', 4, [outcome('a', true)]);

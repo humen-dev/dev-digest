@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { maskSecretsForStorage, secretPrefix } from '../src/modules/_shared/secrets.js';
+import { parseUnifiedDiff } from '../src/adapters/git/diff-parser.js';
 
 // Fixtures are assembled at runtime so no secret-shaped literal sits in the source.
 const stripe = 'sk_' + 'live_' + 'A1b2C3d4E5f6G7h8I9j0K1l2';
@@ -60,6 +61,37 @@ describe('maskSecretsForStorage', () => {
       const out = maskSecretsForStorage(lines.join('\n')).split('\n');
       out.forEach((l, i) => expect(l[0]).toBe(p) && expect(l.length).toBe((lines[i] as string).length));
       for (const b of body) expect(out.join('\n')).not.toContain(b);
+    }
+  });
+
+  it('keeps every body line marker and the new-side line numbers when the PEM is assigned to a variable or indented (YAML)', () => {
+    const header = ['diff --git a/k.ts b/k.ts', '--- a/k.ts', '+++ b/k.ts', '@@ -1,2 +1,9 @@', ' const before = 1;'];
+    const cases: { begin: string; indent: string }[] = [
+      { begin: `+const KEY = \`-----BEGIN RSA ${pk}-----`, indent: '' },
+      { begin: `+    -----BEGIN RSA ${pk}-----`, indent: '    ' },
+    ];
+    for (const { begin, indent } of cases) {
+      const lines = [
+        ...header,
+        begin,
+        ...body.map((l) => `+${indent}${l}`),
+        `+${indent}-----END RSA ${pk}-----\``,
+        '+const after = 2;',
+      ];
+      const input = lines.join('\n');
+      const out = maskSecretsForStorage(input);
+      const outLines = out.split('\n');
+      expect(outLines).toHaveLength(lines.length);
+      for (const b of body) expect(out).not.toContain(b);
+      outLines.forEach((l, i) => expect(l.length).toBe((lines[i] as string).length));
+      // body lines sit between the BEGIN line and the END line
+      for (let i = header.length + 1; i <= header.length + body.length; i++) {
+        expect((outLines[i] as string).startsWith(`+${indent}X`)).toBe(true);
+      }
+      expect(outLines[outLines.length - 1]).toBe('+const after = 2;');
+      const newLines = (raw: string) => parseUnifiedDiff(raw).files.flatMap((f) => f.hunks.flatMap((h) => h.newLineNumbers));
+      expect(newLines(out)).toEqual(newLines(input));
+      expect(parseUnifiedDiff(out).files[0]!.additions).toBe(parseUnifiedDiff(input).files[0]!.additions);
     }
   });
 

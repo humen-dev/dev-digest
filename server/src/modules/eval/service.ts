@@ -19,7 +19,14 @@ import type {
 import { AppError, ConfigError, NotFoundError } from '../../platform/errors.js';
 import { maskSecretsForStorage } from '../_shared/secrets.js';
 import { renderSkillBlocks } from '../_shared/skill-render.js';
-import { EVAL_MAX_CASES, EVAL_MAX_FROZEN_DIFF_BYTES, EVAL_RECENT_RUNS, EVAL_STALE_RUN_MS } from './constants.js';
+import {
+  EVAL_AGENT_RUNS_MAX,
+  EVAL_INTERNAL_ERROR_REASON,
+  EVAL_MAX_CASES,
+  EVAL_MAX_FROZEN_DIFF_BYTES,
+  EVAL_RECENT_RUNS,
+  EVAL_STALE_RUN_MS,
+} from './constants.js';
 import { buildBanner } from './domain/banner.js';
 import { compareRuns, markSkillsDelta } from './domain/compare.js';
 import { diffByteSize, expectationIntersectsHunk, extractFileDiff } from './domain/frozen-input.js';
@@ -46,8 +53,6 @@ export interface EvalDeps {
   /** Clock override for tests. */
   now?: () => number;
 }
-
-const REASON_MAX = 200;
 
 function unprocessable(code: EvalErrorCode, message: string, details?: unknown): AppError {
   return new AppError(code, message, 422, details);
@@ -407,7 +412,8 @@ export class EvalService {
         'eval run completed',
       );
     } catch (err) {
-      const reason = (err instanceof Error ? err.message : '').trim().slice(0, REASON_MAX) || 'error';
+      // Raw messages may carry provider/DB internals; the stored reason is fixed, the log keeps err.name.
+      const reason = err instanceof AppError ? err.code : EVAL_INTERNAL_ERROR_REASON;
       try {
         await repo.failRun(runId, reason);
       } catch {
@@ -424,7 +430,7 @@ export class EvalService {
 
   async listRuns(ws: string, agentId: string): Promise<EvalRunRecord[]> {
     await this.requireAgent(ws, agentId);
-    return markSkillsDelta(await this.deps.repo.listRuns(ws, agentId));
+    return markSkillsDelta(await this.deps.repo.listRuns(ws, agentId, EVAL_AGENT_RUNS_MAX));
   }
 
   async getRun(ws: string, id: string): Promise<EvalRunDetail> {
@@ -454,10 +460,17 @@ export class EvalService {
   async dashboard(ws: string): Promise<EvalDashboard> {
     const { repo } = this.deps;
     const agents = await repo.agentsWithCases(ws);
+    // One bounded round trip: one extra run so the oldest trend point still gets a correct `skills_delta`.
+    const fetched = await repo.latestCompletedRuns(
+      ws,
+      agents.map((a) => a.agent_id),
+      EVAL_RECENT_RUNS + 1,
+    );
+    const byAgent = new Map<string, EvalRunRecord[]>();
+    for (const r of fetched) byAgent.set(r.agent_id, [...(byAgent.get(r.agent_id) ?? []), r]);
     const summaries = await Promise.all(
       agents.map(async (a) => {
-        const runs = markSkillsDelta(await repo.listRuns(ws, a.agent_id));
-        const completed = runs.filter((r) => r.status === 'completed');
+        const completed = markSkillsDelta(byAgent.get(a.agent_id) ?? []);
         return {
           agent_id: a.agent_id,
           agent_name: a.name,
@@ -477,7 +490,7 @@ export class EvalService {
     const [casesTotal, running, listed] = await Promise.all([
       repo.countCases(ws, agentId),
       repo.runningRun(ws, agentId),
-      repo.listRuns(ws, agentId),
+      repo.listRuns(ws, agentId, EVAL_AGENT_RUNS_MAX),
     ]);
     const runs = markSkillsDelta(listed);
     const completed = runs.filter((r) => r.status === 'completed');

@@ -282,8 +282,18 @@ export class FakeEvalRepo implements EvalRepositoryPort {
     const r = this.runs.get(id);
     return r && r.ws === ws ? structuredClone(r.detail) : null;
   }
-  async listRuns(ws: string, agentId: string) {
-    return this.sorted(ws, agentId).map((d) => this.record(d));
+  async listRuns(ws: string, agentId: string, limit?: number) {
+    const all = this.sorted(ws, agentId).map((d) => this.record(d));
+    return limit === undefined ? all : all.slice(0, limit);
+  }
+  async latestCompletedRuns(ws: string, agentIds: string[], limitPerAgent: number) {
+    this.calls.push('latestCompletedRuns');
+    return agentIds.flatMap((id) =>
+      this.sorted(ws, id)
+        .filter((d) => d.status === 'completed')
+        .slice(0, limitPerAgent)
+        .map((d) => this.record(d)),
+    );
   }
   async recentRuns(ws: string, limit: number) {
     return this.sorted(ws).slice(0, limit).map((d) => this.record(d));

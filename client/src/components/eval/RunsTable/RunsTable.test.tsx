@@ -77,6 +77,19 @@ describe("RunsTable", () => {
     expect(onSelectionChange).toHaveBeenLastCalledWith(["r1"]);
   });
 
+  it("renders the ran-at cell as a real link when rowHref is set, and plain text otherwise", () => {
+    renderTable(<RunsTable runs={RUNS} showAgent rowHref={(r) => `/eval/agents/${r.agent_id}`} />);
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(3);
+    expect(links[0]).toHaveAttribute("href", "/eval/agents/ag1");
+    expect(links[0]).toHaveAccessibleName("Security · v3 · skills Δ · 2026-10-09 10:05");
+    links[0]!.focus();
+    expect(links[0]).toHaveFocus();
+    cleanup();
+    renderTable(<RunsTable runs={RUNS} />);
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
+  });
+
   it("adds an agent-name column only with showAgent", () => {
     renderTable(<RunsTable runs={[run({ id: "x", agent_name: "Perf" })]} />);
     expect(screen.queryByRole("columnheader", { name: "Agent" })).not.toBeInTheDocument();
