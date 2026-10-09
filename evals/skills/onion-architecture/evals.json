@@ -1,0 +1,236 @@
+{
+  "skill_name": "onion-architecture",
+  "note": "Answer key. Fixtures live in fixtures/<name>/ next to this file and contain NO hints; never show this file to the run agents. {FIXTURE} in a prompt = absolute path of the fixture copy handed to the run.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "watchlist-module-review",
+      "prompt": "I just added a new `watchlist` module to the API — the files are in {FIXTURE}/server/src (modules/watchlist/* plus the new table in db/schema/watchlist.ts). Can you review it before I open the PR? I care mostly about whether it's structured the way the rest of our backend should be. List concrete problems and tell me exactly what to change.",
+      "files": [
+        "fixtures/watchlist"
+      ],
+      "expected_output": "A structural review that finds the 3 planted layering violations and says where each piece of code should move.",
+      "assertions": [
+        {
+          "id": "W1",
+          "text": "Flags that routes.ts (GET /watchlist/unchecked) queries the database directly with drizzle-orm / db/schema / container.db and maps rows itself, and says to move it into WatchlistRepository (+ a service method)"
+        },
+        {
+          "id": "W2",
+          "text": "Flags that WatchlistService takes the whole Container in its constructor (service locator) and says to inject narrow deps / ports (watchlist repo, repos repo, GitHubClient) instead"
+        },
+        {
+          "id": "W3",
+          "text": "Flags that service.ts imports isPullStale from another module's internal file (../pulls/helpers.js) and says to go through that module's public surface (index.ts/ports.ts) or move the rule into a domain/shared location"
+        },
+        {
+          "id": "W4",
+          "text": "Every reported structural problem names a concrete target location (file / class / method), not just 'wrong layer'"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "release-notes-service-review",
+      "prompt": "Here's the release-notes feature I wrote: {FIXTURE}/server/src (modules/release-notes and db/schema/release-notes.ts). It works locally. Our backend is Fastify + Drizzle. Review the service and routes — is the code in the right places? Give me a list of findings with fixes.",
+      "files": [
+        "fixtures/release-notes"
+      ],
+      "expected_output": "A review that finds the 3 planted violations in service.ts and proposes port/adapter, route-level context and repository-owned SQL.",
+      "assertions": [
+        {
+          "id": "R1",
+          "text": "Flags that service.ts imports @octokit/rest and constructs `new Octokit(...)` itself; says to put compare-commits behind a port (e.g. a GitHubClient method) implemented by an adapter in src/adapters/github, wired in the Container"
+        },
+        {
+          "id": "R2",
+          "text": "Flags that ReleaseNotesService.generate takes a FastifyRequest (framework type in the application layer) and reads workspaceId from a raw header instead of getContext in the route; says the route should pass plain arguments (workspaceId, repoId, fromRef, toRef)"
+        },
+        {
+          "id": "R3",
+          "text": "Flags that service.ts imports drizzle-orm / db/schema / Db and runs update+insert SQL itself in publish(); says to move the writes into ReleaseNotesRepository (e.g. markPublished + addEvent with a tx/unit-of-work) while the service still owns the transaction boundary"
+        },
+        {
+          "id": "R4",
+          "text": "Every reported structural problem names a concrete target location (file / class / method), not just 'wrong layer'"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "linear-issue-links-placement",
+      "prompt": "I'm adding Linear integration so a PR page shows the Linear issues it references. Code is in {FIXTURE}/server/src — adapters/linear and modules/issue-links. Before I wire up the client side, check the placement: is each piece where it belongs, and what should I move or rewrite?",
+      "files": [
+        "fixtures/issue-links"
+      ],
+      "expected_output": "A placement review that finds the 3 planted violations: wiring in routes, SDK type in the port/service, adapter importing the module's service.",
+      "assertions": [
+        {
+          "id": "I1",
+          "text": "Flags that routes.ts constructs `new LinearIssueTracker(...)` and `new IssueLinksService(...)` inside the plugin; says the wiring belongs in platform/container.ts (getter + override/mock), with the route only using container.issueLinksService"
+        },
+        {
+          "id": "I2",
+          "text": "Flags that the @linear/sdk `Issue` type leaks into the application ring (ports.ts IssueTrackerPort returns it and service.ts maps it); says the port should return a plain contract (e.g. LinkedIssue/TrackerIssue) with the SDK → contract mapping done in the adapter"
+        },
+        {
+          "id": "I3",
+          "text": "Flags that the adapter (adapters/linear) imports extractIssueKeys from modules/issue-links/service.js (infrastructure depending on the application service); says to move the pure parsing rule to modules/issue-links/domain/ (or drop it from the adapter)"
+        },
+        {
+          "id": "I4",
+          "text": "Every reported structural problem names a concrete target location (file / class / method), not just 'wrong layer'"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "retention-cross-module-writes",
+      "added_in_skill_version": "1.1.0",
+      "prompt": "We need old AI reviews cleaned up automatically, so I added a `retention` module: per-repo policy + a background sweep. Code is in {FIXTURE}/server/src (modules/retention and db/schema/retention.ts). Please do an architecture review before I open the PR — what's in the wrong place and what exactly should change?",
+      "files": [
+        "fixtures/retention"
+      ],
+      "expected_output": "A structural review that catches the cross-module writes (rule 8, new in 1.1.0) plus two pre-existing-rule violations.",
+      "assertions": [
+        {
+          "id": "N1",
+          "new_rule": true,
+          "text": "Flags that RetentionRepository.purge writes to tables owned by other modules — `delete(t.reviews)` (reviews module) and `update(t.pullRequests)` (pulls module) — and says those writes must go through the owning modules' ports (e.g. a reviews port method to delete reviews, a pulls port method to reset status), not this module's repository"
+        },
+        {
+          "id": "N2",
+          "text": "Flags that the selection rule (keep latest N per PR, age cutoff, protected verdicts, which PRs are fully purged) is business logic inside the repository and says to move it to a pure function in modules/retention/domain/ that the service calls"
+        },
+        {
+          "id": "N3",
+          "text": "Flags that routes.ts registers the job handler (`container.jobs.register`) and says registration belongs in the service (or its wiring), with the route only enqueueing"
+        },
+        {
+          "id": "N4",
+          "text": "Every reported structural problem names a concrete target location (file / class / method), not just 'wrong layer'"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "review-sync-transaction-trace",
+      "added_in_skill_version": "1.2.0",
+      "runs_per_configuration": 5,
+      "prompt": "I built `review-sync`: it posts an AI review's findings to the GitHub PR as inline comments and keeps track of what was posted, plus a resync that detects comments deleted on GitHub. It's a bigger change — code is in {FIXTURE}/server/src (modules/review-sync/**, db/schema/review-sync.ts, db/tx.ts, platform/transaction.ts). Please do a thorough architecture review before I open the PR: what's in the wrong place, what breaks our backend rules, and what exactly should change?",
+      "files": [
+        "fixtures/review-sync"
+      ],
+      "expected_output": "Finds both transaction-boundary violations hidden behind helper calls (new rule 9), two older layering violations, does not flag the correct resync() flow, and shows the call chain.",
+      "assertions": [
+        {
+          "id": "T1",
+          "new_rule": true,
+          "text": "Flags that ReviewSyncService.sync() makes GitHub network calls inside the open transaction (tx.run callback → postPlanned → CommentPublisher.publishAll → createReviewComment) and says to post the comments outside the transaction (before it, or after commit / via an outbox job)"
+        },
+        {
+          "id": "T2",
+          "new_rule": true,
+          "text": "Flags that sync() calls jobs.enqueue inside the transaction (via scheduleRecheck) and says to enqueue after commit (JobRunner writes with its own connection / the job may run before commit or survive a rollback)"
+        },
+        {
+          "id": "T3",
+          "text": "Flags that mappers.ts imports drizzle-orm (and/eq/SQL) and db/schema to build where-clauses (runScope, commentsOfPr); says mappers may import row types only and these query helpers belong in repository.ts"
+        },
+        {
+          "id": "T4",
+          "text": "Flags that domain/dedupe.ts imports FindingRow from db/rows (domain ring depends on infrastructure row types); says to type it with a plain/contract type such as SyncFinding or a local { file, startLine, title }"
+        },
+        {
+          "id": "T5",
+          "negative": true,
+          "text": "Does NOT report resync() as a transaction violation — it fetches from GitHub before tx.run and enqueues after the transaction, which is the correct pattern (passes if resync is not flagged or is explicitly called correct)"
+        },
+        {
+          "id": "T6",
+          "text": "For the GitHub-in-transaction problem, names at least one intermediate hop of the call chain (postPlanned and/or CommentPublisher.publishAll), not just 'sync uses the network'"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "pr-digest-barrel-imports",
+      "added_in_skill_version": "1.3.0",
+      "runs_per_configuration": 5,
+      "prompt": "I added a `pr-digest` endpoint: for a repo it lists PRs updated in the last N days with their intent, which kinds of files they touch, and the workspace's enabled skills. Code is in {FIXTURE}/server/src/modules/pr-digest. depcruise is green on my machine. Can you review the module structure before I open the PR and tell me exactly what to change?",
+      "files": [
+        "fixtures/pr-digest"
+      ],
+      "expected_output": "Flags the three cross-module imports that go through other modules' index.ts barrels but pull in a repository class, a service class and a row mapper (rule 10, new in 1.3.0), flags the row type in ports.ts, and does not flag the pure classifyFile import.",
+      "assertions": [
+        {
+          "id": "B1",
+          "new_rule": true,
+          "text": "Flags that service.ts depends on another module's repository class — `import type { IntentRepository } from '../intent/index.js'` used as a constructor dependency — as a cross-module coupling even though it goes through index.ts, and says to declare an own port (in pr-digest/ports.ts) that the Container implements"
+        },
+        {
+          "id": "B2",
+          "new_rule": true,
+          "text": "Flags that service.ts depends on another module's service class — `import type { SkillsService } from '../skills/index.js'` — as a cross-module coupling through the barrel, and says to replace it with an own narrow port (e.g. enabled skill names) wired in the Container"
+        },
+        {
+          "id": "B3",
+          "new_rule": true,
+          "text": "Flags that service.ts imports and calls another module's mapper `toPrIntentRecord` from '../intent/index.js' (it maps intent's rows), and says the port should return the contract/plain value instead so the mapping stays in the intent module"
+        },
+        {
+          "id": "B4",
+          "text": "Flags that ports.ts imports `PullRow` from db/rows (row type in the application ring / port shaped on rows) and says to use a plain contract type for DigestPullRecord"
+        },
+        {
+          "id": "B5",
+          "negative": true,
+          "text": "Does NOT flag `import { classifyFile } from '../../smart-diff/index.js'` in domain/build-digest.ts as a violation (pure domain function through a barrel is allowed); passes if it is not flagged or is explicitly called fine"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "skill-audit-foreign-types-imports",
+      "added_in_skill_version": "1.4.0",
+      "runs_per_configuration": 5,
+      "prompt": "New module `skill-audit`: it scans enabled skills for stale issue references (#123 that are no longer open) and evidence files that disappeared from the repo index, stores findings, and lets you bulk accept/reject them — accepting drafts a replacement skill. Code is in {FIXTURE}/server/src (modules/skill-audit/**, db/schema/skill-audit.ts). depcruise passes. Please review the module's imports and structure against our backend rules before I open the PR and list exactly what to change.",
+      "files": [
+        "fixtures/skill-audit"
+      ],
+      "expected_output": "Flags the three imports of other modules' types.ts (rule 11, new in 1.4.0), flags the constants.ts import (old rule 7), and does not flag the published repo-intel/types.ts import.",
+      "assertions": [
+        {
+          "id": "X1",
+          "new_rule": true,
+          "text": "Flags that routes.ts imports `BulkStatusBody` from '../conventions/types.js' (reusing another module's request schema) as something to change, and says to define the body schema in skill-audit's own types.ts (or a shared contract)"
+        },
+        {
+          "id": "X2",
+          "new_rule": true,
+          "text": "Flags that ports.ts imports `InsertSkill` from '../skills/types.js' as something to change, and says the port should use its own input type (or a shared/ports-level contract)"
+        },
+        {
+          "id": "X3",
+          "new_rule": true,
+          "text": "Flags that domain/find-stale-refs.ts imports `ExtractedIssueRef` from '../../intent/types.js' as something to change, and says to declare the small type locally (or in a shared contract)"
+        },
+        {
+          "id": "X4",
+          "text": "Flags that service.ts imports `DEFAULT_SKILL_TYPE` from '../skills/constants.js' (another module's constants) and proposes a fix"
+        },
+        {
+          "id": "X5",
+          "negative": true,
+          "text": "Does NOT require changing `import type { RepoIntel } from '../repo-intel/types.js'` in service.ts; passes if it is not flagged or is explicitly called fine"
+        },
+        {
+          "id": "X6",
+          "new_rule": true,
+          "added_after_iteration": 5,
+          "text": "All three foreign types.ts imports (X1–X3) are put in the blocking / must-fix tier, not 'should fix' / optional"
+        }
+      ]
+    }
+  ]
+}
