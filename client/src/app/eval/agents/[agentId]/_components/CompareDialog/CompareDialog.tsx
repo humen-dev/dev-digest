@@ -11,6 +11,7 @@ import { ApiError } from "@/lib/api";
 import { formatVersionLabel } from "@/lib/eval-format";
 import { useEvalCompare } from "@/lib/hooks/eval";
 import { buildCompareRows, DIFF_MARKER } from "./helpers";
+import { SKILL_CHANGE_KEY } from "./constants";
 import { s } from "./styles";
 
 export function CompareDialog({
@@ -137,9 +138,3 @@ export function CompareDialog({
     </Modal>
   );
 }
-
-const SKILL_CHANGE_KEY = {
-  added: "compare.skillAdded",
-  removed: "compare.skillRemoved",
-  changed: "compare.skillChanged",
-} as const;
