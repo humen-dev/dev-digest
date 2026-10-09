@@ -30,7 +30,8 @@ export function logTrace(label: string, result: Result): void {
   console.log(`    ${DIM}text: ${preview}${result.text.length > 300 ? "…" : ""}${RESET}`);
 }
 
-/** Print the judge's per-practice breakdown: score, PASS/FAIL, and the verbatim evidence quote. */
+/** Print the judge's per-practice breakdown: score, PASS/FAIL, the verbatim evidence quote and,
+ *  for a FAIL, the judge's reason. */
 export function logVerdict(label: string, verdict: Verdict): void {
   if (QUIET) return;
   const pct = Math.round(verdict.score * 100);
@@ -40,5 +41,6 @@ export function logVerdict(label: string, verdict: Verdict): void {
     const mark = r.passed ? `${GREEN}PASS${RESET}` : `${RED}FAIL${RESET}`;
     console.log(`    [${mark}] ${r.practice}`);
     console.log(`      ${DIM}evidence: ${r.evidence || "(none)"}${RESET}`);
+    if (!r.passed && r.reason) console.log(`      ${DIM}reason:   ${r.reason}${RESET}`);
   }
 }

@@ -34,6 +34,8 @@ export interface PracticeVerdict {
   practice: string;
   passed: boolean;
   evidence: string;
+  /** Judge rubric v2+: why the practice passed/failed. Absent on older records and trace checks. */
+  reason?: string;
 }
 
 export interface EvalRecord {
