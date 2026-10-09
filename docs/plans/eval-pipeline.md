@@ -133,7 +133,8 @@ export const EvalRunDetail = EvalRunRecord.extend({ per_case: z.array(EvalCaseOu
 export const EvalRunEstimate = z.object({ agent_id: z.string(), cases_total: z.number().int() });
 export const EvalRunStarted = z.object({ run_id: z.string(), status: z.literal('running') });
 export const EvalRunAllResult = z.object({ results: z.array(z.object({ agent_id: z.string(), agent_name: z.string(),
-  outcome: z.enum(['started', 'refused']), run_id: z.string().nullable(), reason: z.string().nullable() })) });
+  outcome: z.enum(['started', 'refused']), run_id: z.string().nullable(), reason: z.string().nullable(),
+  details: z.record(z.string(), z.unknown()).nullable() })) }); // details added 2026-10-09 (wave 2 fix): same AppError details as single-run refusals; null when started
 export const EvalTrendPoint = z.object({ run_id: z.string(), ran_at: z.string(), agent_version: z.number().int(),
   recall: Ratio, precision: Ratio, citation_accuracy: Ratio, cases_passed: z.number().int(), cases_total: z.number().int() });
 export const EvalMetricKey = z.enum(['recall', 'precision', 'citation_accuracy']);
@@ -553,7 +554,7 @@ Both POST run routes carry `config.rateLimit = EVAL_RUN_RATE_LIMIT`. POST bodies
    - one log line per run with ids, counts, metrics, model, tokens, duration and cost only.
 6. `runAll` loops over `agentsWithCases` and maps each AppError code to `refused`.
 7. Read paths: list, detail, dashboard, compare (422 when the ids are equal or the agents differ), and the per-case `last` from `completedOutcomes`. None of them builds an LLM.
-8. Routes per §3.4 with the shared rate limit. `server.ts` calls `reconcileStale` once after `buildApp`, inside try/catch.
+8. Routes per §3.4 with the per-route rate limit (I-6 revised). `server.ts` calls `reconcileStale` once after `buildApp`, inside try/catch.
 
 **Acceptance criteria** (unit tests with fake repo / `app.inject` + `MockAuthProvider` + a stub LLM)
 - [ ] Dismissed finding → 201 `must_not_flag`; accepted → `must_find` with the finding's file and lines; a second POST → 200 with the same id — AC-1, AC-2, AC-5, AC-6, EC-3.
