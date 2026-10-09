@@ -127,6 +127,18 @@
       "reason": "Quiz prompt in an eval case asking whether 'down -v' is allowed; the eval asserts the agent refuses. Nothing executes it.",
       "addedBy": "mgume",
       "addedAt": "2026-10-09"
+    },
+    {
+      "key": "DET-003|client/src/vendor/shared/contracts/eval-ci.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23). SPEC-05 Eval Pipeline (AC-80) reshaped the Eval region of eval-ci.ts byte-identically in the server/ and client/ copies; parity is enforced by server/test/eval-contract-parity.test.ts in verify:l06 (plan docs/plans/eval-pipeline.md U0; verified by plan-verifier and architecture-reviewer, 2026-10-09).",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-09"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/contracts/eval-ci.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (client/INSIGHTS.md 2026-09-23). SPEC-05 Eval Pipeline (AC-80) reshaped the Eval region of eval-ci.ts byte-identically in the server/ and client/ copies; parity is enforced by server/test/eval-contract-parity.test.ts in verify:l06 (plan docs/plans/eval-pipeline.md U0; verified by plan-verifier and architecture-reviewer, 2026-10-09).",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-09"
     }
   ]
 }

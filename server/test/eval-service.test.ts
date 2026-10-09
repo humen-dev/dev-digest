@@ -146,12 +146,13 @@ describe('eval service — cases from findings', () => {
   it('masks secrets in the stored diff and PR text', async () => {
     const r = rig();
     const token = `ghp_${'a1B2'.repeat(9)}`;
+    const awsKey = 'AKIA' + 'ABCDEFGHIJKLMNOP';
     r.setDiff(['diff --git a/a.ts b/a.ts', '--- a/a.ts', '+++ b/a.ts', '@@ -1,1 +1,2 @@', ' keep', `+const t = "${token}";`, ''].join('\n'));
-    const f = finding(r, { pr_title: `use AKIAABCDEFGHIJKLMNOP`, pr_body: token });
+    const f = finding(r, { pr_title: `use ${awsKey}`, pr_body: token });
     const { case: c } = await r.service.createFromFinding(WS, f.finding_id);
     expect(c.input_diff).not.toContain(token);
     expect(c.input_diff).toContain('ghp_XXXX');
-    expect(c.input_meta.title).not.toContain('AKIAABCDEFGHIJKLMNOP');
+    expect(c.input_meta.title).not.toContain(awsKey);
     expect(c.input_meta.body).not.toContain(token);
   });
 

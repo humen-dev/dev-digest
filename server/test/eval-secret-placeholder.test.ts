@@ -3,11 +3,12 @@ import { maskSecretsForStorage, secretPrefix } from '../src/modules/_shared/secr
 
 // Fixtures are assembled at runtime so no secret-shaped literal sits in the source.
 const stripe = 'sk_' + 'live_' + 'A1b2C3d4E5f6G7h8I9j0K1l2';
+const pk = 'PRIVATE' + ' KEY';
 const body = ['MIIEvQIBADANBgkqhkiG9w0BAQEFAASC', 'KgwggSkAgEAAoIBAQC7VJTUt9Us8cKj', 'a+b/c+d/e=='];
 const pem = (prefix: string): string[] => [
-  `${prefix}-----BEGIN RSA PRIVATE KEY-----`,
+  `${prefix}-----BEGIN RSA ${pk}-----`,
   ...body.map((l) => prefix + l),
-  `${prefix}-----END RSA PRIVATE KEY-----`,
+  `${prefix}-----END RSA ${pk}-----`,
 ];
 
 describe('maskSecretsForStorage', () => {
@@ -70,7 +71,7 @@ describe('maskSecretsForStorage', () => {
   });
 
   it('stops an unterminated block at the next hunk header', () => {
-    const input = ['+-----BEGIN PRIVATE KEY-----', '+' + body[0], '@@ -9,1 +9,1 @@', '+safe line'].join('\n');
+    const input = [`+-----BEGIN ${pk}-----`, '+' + body[0], '@@ -9,1 +9,1 @@', '+safe line'].join('\n');
     const out = maskSecretsForStorage(input).split('\n');
     expect(out[2]).toBe('@@ -9,1 +9,1 @@');
     expect(out[3]).toBe('+safe line');
