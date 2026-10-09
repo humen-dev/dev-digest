@@ -401,24 +401,35 @@ tokens > 125% of baseline), `missing_data` (a config has zero records for a test
 ## CI (GitHub Actions)
 
 `.github/workflows/evals.yml` runs on every PR that touches `.claude/**`, a `CLAUDE.md` /
-`AGENTS.md`, `evals/**` or the workflow itself, and on manual dispatch. In one job:
+`AGENTS.md`, `evals/**` or the workflow itself, and on manual dispatch. Each suite is its own
+check on the PR:
 
-1. **Static, no model** — `typecheck`, `eval:quality`, the unit tests in `src/` and the
-   `*.scripts.eval.ts` contract tests.
-2. **Select** — `src/ci/select-cli.ts` diffs the PR against its base and picks targets:
+| Job | What |
+|-----|------|
+| `changes` | static gate, no model (`typecheck`, `eval:quality`, unit + `*.scripts.eval.ts` tests), then selection |
+| `skills (<name>)` | matrix — one job per selected skill: `vitest run skills/<name>/` |
+| `agents (<name>)` | matrix — one job per selected agent: `EVAL_AGENT=<name> vitest run agents/<dir>/` |
+| `workflow` | the selected workflow evals, one job |
 
-   | Changed | Runs |
-   |---------|------|
-   | `.claude/skills/<name>/**` | `skills/<name>/` + workflow evals with an `activation` case for `<name>` |
-   | `.claude/agents/<name>.md` | `agents/<name>/` + workflow evals with a `dispatch` case for `<name>` |
-   | `CLAUDE.md`, any `AGENTS.md`, `.claude/settings.json`, `.claude/hooks/**` | every workflow eval |
-   | `evals/{skills,agents}/<name>/**`, `evals/workflow/<x>.{eval,cases}.ts` | that suite |
-   | the engine (`evals/src/**`, `package.json`, lockfile, configs, `evals.yml`) | everything |
+`src/ci/select-cli.ts` diffs the PR against its base and picks the suites:
 
-   The workflow-eval mapping is derived from the cases themselves — no manifest to keep in sync.
-   A changed skill/agent with no eval of any tier is not run; the select log prints `SKIP`.
-3. **Model evals** on OpenRouter — **non-blocking** (`continue-on-error`): a failure is a
-   warning, the check stays green. `results/` is uploaded as the `eval-results` artifact.
+| Changed | Runs |
+|---------|------|
+| `.claude/skills/<name>/**` | `skills (<name>)` + workflow evals with an `activation` case for `<name>` |
+| `.claude/agents/<name>.md` | `agents (<name>)` + workflow evals with a `dispatch` case for `<name>` |
+| `CLAUDE.md`, any `AGENTS.md`, `.claude/settings.json`, `.claude/hooks/**` | every workflow eval |
+| `evals/skills/<name>/**` · `evals/agents/<dir>/**` · `evals/workflow/<x>.{eval,cases}.ts` | that suite (every agent of `<dir>`) |
+| the engine (`evals/src/**`, `package.json`, lockfile, configs, `proxy/`, `evals.yml`, the setup action) | everything |
+
+The workflow-eval mapping is derived from the cases themselves — no manifest to keep in sync.
+One agent eval dir can grade several agents: `agents/<dir>/variants.json` lists the extra ones
+(`["architecture-reviewer-lite"]`), each gets its own `agents (<name>)` job with `EVAL_AGENT` set.
+A changed skill/agent with no eval of any tier gets no job; the select log prints `SKIP`.
+
+Model jobs are **non-blocking** (`continue-on-error`): a failing suite shows its own red check
+but the run stays successful, and none of them is a required check. Each job uploads `results/`
+as an `eval-results-*` artifact. Shared setup (pnpm, Node, install, proxy) lives in
+`.github/actions/evals-setup`.
 
 **Models per tier.** Skill and agent evals run with no tools, so the cheapest capable model
 does (`deepseek/deepseek-v4-flash`). The workflow tier asserts real tool use — Skill activation,

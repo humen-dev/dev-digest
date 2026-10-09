@@ -1,14 +1,16 @@
 /**
  * CI entry for eval selection: `tsx src/ci/select-cli.ts [--base <ref>] [--scope auto|all|…]`.
  *
- * Diffs <base>...HEAD, builds the inventory from disk (eval dirs + what each workflow cases file
- * checks), prints the selection, logs SKIP for changed skills/agents without evals and,
- * under GitHub Actions, writes `targets` (space-separated vitest filters) and `run` to
- * $GITHUB_OUTPUT.
+ * Diffs <base>...HEAD, builds the inventory from disk (eval dirs, agent variants.json, what each
+ * workflow cases file checks), prints the selection, logs SKIP for changed skills/agents without
+ * evals and, under GitHub Actions, writes the matrix inputs to $GITHUB_OUTPUT:
+ *   skills   = JSON array of skill names
+ *   agents   = JSON array of { agent, dir }
+ *   workflow = space-separated workflow eval files ("" = no workflow job)
  */
 
 import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { EVALS_DIR, REPO_ROOT } from "../artifacts/paths.js";
@@ -41,11 +43,13 @@ async function inventory(): Promise<Inventory> {
       agents: cases.flatMap((c) => (c.kind === "dispatch" ? [c.expectSubagent] : [])),
     });
   }
-  return {
-    skills: subdirs(join(EVALS_DIR, "skills")),
-    agents: subdirs(join(EVALS_DIR, "agents")),
-    workflow,
-  };
+  // agents/<dir>/ grades the agent named <dir>, plus any variants listed in its variants.json
+  const agents = subdirs(join(EVALS_DIR, "agents")).flatMap((dir) => {
+    const variantsFile = join(EVALS_DIR, "agents", dir, "variants.json");
+    const variants: string[] = existsSync(variantsFile) ? JSON.parse(readFileSync(variantsFile, "utf8")) : [];
+    return [dir, ...variants].map((agent) => ({ agent, dir }));
+  });
+  return { skills: subdirs(join(EVALS_DIR, "skills")), agents, workflow };
 }
 
 function changedFiles(base: string): string[] {
@@ -56,12 +60,18 @@ function changedFiles(base: string): string[] {
 const scope = (arg("scope") || "auto") as Scope;
 const base = arg("base") || "origin/main";
 const changed = scope === "auto" ? changedFiles(base) : [];
-const { targets, skipped } = selectEvals(changed, await inventory(), scope);
+const sel = selectEvals(changed, await inventory(), scope);
 
+const list = (xs: string[]) => (xs.length ? xs.join(", ") : "—");
 console.log(`scope: ${scope}${scope === "auto" ? ` (base ${base}, ${changed.length} changed files)` : ""}`);
-console.log(targets.length ? `evals to run:\n  ${targets.join("\n  ")}` : "no evals to run");
-for (const s of skipped) console.log(`SKIP ${s} — changed, but has no evals`);
+console.log(`skills:   ${list(sel.skills)}`);
+console.log(`agents:   ${list(sel.agents.map((a) => (a.agent === a.dir ? a.agent : `${a.agent} (on agents/${a.dir}/)`)))}`);
+console.log(`workflow: ${list(sel.workflow)}`);
+for (const s of sel.skipped) console.log(`SKIP ${s} — changed, but has no evals`);
 
 if (process.env.GITHUB_OUTPUT) {
-  appendFileSync(process.env.GITHUB_OUTPUT, `targets=${targets.join(" ")}\nrun=${targets.length > 0}\n`);
+  appendFileSync(
+    process.env.GITHUB_OUTPUT,
+    `skills=${JSON.stringify(sel.skills)}\nagents=${JSON.stringify(sel.agents)}\nworkflow=${sel.workflow.join(" ")}\n`,
+  );
 }

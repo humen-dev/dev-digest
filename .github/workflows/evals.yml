@@ -1,19 +1,25 @@
 # evals suite — the Claude Code harness evals (@devdigest/evals): skills, subagents and
 # workflow-level behaviour (CLAUDE.md / AGENTS.md / settings), run on OpenRouter.
 #
-# One job:
-#  1. static (deterministic, no model) — typecheck, the SKILL.md quality gate, the stats /
-#     selection unit tests and the *.scripts.eval.ts contract tests.
-#  2. select — src/ci/select-cli.ts maps the PR diff to eval targets: a changed skill runs its
-#     skill evals + the workflow evals that activate it, a changed agent its agent evals + the
-#     workflow evals that dispatch it, CLAUDE.md / AGENTS.md / .claude settings+hooks run every
-#     workflow eval, an engine change runs everything. A changed skill/agent without evals is
-#     not run — the select log prints SKIP for it.
-#  3. model evals — the selected targets on OpenRouter, through a LiteLLM translating proxy on
-#     localhost:4000 (the Agent SDK speaks Anthropic; OpenRouter's Anthropic endpoint is only
-#     guaranteed for Claude models — see evals/proxy/litellm.config.yaml). NON-BLOCKING: the
-#     step has continue-on-error, so a red eval leaves a warning but keeps the check green (LLM
-#     evals are nondeterministic). Records and outputs are uploaded as `eval-results`.
+# Jobs — each eval suite is its own check on the PR:
+#  changes            static gate (no model: typecheck, SKILL.md quality, unit + script-contract
+#                     tests), then src/ci/select-cli.ts maps the PR diff to suites:
+#                       a changed skill → its skill job + the workflow evals that activate it
+#                       a changed agent → its agent job + the workflow evals that dispatch it
+#                       CLAUDE.md / AGENTS.md / .claude settings+hooks → the workflow job
+#                       an engine change → everything
+#                     A changed skill/agent without evals gets no job — the log prints SKIP.
+#  skills (<name>)    matrix, one job per selected skill
+#  agents (<name>)    matrix, one job per selected agent; a variant (agents/<dir>/variants.json,
+#                     e.g. architecture-reviewer-lite) runs its dir's cases with EVAL_AGENT=<name>
+#  workflow           the selected workflow evals, one job
+#
+# Model jobs go through a LiteLLM translating proxy on 127.0.0.1:4000 (the Agent SDK speaks
+# Anthropic; OpenRouter's Anthropic endpoint is only guaranteed for Claude models — see
+# evals/proxy/litellm.config.yaml), started by .github/actions/evals-setup.
+# NON-BLOCKING: model jobs have continue-on-error — a failing suite shows its own red check, but
+# the run stays successful and nothing is a required check (LLM evals are nondeterministic).
+# Each job uploads its results/ as an `eval-results-*` artifact.
 #
 # Models (no UI) — three knobs, each: manual-run input → repo variable → default:
 #   EVAL_MODEL           skill + agent content tiers (no tools)  deepseek/deepseek-v4-flash
@@ -21,7 +27,10 @@
 #                        subagent dispatch)
 #   EVAL_JUDGE_MODEL     LLM judge for every tier                deepseek/deepseek-v4-pro
 # Repo variables: Settings → Secrets and variables → Actions → Variables.
-# Needs the OPENROUTER_API_KEY secret; without it (e.g. a fork PR) the model step is skipped.
+# Needs the OPENROUTER_API_KEY secret; without it (e.g. a fork PR) the model jobs are skipped.
+#
+# Untrusted values (skill/agent dir names and eval file names come from the PR) reach `run:`
+# only through env vars, never as inline ${{ }} — no script injection.
 name: evals
 
 on:
@@ -32,6 +41,7 @@ on:
       - '**/AGENTS.md'
       - 'evals/**'
       - '.github/workflows/evals.yml'
+      - '.github/actions/evals-setup/**'
   workflow_dispatch:
     inputs:
       model:
@@ -61,54 +71,47 @@ env:
   EVAL_MODEL: ${{ inputs.model || vars.EVAL_MODEL || 'deepseek/deepseek-v4-flash' }}
   EVAL_WORKFLOW_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'google/gemini-3.6-flash' }}
   EVAL_JUDGE_MODEL: ${{ inputs.judge_model || vars.EVAL_JUDGE_MODEL || 'deepseek/deepseek-v4-pro' }}
-  # The real key reaches ONLY the `check` and `start LiteLLM proxy` steps; eval sessions talk to
-  # the no-auth proxy, so no agent can read the key from its environment.
+  # Eval sessions talk to the no-auth proxy with a placeholder key; the real key reaches only the
+  # proxy container (evals-setup) and the `check OpenRouter key` step.
   OPENROUTER_BASE_URL: http://localhost:4000
+  OPENROUTER_API_KEY: via-proxy
   LITELLM_IMAGE: ghcr.io/berriai/litellm:v1.101.6
 
 jobs:
-  evals:
+  # ── 1. Static gate + which suites this PR runs ────────────────────────────────────────────
+  changes:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: evals
+    outputs:
+      skills: ${{ steps.select.outputs.skills }}
+      agents: ${{ steps.select.outputs.agents }}
+      workflow: ${{ steps.select.outputs.workflow }}
+      has_key: ${{ steps.key.outputs.present }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # select diffs base...HEAD
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
+      - uses: ./.github/actions/evals-setup
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: evals/pnpm-lock.yaml
-
-      - run: pnpm install --frozen-lockfile
-
-      # --- static: deterministic, no model ---------------------------------------------------
       - run: pnpm typecheck
       - run: pnpm eval:quality
       - name: unit + script-contract tests
         run: pnpm vitest run src/ .scripts.eval.ts
 
-      # --- select ----------------------------------------------------------------------------
       - name: select evals
         id: select
-        run: >
-          pnpm tsx src/ci/select-cli.ts
-          --scope "${{ inputs.scope || 'auto' }}"
-          --base "${{ github.event.pull_request.base.sha || 'origin/main' }}"
+        env:
+          SCOPE: ${{ inputs.scope || 'auto' }}
+          BASE: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+        run: pnpm tsx src/ci/select-cli.ts --scope "$SCOPE" --base "$BASE"
 
-      # --- model evals (non-blocking) --------------------------------------------------------
-      # Secrets are read in a step env (always populated), not in workflow-level env.
+      # Secrets are read in a step env; the length (never the value) shows an empty secret at once.
       - name: check OpenRouter key
         id: key
-        if: steps.select.outputs.run == 'true'
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
@@ -120,38 +123,92 @@ jobs:
             echo "present=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: start LiteLLM proxy
-        id: proxy
-        if: steps.key.outputs.present == 'true'
-        continue-on-error: true
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: |
-          docker run -d --name litellm -p 127.0.0.1:4000:4000 -e OPENROUTER_API_KEY \
-            -v "$PWD/proxy/litellm.config.yaml:/app/config.yaml:ro" \
-            "$LITELLM_IMAGE" --config /app/config.yaml --port 4000 --num_workers 1
-          for _ in $(seq 1 60); do
-            curl -fsS http://localhost:4000/health/liveliness >/dev/null 2>&1 && exit 0
-            sleep 2
-          done
-          docker logs --tail 50 litellm
-          exit 1
-
-      - name: model evals
-        id: evals
-        if: steps.proxy.outcome == 'success'
-        continue-on-error: true
-        env:
-          OPENROUTER_API_KEY: via-proxy # placeholder: the proxy ignores it and holds the real key
-        run: pnpm vitest run ${{ steps.select.outputs.targets }}
-
-      - name: report eval failures
-        if: steps.proxy.outcome == 'failure' || steps.evals.outcome == 'failure'
-        run: echo "::warning::model evals failed (non-blocking) — see the step log and the eval-results artifact"
-
-      - uses: actions/upload-artifact@v4
-        if: always() && steps.evals.outcome != 'skipped'
+  # ── 2. Skills — one job per skill ─────────────────────────────────────────────────────────
+  skills:
+    name: skills (${{ matrix.skill }})
+    needs: changes
+    if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.skills != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        skill: ${{ fromJSON(needs.changes.outputs.skills) }}
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/evals-setup
         with:
-          name: eval-results
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+      - name: evals
+        env:
+          SKILL: ${{ matrix.skill }}
+        run: pnpm vitest run "skills/$SKILL/"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results-skills-${{ matrix.skill }}
+          path: evals/results/
+          if-no-files-found: ignore
+
+  # ── 3. Agents — one job per agent (variants included) ─────────────────────────────────────
+  agents:
+    name: agents (${{ matrix.agent }})
+    needs: changes
+    if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.agents != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.changes.outputs.agents) }} # [{ agent, dir }]
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/evals-setup
+        with:
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+      - name: evals
+        env:
+          EVAL_AGENT: ${{ matrix.agent }}
+          AGENT_DIR: ${{ matrix.dir }}
+        run: pnpm vitest run "agents/$AGENT_DIR/"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results-agents-${{ matrix.agent }}
+          path: evals/results/
+          if-no-files-found: ignore
+
+  # ── 4. Workflow — the real harness (CLAUDE.md, skill activation, subagent dispatch) ───────
+  workflow:
+    name: workflow
+    needs: changes
+    if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.workflow != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/evals-setup
+        with:
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+      - name: evals
+        env:
+          WORKFLOW_EVALS: ${{ needs.changes.outputs.workflow }}
+        run: pnpm vitest run $WORKFLOW_EVALS # word-split on purpose: one filter per file
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results-workflow
           path: evals/results/
           if-no-files-found: ignore

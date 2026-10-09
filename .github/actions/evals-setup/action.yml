@@ -1,0 +1,48 @@
+# Shared setup for every job in evals.yml: pnpm + Node + evals/ deps, and — when a key is passed —
+# the LiteLLM translating proxy on 127.0.0.1:4000 that the model evals talk to.
+#
+# The key is handed ONLY to the proxy container; eval sessions get a placeholder (see evals.yml),
+# so no agent can read the real key from its environment.
+name: evals setup
+description: Install evals/ dependencies and optionally start the LiteLLM proxy
+
+inputs:
+  openrouter-api-key:
+    description: OpenRouter key for the proxy container. Empty = install only, no proxy.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+        cache-dependency-path: evals/pnpm-lock.yaml
+
+    - name: install evals deps
+      shell: bash
+      working-directory: evals
+      run: pnpm install --frozen-lockfile
+
+    - name: start LiteLLM proxy
+      if: inputs.openrouter-api-key != ''
+      shell: bash
+      working-directory: evals
+      env:
+        OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+      run: |
+        docker run -d --name litellm -p 127.0.0.1:4000:4000 -e OPENROUTER_API_KEY \
+          -v "$PWD/proxy/litellm.config.yaml:/app/config.yaml:ro" \
+          "$LITELLM_IMAGE" --config /app/config.yaml --port 4000 --num_workers 1
+        for _ in $(seq 1 60); do
+          curl -fsS http://localhost:4000/health/liveliness >/dev/null 2>&1 && exit 0
+          sleep 2
+        done
+        docker logs --tail 50 litellm
+        exit 1
