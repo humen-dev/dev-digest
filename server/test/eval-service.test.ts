@@ -293,7 +293,8 @@ describe('eval service — starting runs', () => {
     expect(run.status).toBe('completed');
     const statuses = run.per_case.map((o: EvalCaseOutcome) => o.status);
     expect(statuses).toEqual(['scored', 'errored', 'scored']);
-    expect(run.per_case[1]!.error_reason).toContain('provider exploded');
+    expect(run.per_case[1]!.error_reason).toBe('error');
+    expect(JSON.stringify(run.per_case)).not.toContain('provider exploded');
     expect(run.metrics).toMatchObject({ cases_total: 3, cases_errored: 1, cases_passed: 2 });
   });
 

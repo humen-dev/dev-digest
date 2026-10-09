@@ -45,6 +45,7 @@ export function redactSecretValues(text: string): string {
 const PEM_BEGIN = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
 const PEM_END = /-----END [A-Z ]*PRIVATE KEY-----/;
 const PEM_SAME_LINE = /(-----BEGIN [A-Z ]*PRIVATE KEY-----)([\s\S]*?)(-----END [A-Z ]*PRIVATE KEY-----)/g;
+const PEM_BODY = /^[A-Za-z0-9+/=]+$/;
 const FILLER = 'X';
 
 /** Token shapes masked by `maskSecretsForStorage` (PEM blocks are handled separately). */
@@ -75,14 +76,39 @@ function maskPemBlocks(text: string): string {
   // Only unified-diff text carries per-line markers worth keeping (PR body etc. does not).
   const isDiff = /^(diff --git |@@ )/m.test(text);
   let inPem = false;
+  // True once an open block crossed a `@@` line: only PEM-body-shaped lines are masked from there on.
+  let strictBody = false;
   let prefixLen = 0;
+  const stripLine = (s: string): { line: string; cr: string } => {
+    const cr = s.endsWith('\r') ? '\r' : '';
+    return { line: cr ? s.slice(0, -1) : s, cr };
+  };
+  /** Length of the diff marker + indentation (diff text) or the BEGIN prefix (plain text). */
+  const keepOf = (line: string): number => (isDiff ? (/^[+\- ]\s*/.exec(line)?.[0].length ?? 0) : prefixLen);
+  const isBodyShaped = (line: string): boolean => {
+    const rest = isDiff ? line.slice(/^[+\- ]\s*/.exec(line)?.[0].length ?? 0) : line.trimStart();
+    return PEM_BODY.test(rest);
+  };
+  const maskLine = (idx: number, line: string, cr: string): void => {
+    const keep = keepOf(line);
+    lines[idx] = line.slice(0, keep) + fill(line.length - keep) + cr;
+  };
   for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i] as string;
-    const cr = raw.endsWith('\r') ? '\r' : '';
-    const line = cr ? raw.slice(0, -1) : raw;
+    const { line, cr } = stripLine(lines[i] as string);
     if (!inPem) {
       const begin = PEM_BEGIN.exec(line);
-      if (!begin) continue;
+      if (!begin) {
+        // END without a BEGIN in this text (tail-only hunk): mask the body run right above it.
+        if (PEM_END.test(line)) {
+          prefixLen = 0;
+          for (let j = i - 1; j >= 0; j--) {
+            const prev = stripLine(lines[j] as string);
+            if (/^(@@|diff --git|--- |\+\+\+ )/.test(prev.line) || !isBodyShaped(prev.line)) break;
+            maskLine(j, prev.line, prev.cr);
+          }
+        }
+        continue;
+      }
       // Same-line block (e.g. an escaped-newline literal): mask what sits between the markers.
       const sameLine = line.replace(PEM_SAME_LINE, (_m, b: string, body: string, e: string) => b + fill(body.length) + e);
       if (sameLine !== line) {
@@ -93,24 +119,28 @@ function maskPemBlocks(text: string): string {
       const lead = line.slice(0, begin.index);
       prefixLen = /^[+\- ]$/.test(lead) ? 1 : 0;
       inPem = true;
+      strictBody = false;
       continue;
     }
-    // Inside a block: never swallow diff structure lines of an unterminated block.
-    if (line.startsWith('@@') || line.startsWith('diff --git')) {
+    // Inside a block: a new file ends it; a hunk header is kept and the block continues in the next hunk.
+    if (line.startsWith('diff --git')) {
       inPem = false;
+      continue;
+    }
+    if (line.startsWith('@@')) {
+      strictBody = true;
       continue;
     }
     if (PEM_END.test(line)) {
       inPem = false;
       continue;
     }
-    if (isDiff) {
-      // Keep the line's own diff marker and indentation; fill only the rest.
-      const keep = /^[+\- ]\s*/.exec(line)?.[0].length ?? 0;
-      lines[i] = line.slice(0, keep) + fill(line.length - keep) + cr;
-    } else {
-      lines[i] = line.slice(0, prefixLen) + fill(line.length - prefixLen) + cr;
+    if (strictBody && !isBodyShaped(line)) {
+      inPem = false;
+      continue;
     }
+    // Keep the line's own diff marker and indentation; fill only the rest.
+    maskLine(i, line, cr);
   }
   return lines.join('\n');
 }

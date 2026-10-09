@@ -154,14 +154,24 @@ describe('eval executor', () => {
     }
   });
 
-  it('a throwing provider surfaces its reason', async () => {
-    const llm = stubLlm(async () => {
-      throw new Error('provider exploded');
-    });
-    await expect(runCase({ snapshot: snapshot(), skillBlocks: [], evalCase: evalCase(), llm, parser })).rejects.toMatchObject({
-      name: 'EvalCaseError',
-      reason: 'provider exploded',
-    });
+  it('maps a thrown error to a fixed reason code and never stores the raw message', async () => {
+    const cases: { make: () => Error; reason: string }[] = [
+      { make: () => new Error('provider exploded sk-secret'), reason: 'error' },
+      { make: () => Object.assign(new Error('429 rate limited for key sk-secret'), { status: 429 }), reason: 'provider_error' },
+      { make: () => Object.assign(new Error('boom sk-secret'), { name: 'ExternalServiceError' }), reason: 'provider_error' },
+      { make: () => new Error('OpenRouter structured output failed schema validation for x'), reason: 'invalid_output' },
+      { make: () => Object.assign(new Error('sk-secret'), { name: 'TimeoutError' }), reason: 'timeout' },
+    ];
+    for (const { make, reason } of cases) {
+      const llm = stubLlm(async () => {
+        throw make();
+      });
+      const err = await runCase({ snapshot: snapshot(), skillBlocks: [], evalCase: evalCase(), llm, parser }).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(EvalCaseError);
+      expect((err as EvalCaseError).reason).toBe(reason);
+      expect((err as EvalCaseError).reason).not.toContain('sk-secret');
+      expect((err as EvalCaseError).reason).not.toContain('exploded');
+    }
   });
 
   it('checkCancelled throws timeout once the deadline has passed', async () => {

@@ -10,6 +10,16 @@ export const EVAL_AGENT_RUNS_MAX = 100;
 export const EVAL_PROMPT_DIFF_MAX_CELLS = 4_000_000;
 /** Stored as `error_reason` for a run failure that is not an expected, user-safe error. */
 export const EVAL_INTERNAL_ERROR_REASON = 'internal_error';
+/**
+ * The complete set of per-case `error_reason` values. Raw provider / SDK / engine
+ * messages are never stored (they can echo prompts, keys or URLs).
+ */
+export const EVAL_CASE_REASON = {
+  timeout: 'timeout',
+  providerError: 'provider_error',
+  invalidOutput: 'invalid_output',
+  error: 'error',
+} as const;
 export const EVAL_NAME_MAX = 120;
 /** Applied per route: `POST /agents/:id/eval-runs` and `POST /eval-runs/all` each get their own 5/min bucket. */
 export const EVAL_RUN_RATE_LIMIT = { max: 5, timeWindow: '1 minute' } as const;
