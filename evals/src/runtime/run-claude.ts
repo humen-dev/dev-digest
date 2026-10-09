@@ -55,8 +55,12 @@ export async function runClaude(prompt: string, opts: RunOptions = {}): Promise<
   const options: Options = {
     model: opts.model ?? EVAL_MODEL,
     maxTurns: opts.maxTurns ?? MAX_TURNS,
-    permissionMode: "bypassPermissions", // safe: evals only read/plan and tools are allow-listed
+    permissionMode: "bypassPermissions", // safe only because `tools` below restricts the set
     systemPrompt,
+    // `allowedTools` only AUTO-APPROVES; under bypassPermissions every built-in tool stays usable
+    // (a workflow session once ran Write + Artifact and published a page). `tools` is what
+    // actually limits the available set — [] means no tools at all.
+    tools: allowedTools,
     allowedTools,
     cwd: opts.cwd ?? REPO_ROOT,
     // Default: do NOT load on-disk config — isolates the injected artifact. workflowTask overrides.
