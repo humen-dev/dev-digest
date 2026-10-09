@@ -1,0 +1,141 @@
+# evals suite — the Claude Code harness evals (@devdigest/evals): skills, subagents and
+# workflow-level behaviour (CLAUDE.md / AGENTS.md / settings), run on OpenRouter.
+#
+# One job:
+#  1. static (deterministic, no model) — typecheck, the SKILL.md quality gate, the stats /
+#     selection unit tests and the *.scripts.eval.ts contract tests.
+#  2. select — src/ci/select-cli.ts maps the PR diff to eval targets: a changed skill runs its
+#     skill evals + the workflow evals that activate it, a changed agent its agent evals + the
+#     workflow evals that dispatch it, CLAUDE.md / AGENTS.md / .claude settings+hooks run every
+#     workflow eval, an engine change runs everything. A changed skill/agent without evals is
+#     not run — the select log prints SKIP for it.
+#  3. model evals — the selected targets on OpenRouter, through a LiteLLM translating proxy on
+#     localhost:4000 (the Agent SDK speaks Anthropic; OpenRouter's Anthropic endpoint is only
+#     guaranteed for Claude models — see evals/proxy/litellm.config.yaml). NON-BLOCKING: the
+#     step has continue-on-error, so a red eval leaves a warning but keeps the check green (LLM
+#     evals are nondeterministic). Records and outputs are uploaded as `eval-results`.
+#
+# Models (no UI) — three knobs, each: manual-run input → repo variable → default:
+#   EVAL_MODEL           skill + agent content tiers (no tools)  deepseek/deepseek-v4-flash
+#   EVAL_WORKFLOW_MODEL  workflow tier (real tool use: Skill /   google/gemini-3.6-flash
+#                        subagent dispatch)
+#   EVAL_JUDGE_MODEL     LLM judge for every tier                deepseek/deepseek-v4-pro
+# Repo variables: Settings → Secrets and variables → Actions → Variables.
+# Needs the OPENROUTER_API_KEY secret; without it (e.g. a fork PR) the model step is skipped.
+name: evals
+
+on:
+  pull_request:
+    paths:
+      - '.claude/**'
+      - '**/CLAUDE.md'
+      - '**/AGENTS.md'
+      - 'evals/**'
+      - '.github/workflows/evals.yml'
+  workflow_dispatch:
+    inputs:
+      model:
+        description: 'OpenRouter model for skill + agent evals'
+        default: 'deepseek/deepseek-v4-flash'
+      workflow_model:
+        description: 'OpenRouter model for workflow evals (tool use)'
+        default: 'google/gemini-3.6-flash'
+      judge_model:
+        description: 'OpenRouter judge model'
+        default: 'deepseek/deepseek-v4-pro'
+      scope:
+        description: 'Which evals to run (auto = by diff against main)'
+        type: choice
+        options: [auto, all, skills, agents, workflow]
+        default: all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EVAL_PROVIDER: openrouter
+  EVAL_MODEL: ${{ inputs.model || vars.EVAL_MODEL || 'deepseek/deepseek-v4-flash' }}
+  EVAL_WORKFLOW_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'google/gemini-3.6-flash' }}
+  EVAL_JUDGE_MODEL: ${{ inputs.judge_model || vars.EVAL_JUDGE_MODEL || 'deepseek/deepseek-v4-pro' }}
+  OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+  OPENROUTER_BASE_URL: http://localhost:4000
+  LITELLM_IMAGE: ghcr.io/berriai/litellm:v1.101.6
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # select diffs base...HEAD
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      # --- static: deterministic, no model ---------------------------------------------------
+      - run: pnpm typecheck
+      - run: pnpm eval:quality
+      - name: unit + script-contract tests
+        run: pnpm vitest run src/ .scripts.eval.ts
+
+      # --- select ----------------------------------------------------------------------------
+      - name: select evals
+        id: select
+        run: >
+          pnpm tsx src/ci/select-cli.ts
+          --scope "${{ inputs.scope || 'auto' }}"
+          --base "${{ github.event.pull_request.base.sha || 'origin/main' }}"
+
+      # --- model evals (non-blocking) --------------------------------------------------------
+      - name: start LiteLLM proxy
+        id: proxy
+        if: steps.select.outputs.run == 'true' && env.OPENROUTER_API_KEY != ''
+        continue-on-error: true
+        run: |
+          docker run -d --name litellm -p 4000:4000 -e OPENROUTER_API_KEY \
+            -v "$PWD/proxy/litellm.config.yaml:/app/config.yaml:ro" \
+            "$LITELLM_IMAGE" --config /app/config.yaml --port 4000 --num_workers 1
+          for _ in $(seq 1 60); do
+            curl -fsS http://localhost:4000/health/liveliness >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          docker logs --tail 50 litellm
+          exit 1
+
+      - name: model evals
+        id: evals
+        if: steps.proxy.outcome == 'success'
+        continue-on-error: true
+        run: pnpm vitest run ${{ steps.select.outputs.targets }}
+
+      - name: report eval failures
+        if: steps.proxy.outcome == 'failure' || steps.evals.outcome == 'failure'
+        run: echo "::warning::model evals failed (non-blocking) — see the step log and the eval-results artifact"
+
+      - name: no OpenRouter key
+        if: steps.select.outputs.run == 'true' && env.OPENROUTER_API_KEY == ''
+        run: echo "::notice::OPENROUTER_API_KEY is not available — model evals skipped"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.evals.outcome != 'skipped'
+        with:
+          name: eval-results
+          path: evals/results/
+          if-no-files-found: ignore

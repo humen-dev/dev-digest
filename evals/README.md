@@ -4,9 +4,11 @@ Evals for the DevDigest Claude Code harness — **skills** (`.claude/skills/*`),
 (`.claude/agents/*`), and **workflow-level** behavior (`CLAUDE.md` + on-disk config). Plain
 **vitest + the Claude Agent SDK**, in the same toolchain as the rest of the repo (`pnpm`).
 
-Runs on the Claude Code **subscription** — the API key is stripped from spawned processes, so
-calls use the login / credential helper, never per-token API billing. No external services,
-no third-party judge.
+Locally it runs on the Claude Code **subscription** — the API key is stripped from spawned
+processes, so calls use the login / credential helper, never per-token API billing. CI switches
+to **OpenRouter** (`EVAL_PROVIDER=openrouter`: DeepSeek for skills/agents, Gemini Flash for the
+workflow tier) — see
+[CI](#ci-github-actions).
 
 > Built to the *eval statistics upgrade* plan (`evals/docs/eval-stats-upgrade.md`): persisted
 > per-run records, per-practice statistics, and a with-vs-without-artifact benchmark, on top of
@@ -72,7 +74,7 @@ src/
   ansi.ts               # color constants + color() helper (one place owns terminal styling)
   git.ts                # gitInfo() — short sha + dirty flag (shared by record.ts and repeat.ts)
   runtime/
-    env.ts              # subscriptionEnv() — strips ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN
+    env.ts              # sessionEnv() — routes the session to EVAL_PROVIDER (subscription | openrouter)
     run-claude.ts       # runClaude() — the headless turn-loop; Result / RunOptions / Metrics types
   artifacts/
     paths.ts            # REPO_ROOT / SKILLS_DIR / AGENTS_DIR / RESULTS_DIR anchors
@@ -96,6 +98,10 @@ src/
   delta.ts              # eval:delta — diff two labeled repeat runs
   scaffold.ts           # eval:scaffold — list skills/agents, generate template eval files
   skill-quality.ts      # eval:quality — static SKILL.md gate (no model)
+  ci/
+    select.ts           # pure: changed files → eval targets (vitest filters)
+    select.test.ts      # unit tests for the selection rules
+    select-cli.ts       # CI entry: git diff → selection → $GITHUB_OUTPUT
   dsl/
     describe.ts         # describeSkill / describeAgent / describeWorkflow — labeled groups
     case.ts             # SkillCase / AgentCase / WorkflowCase types; runSkillCases / runAgentCases / runWorkflowCases
@@ -336,8 +342,12 @@ Cheap and orthogonal; the `TrendReporter` keeps writing test-level outcome rows 
 
 | Env var | Default | Meaning |
 |---------|---------|---------|
-| `EVAL_MODEL` | `claude-haiku-4-5` | model under test (cheap by default; use `claude-sonnet-5` for fidelity) |
-| `EVAL_JUDGE_MODEL` | `claude-sonnet-5` | judge model (stronger family) |
+| `EVAL_PROVIDER` | `subscription` | `subscription` (Claude Code login) or `openrouter` (needs `OPENROUTER_API_KEY`) |
+| `EVAL_MODEL` | `claude-haiku-4-5` / openrouter: `deepseek/deepseek-v4-flash` | model under test for skill + agent evals (cheap by default; use `claude-sonnet-5` for fidelity) |
+| `EVAL_WORKFLOW_MODEL` | `EVAL_MODEL` / openrouter: `google/gemini-3.6-flash` | model for the workflow tier (`workflowTask`) — needs real tool use |
+| `EVAL_JUDGE_MODEL` | `claude-sonnet-5` / openrouter: `deepseek/deepseek-v4-pro` | judge model |
+| `OPENROUTER_API_KEY` | unset | OpenRouter key, used only when `EVAL_PROVIDER=openrouter` |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api` | point at the LiteLLM proxy (`http://localhost:4000`) for non-Claude models |
 | `EVAL_MAX_TURNS` | `8` | max agent turns per case |
 | `EVAL_CONFIG` | `candidate` | `benchmark` sets this to `baseline` to skip artifact injection |
 | `EVAL_QUIET` | unset | suppress per-run trace spam during multi-run aggregation |
@@ -387,6 +397,55 @@ tokens > 125% of baseline), `missing_data` (a config has zero records for a test
 | Adding evals for one of **your** skills/agents | `pnpm eval:scaffold <name>` (or `--agent <name>`) |
 | Model / Claude Code version | `pnpm eval` (whole suite) |
 | Stats math changed | `pnpm vitest run src/records/stats.test.ts` |
+
+## CI (GitHub Actions)
+
+`.github/workflows/evals.yml` runs on every PR that touches `.claude/**`, a `CLAUDE.md` /
+`AGENTS.md`, `evals/**` or the workflow itself, and on manual dispatch. In one job:
+
+1. **Static, no model** — `typecheck`, `eval:quality`, the unit tests in `src/` and the
+   `*.scripts.eval.ts` contract tests.
+2. **Select** — `src/ci/select-cli.ts` diffs the PR against its base and picks targets:
+
+   | Changed | Runs |
+   |---------|------|
+   | `.claude/skills/<name>/**` | `skills/<name>/` + workflow evals with an `activation` case for `<name>` |
+   | `.claude/agents/<name>.md` | `agents/<name>/` + workflow evals with a `dispatch` case for `<name>` |
+   | `CLAUDE.md`, any `AGENTS.md`, `.claude/settings.json`, `.claude/hooks/**` | every workflow eval |
+   | `evals/{skills,agents}/<name>/**`, `evals/workflow/<x>.{eval,cases}.ts` | that suite |
+   | the engine (`evals/src/**`, `package.json`, lockfile, configs, `evals.yml`) | everything |
+
+   The workflow-eval mapping is derived from the cases themselves — no manifest to keep in sync.
+   A changed skill/agent with no eval of any tier is not run; the select log prints `SKIP`.
+3. **Model evals** on OpenRouter — **non-blocking** (`continue-on-error`): a failure is a
+   warning, the check stays green. `results/` is uploaded as the `eval-results` artifact.
+
+**Models per tier.** Skill and agent evals run with no tools, so the cheapest capable model
+does (`deepseek/deepseek-v4-flash`). The workflow tier asserts real tool use — Skill activation,
+subagent dispatch — and cheap DeepSeek models tend to do that work inline instead, so it runs on
+Gemini Flash (`google/gemini-3.6-flash`). The judge must hold the rubric and return strict JSON:
+`deepseek/deepseek-v4-pro`, a step up for a fraction of a cent, and a different family from the
+workflow model.
+
+**The proxy.** The Agent SDK speaks only the Anthropic Messages protocol, and OpenRouter's
+Anthropic-compatible endpoint is only guaranteed for Claude models. CI therefore starts a LiteLLM
+translating proxy (`proxy/litellm.config.yaml`, pinned image) on `localhost:4000` and sets
+`OPENROUTER_BASE_URL` to it. In OpenRouter mode every model alias Claude Code resolves on its own —
+agent frontmatter `model: sonnet|opus`, background haiku-class calls, subagents — is pinned to the
+session's model, so nothing silently runs on a real Claude model.
+
+**Switching a model:** PR runs read the repo variables `EVAL_MODEL` / `EVAL_WORKFLOW_MODEL` /
+`EVAL_JUDGE_MODEL` (Settings → Secrets and variables → Actions → Variables); a manual run
+(`workflow_dispatch`) takes `model`, `workflow_model`, `judge_model` and `scope`
+(`auto | all | skills | agents | workflow`) inputs. The key is the `OPENROUTER_API_KEY` secret;
+without it (fork PRs) the model step is skipped.
+
+Locally, the same run (the `docker run` line is in `proxy/litellm.config.yaml`):
+
+```bash
+EVAL_PROVIDER=openrouter OPENROUTER_BASE_URL=http://localhost:4000 OPENROUTER_API_KEY=... pnpm eval:workflow
+pnpm tsx src/ci/select-cli.ts --base main          # what CI would select for this branch
+```
 
 ## Safety
 
