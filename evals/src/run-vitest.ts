@@ -11,12 +11,15 @@ import { fileURLToPath } from "node:url";
 import { DIM, RESET } from "./ansi.js";
 
 const EVALS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
+// Run the local vitest entry with this node: `spawn("pnpm")` fails with ENOENT on Windows
+// (the shim is pnpm.cmd), and a shell would re-split `-t "test name"` arguments.
+const VITEST = [join(EVALS_DIR, "node_modules", "vitest", "vitest.mjs")];
 const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 /** How many test cases the pattern matches, via `vitest list` (no model calls). null on error. */
 export function countTests(vitestArgs: string[]): number | null {
   try {
-    const out = execFileSync("pnpm", ["exec", "vitest", "list", ...vitestArgs], {
+    const out = execFileSync(process.execPath, [...VITEST, "list", ...vitestArgs], {
       cwd: EVALS_DIR,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
@@ -33,7 +36,7 @@ export function runVitestOnce(label: string, vitestArgs: string[], extraEnv: Rec
   return new Promise((resolve) => {
     const start = Date.now();
     let out = "";
-    const child = spawn("pnpm", ["exec", "vitest", "run", "--reporter=dot", ...vitestArgs], {
+    const child = spawn(process.execPath, [...VITEST, "run", "--reporter=dot", ...vitestArgs], {
       cwd: EVALS_DIR,
       env: { ...process.env, EVAL_QUIET: "1", ...extraEnv },
       stdio: ["ignore", "pipe", "pipe"],
