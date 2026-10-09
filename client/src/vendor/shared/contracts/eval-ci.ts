@@ -115,6 +115,7 @@ export const EvalRunAllResult = z.object({
       outcome: z.enum(['started', 'refused']),
       run_id: z.string().nullable(),
       reason: z.string().nullable(),
+      details: z.record(z.string(), z.unknown()).nullable(),
     }),
   ),
 });

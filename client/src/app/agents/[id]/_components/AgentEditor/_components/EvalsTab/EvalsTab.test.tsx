@@ -13,9 +13,14 @@ import evalMessages from "../../../../../../../../messages/en/eval.json";
 import commonMessages from "../../../../../../../../messages/en/common.json";
 
 let searchCase: string | null = null;
+const routerReplace = vi.fn();
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => ({ get: (k: string) => (k === "case" ? searchCase : null) }),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useSearchParams: () => {
+    const p = new URLSearchParams({ tab: "evals", other: "1" });
+    if (searchCase) p.set("case", searchCase);
+    return p;
+  },
+  useRouter: () => ({ push: vi.fn(), replace: routerReplace }),
 }));
 
 const updateMutate = vi.fn();
@@ -154,6 +159,7 @@ beforeEach(() => {
   updateMutate.mockReset();
   deleteMutate.mockReset();
   createMutate.mockReset();
+  routerReplace.mockReset();
 });
 afterEach(cleanup);
 
@@ -314,5 +320,46 @@ describe("Evals tab", () => {
       },
       expect.anything(),
     );
+  });
+
+  it("closes the new-case form with Escape, focusing inside on open and returning focus to the button", () => {
+    renderTab();
+    const opener = screen.getByRole("button", { name: "New case" });
+    opener.focus();
+    fireEvent.click(opener);
+
+    expect(screen.getByRole("dialog")).toContainElement(document.activeElement as HTMLElement);
+    expect(screen.getByLabelText("Name")).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+  });
+
+  it("closes the case editor with Escape, returns focus to the row and clears ?case= keeping other params", () => {
+    caseData = { ...ITEMS[0]!, source: null, source_deleted: false, last_outcome: null };
+    renderTab();
+    const row = screen.getByRole("button", { name: /<script>/ });
+    row.focus();
+    fireEvent.click(row);
+
+    expect(screen.getByRole("dialog")).toContainElement(document.activeElement as HTMLElement);
+    expect(screen.getByLabelText("Name")).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(row).toHaveFocus();
+    expect(routerReplace).not.toHaveBeenCalled();
+  });
+
+  it("removes ?case= via router.replace when the editor opened from the URL is closed", () => {
+    searchCase = "c1";
+    caseData = { ...ITEMS[0]!, source: null, source_deleted: false, last_outcome: null };
+    renderTab();
+    expect(screen.getByRole("dialog")).toContainElement(document.activeElement as HTMLElement);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(routerReplace).toHaveBeenCalledWith("?tab=evals&other=1", { scroll: false });
   });
 });

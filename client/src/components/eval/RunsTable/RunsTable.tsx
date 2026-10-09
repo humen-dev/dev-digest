@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { EvalRunRecord } from "@devdigest/shared";
 import { formatRunCost, formatRunTime, formatVersionLabel } from "../../../lib/eval-format";
-import { GRID_COLUMNS, GRID_COLUMNS_SELECTABLE, METRIC_COLORS } from "./constants";
+import { AGENT_COLUMN, CHECKBOX_COLUMN, GRID_COLUMNS, METRIC_COLORS } from "./constants";
 import { MiniBar } from "./_components/MiniBar";
 import { s } from "./styles";
 
@@ -12,22 +12,27 @@ import { s } from "./styles";
  * Runs list in the order given: time, version, recall / precision / citation,
  * passed, cost, status. With `selectable`, a checkbox per row reports the
  * selected run ids through `onSelectionChange` (the caller decides what a valid
- * selection is, e.g. exactly two runs to compare).
+ * selection is, e.g. exactly two runs to compare). With `showAgent`, the agent name
+ * leads the row (runs across several agents, e.g. the dashboard).
  */
 export function RunsTable({
   runs,
   selectable = false,
+  showAgent = false,
   onSelectionChange,
   onRowClick,
 }: {
   runs: EvalRunRecord[];
   selectable?: boolean;
+  showAgent?: boolean;
   onSelectionChange?: (selectedIds: string[]) => void;
   onRowClick?: (run: EvalRunRecord) => void;
 }) {
   const t = useTranslations("eval");
   const [selected, setSelected] = useState<string[]>([]);
-  const columns = selectable ? GRID_COLUMNS_SELECTABLE : GRID_COLUMNS;
+  const columns = [selectable && CHECKBOX_COLUMN, showAgent && AGENT_COLUMN, GRID_COLUMNS]
+    .filter(Boolean)
+    .join(" ");
   const na = t("metrics.notApplicable");
 
   function toggle(id: string) {
@@ -40,6 +45,7 @@ export function RunsTable({
     <div role="table" style={s.table}>
       <div role="row" style={s.header(columns)}>
         {selectable && <span role="columnheader" />}
+        {showAgent && <span role="columnheader">{t("dashboard.table.agent")}</span>}
         <span role="columnheader">{t("dashboard.table.ranAt")}</span>
         <span role="columnheader">{t("dashboard.table.version")}</span>
         <span role="columnheader">{t("dashboard.table.recall")}</span>
@@ -69,6 +75,11 @@ export function RunsTable({
                   onChange={() => toggle(run.id)}
                   aria-label={`${label} · ${time}`}
                 />
+              </span>
+            )}
+            {showAgent && (
+              <span role="cell" style={s.mono}>
+                {run.agent_name}
               </span>
             )}
             <span role="cell" className="mono tnum" style={s.mono}>

@@ -9,6 +9,7 @@ import { ApiError } from "@/lib/api";
 import { useDeleteEvalCase, useUpdateEvalCase } from "@/lib/hooks/eval";
 import { EDITOR_WIDTH } from "../../constants";
 import { caseErrorKey, caseErrorValues, draftFromCase, draftToPatch, isDraftValid } from "../../helpers";
+import { useDialogKeyboard } from "../../hooks/useDialogKeyboard";
 import type { CaseDraft } from "../../types";
 import { CaseFormFields } from "../CaseFormFields";
 import { s } from "./styles";
@@ -27,6 +28,7 @@ export function CaseEditorView({
   const tc = useTranslations("common");
   const update = useUpdateEvalCase();
   const remove = useDeleteEvalCase(agentId);
+  const bodyRef = useDialogKeyboard(onClose);
   const [draft, setDraft] = useState<CaseDraft>(() => draftFromCase(detail));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -88,7 +90,9 @@ export function CaseEditorView({
     >
       <p style={s.banner}>{t(stored.type === "must_find" ? "banner.positive" : "banner.negative", range)}</p>
 
-      <CaseFormFields draft={draft} onChange={(p) => setDraft((d) => ({ ...d, ...p }))} files={detail.input_files} />
+      <div ref={bodyRef}>
+        <CaseFormFields draft={draft} onChange={(p) => setDraft((d) => ({ ...d, ...p }))} files={detail.input_files} />
+      </div>
 
       <div style={s.section}>
         {detail.source ? (

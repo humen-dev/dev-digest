@@ -402,10 +402,30 @@ describe('eval service — run all', () => {
     const { results } = await r.service.runAll(WS, r.log);
     await r.service.idle();
     const by = new Map(results.map((x) => [x.agent_id, x]));
-    expect(by.get(r.agentId)).toMatchObject({ outcome: 'refused', reason: 'run_in_flight', run_id: null });
-    expect(by.get(free)).toMatchObject({ outcome: 'started', reason: null });
+    expect(by.get(r.agentId)).toMatchObject({
+      outcome: 'refused',
+      reason: 'run_in_flight',
+      run_id: null,
+      details: { run_id: expect.any(String) },
+    });
+    expect(by.get(free)).toMatchObject({ outcome: 'started', reason: null, details: null });
     expect(by.get(free)!.run_id).toEqual(expect.any(String));
-    expect(by.get(big)).toMatchObject({ outcome: 'refused', reason: 'too_many_cases' });
+    expect(by.get(big)).toMatchObject({
+      outcome: 'refused',
+      reason: 'too_many_cases',
+      details: { count: EVAL_MAX_CASES + 1, limit: EVAL_MAX_CASES },
+    });
+  });
+
+  it('a refusal for a missing provider key carries the provider', async () => {
+    const r = rig({
+      resolve: async () => {
+        throw new ConfigError('no key');
+      },
+    });
+    r.repo.seedCase(WS, r.agentId);
+    const { results } = await r.service.runAll(WS, r.log);
+    expect(results[0]).toMatchObject({ outcome: 'refused', reason: 'provider_key_missing', details: { provider: 'openai' } });
   });
 });
 

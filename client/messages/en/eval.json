@@ -27,7 +27,8 @@
       "pass": "Pass",
       "cost": "Cost",
       "version": "Version",
-      "status": "Status"
+      "status": "Status",
+      "agent": "Agent"
     },
     "pass": "pass",
     "fail": "fail",

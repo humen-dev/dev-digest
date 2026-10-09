@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, ErrorState, Skeleton } from "@devdigest/ui";
 import type { Agent } from "@devdigest/shared";
@@ -24,6 +24,17 @@ export function EvalsTab({ agent }: { agent: Agent }) {
   const casesQ = useEvalCases(agent.id);
   const [openId, setOpenId] = useState<string | null>(() => search.get("case"));
   const [creating, setCreating] = useState(false);
+  const router = useRouter();
+
+  /** Close the editor and drop `?case=` so a reload does not reopen it (other params stay). */
+  function closeCase() {
+    setOpenId(null);
+    if (search.get("case") === null) return;
+    const params = new URLSearchParams(search.toString());
+    params.delete("case");
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : "?", { scroll: false });
+  }
 
   if (detailQ.isError || casesQ.isError) {
     return (
@@ -103,7 +114,7 @@ export function EvalsTab({ agent }: { agent: Agent }) {
 
       {detail.runs.length > 0 && <RunsTable runs={detail.runs} />}
 
-      {openId && <CaseEditor agentId={agent.id} caseId={openId} onClose={() => setOpenId(null)} />}
+      {openId && <CaseEditor agentId={agent.id} caseId={openId} onClose={closeCase} />}
       {creating && <NewCaseForm agentId={agent.id} onClose={() => setCreating(false)} />}
     </div>
   );

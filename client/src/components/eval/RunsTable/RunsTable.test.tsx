@@ -76,4 +76,13 @@ describe("RunsTable", () => {
     fireEvent.click(boxes[0]!);
     expect(onSelectionChange).toHaveBeenLastCalledWith(["r1"]);
   });
+
+  it("adds an agent-name column only with showAgent", () => {
+    renderTable(<RunsTable runs={[run({ id: "x", agent_name: "Perf" })]} />);
+    expect(screen.queryByRole("columnheader", { name: "Agent" })).not.toBeInTheDocument();
+    cleanup();
+    renderTable(<RunsTable runs={[run({ id: "x", agent_name: "Perf" })]} showAgent />);
+    expect(screen.getByRole("columnheader", { name: "Agent" })).toBeInTheDocument();
+    expect(within(screen.getAllByRole("row")[1]!).getByText("Perf")).toBeInTheDocument();
+  });
 });

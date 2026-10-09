@@ -11,9 +11,11 @@ import { AppShell } from "@/components/app-shell";
 import { RunsTable } from "@/components/eval/RunsTable";
 import { TrendSparkline } from "@/components/eval/TrendSparkline";
 import { formatPercent, formatRunTime, formatVersionLabel } from "@/lib/eval-format";
+import { refusalMessage } from "@/lib/eval-errors";
 import { useEvalDashboard, useRunAllEvals } from "@/lib/hooks/eval";
 import { AGENT_GRID_COLUMNS, RECENT_RUNS_LIMIT, SPARKLINE_COLOR } from "./constants";
-import { refusalKey, totalExecutions } from "./helpers";
+import { totalExecutions } from "./helpers";
+import { AgentTrendTable } from "./_components/AgentTrendTable";
 import { s } from "./styles";
 
 export function EvalDashboardView() {
@@ -61,7 +63,7 @@ export function EvalDashboardView() {
         ) : (
           <div role="table" aria-label={t("dashboard.defaultTitle")} style={s.table}>
             <div role="row" style={s.head(AGENT_GRID_COLUMNS)}>
-              <span role="columnheader">{t("page.crumbAgents")}</span>
+              <span role="columnheader">{t("dashboard.table.agent")}</span>
               <span role="columnheader">{t("dashboard.table.version")}</span>
               <span role="columnheader">{t("dashboard.table.ranAt")}</span>
               <span role="columnheader">{t("dashboard.table.pass")}</span>
@@ -120,13 +122,14 @@ export function EvalDashboardView() {
             })}
           </div>
         )}
+        {agents.length > 0 && <AgentTrendTable agents={agents} />}
         <p style={s.statement}>{t("dashboard.notRanking")}</p>
 
         <h2 style={s.h2}>{t("dashboard.recentRuns")}</h2>
         {recent.length === 0 ? (
           <p style={s.muted}>{t("dashboard.noRuns")}</p>
         ) : (
-          <RunsTable runs={recent} onRowClick={(run) => router.push(`/eval/agents/${run.agent_id}`)} />
+          <RunsTable runs={recent} showAgent onRowClick={(run) => router.push(`/eval/agents/${run.agent_id}`)} />
         )}
       </div>
 
@@ -157,14 +160,15 @@ export function EvalDashboardView() {
             )}
             {runAll.data && (
               <ul style={s.results} aria-live="polite">
-                {runAll.data.results.map((r) => (
-                  <li key={r.agent_id}>
-                    <strong>{r.agent_name}</strong> —{" "}
-                    {r.outcome === "started"
-                      ? t("status.running")
-                      : t(`errors.${refusalKey(r.reason)}`, { provider: "", count: 0 })}
-                  </li>
-                ))}
+                {runAll.data.results.map((r) => {
+                  const refusal = refusalMessage(r.reason, r.details);
+                  return (
+                    <li key={r.agent_id}>
+                      <strong>{r.agent_name}</strong> —{" "}
+                      {r.outcome === "started" ? t("status.running") : t(`errors.${refusal.key}`, refusal.values)}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

@@ -10,7 +10,7 @@ import { Button } from "@devdigest/ui";
 import type { EvalAgentDetail } from "@devdigest/shared";
 import { ApiError } from "@/lib/api";
 import { useEvalEstimate, useEvalRun, useStartEvalRun } from "@/lib/hooks/eval";
-import { runErrorKey, runErrorValues } from "./helpers";
+import { runErrorKey, runErrorValues } from "@/lib/eval-errors";
 import { s } from "./styles";
 
 export function RunEvalControl({ agentId, detail }: { agentId: string; detail: EvalAgentDetail }) {

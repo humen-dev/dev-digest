@@ -341,11 +341,13 @@ export class EvalService {
     for (const a of agents) {
       try {
         const started = await this.startRun(ws, a.agent_id, log);
-        results.push({ agent_id: a.agent_id, agent_name: a.name, outcome: 'started', run_id: started.run_id, reason: null });
+        results.push({ agent_id: a.agent_id, agent_name: a.name, outcome: 'started', run_id: started.run_id, reason: null, details: null });
       } catch (err) {
         if (!(err instanceof AppError)) log.error({ agent_id: a.agent_id }, 'eval run-all start failed');
         const reason = err instanceof AppError ? err.code : 'internal_error';
-        results.push({ agent_id: a.agent_id, agent_name: a.name, outcome: 'refused', run_id: null, reason });
+        const d = err instanceof AppError ? err.details : null;
+        const details = d && typeof d === 'object' && !Array.isArray(d) ? (d as Record<string, unknown>) : null;
+        results.push({ agent_id: a.agent_id, agent_name: a.name, outcome: 'refused', run_id: null, reason, details });
       }
     }
     return { results };

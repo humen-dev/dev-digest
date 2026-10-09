@@ -151,7 +151,45 @@ describe('eval routes (no DB)', () => {
   });
 });
 
+describe('eval routes — disabled agent', () => {
+  it('AC-34: a disabled agent still accepts a run → 202', async () => {
+    const { repo: r, llm } = setup();
+    const disabled = uuid();
+    // The snapshot port deliberately carries no enabled gate; the flag is set to prove it is not consulted.
+    r.seedAgent(WS, { ...snapshotOf(disabled), enabled: false } as ReturnType<typeof snapshotOf>);
+    r.seedCase(WS, disabled);
+    const app = await buildApp({
+      config: test,
+      overrides: { auth: new MockAuthProvider(), evalRepo: r, llm: { openai: llm } },
+    });
+    try {
+      const res = await app.inject({ method: 'POST', url: `/agents/${disabled}/eval-runs` });
+      expect(res.statusCode).toBe(202);
+      await app.container.evalService.idle();
+    } finally {
+      await app.close();
+    }
+  });
+});
+
 describe('eval routes — run-start rate limit', () => {
+  it('POST /eval-runs/all: the 6th call within a minute is 429 (its own bucket)', async () => {
+    const { repo: r, llm } = setup();
+    const dev = loadConfig({ ...process.env, NODE_ENV: 'development' } as NodeJS.ProcessEnv);
+    const app = await buildApp({
+      config: dev,
+      overrides: { auth: new MockAuthProvider(), evalRepo: r, llm: { openai: llm } },
+    });
+    try {
+      const codes: number[] = [];
+      for (let i = 0; i < 6; i++) codes.push((await app.inject({ method: 'POST', url: '/eval-runs/all' })).statusCode);
+      expect(codes.slice(0, 5)).toEqual([200, 200, 200, 200, 200]);
+      expect(codes[5]).toBe(429);
+    } finally {
+      await app.close();
+    }
+  });
+
   it('the 6th start request within a minute is 429', async () => {
     const { repo: r, llm } = setup();
     r.seedCase(WS, AGENT);

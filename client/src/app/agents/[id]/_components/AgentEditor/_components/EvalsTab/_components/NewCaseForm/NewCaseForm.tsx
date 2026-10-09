@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api";
 import { useCreateEvalCase } from "@/lib/hooks/eval";
 import { EDITOR_WIDTH } from "../../constants";
 import { EMPTY_DRAFT, caseErrorKey, caseErrorValues, draftToInput, isDraftValid } from "../../helpers";
+import { useDialogKeyboard } from "../../hooks/useDialogKeyboard";
 import type { CaseDraft } from "../../types";
 import { CaseFormFields } from "../CaseFormFields";
 import { s } from "./styles";
@@ -16,6 +17,7 @@ export function NewCaseForm({ agentId, onClose }: { agentId: string; onClose: ()
   const t = useTranslations("eval");
   const tc = useTranslations("common");
   const create = useCreateEvalCase(agentId);
+  const bodyRef = useDialogKeyboard(onClose);
   const [draft, setDraft] = useState<CaseDraft>(EMPTY_DRAFT);
   const err = create.error;
   const apiErr = err instanceof ApiError ? err : null;
@@ -47,7 +49,9 @@ export function NewCaseForm({ agentId, onClose }: { agentId: string; onClose: ()
         </div>
       }
     >
-      <CaseFormFields draft={draft} onChange={(p) => setDraft((d) => ({ ...d, ...p }))} />
+      <div ref={bodyRef}>
+        <CaseFormFields draft={draft} onChange={(p) => setDraft((d) => ({ ...d, ...p }))} />
+      </div>
     </Modal>
   );
 }
