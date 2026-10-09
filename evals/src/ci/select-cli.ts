@@ -27,6 +27,12 @@ function subdirs(dir: string): string[] {
   return readdirSync(dir).filter((d) => statSync(join(dir, d)).isDirectory());
 }
 
+/** Eval dirs that vitest can actually run — a dir with only other formats (e.g. a skill-creator
+ *  evals.json) would make `vitest run <dir>/` fail with "No test files found". */
+function evalDirs(dir: string): string[] {
+  return subdirs(dir).filter((d) => readdirSync(join(dir, d)).some((f) => f.endsWith(".eval.ts")));
+}
+
 async function inventory(): Promise<Inventory> {
   const wfDir = join(EVALS_DIR, "workflow");
   const workflow = [];
@@ -44,12 +50,12 @@ async function inventory(): Promise<Inventory> {
     });
   }
   // agents/<dir>/ grades the agent named <dir>, plus any variants listed in its variants.json
-  const agents = subdirs(join(EVALS_DIR, "agents")).flatMap((dir) => {
+  const agents = evalDirs(join(EVALS_DIR, "agents")).flatMap((dir) => {
     const variantsFile = join(EVALS_DIR, "agents", dir, "variants.json");
     const variants: string[] = existsSync(variantsFile) ? JSON.parse(readFileSync(variantsFile, "utf8")) : [];
     return [dir, ...variants].map((agent) => ({ agent, dir }));
   });
-  return { skills: subdirs(join(EVALS_DIR, "skills")), agents, workflow };
+  return { skills: evalDirs(join(EVALS_DIR, "skills")), agents, workflow };
 }
 
 function changedFiles(base: string): string[] {
