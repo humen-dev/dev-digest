@@ -15,6 +15,7 @@ import {
   TEST_QUALITY_REVIEWER_PROMPT,
 } from './seed-prompts.js';
 import { SEED_PR_482_BRIEF } from './seed-brief.js';
+import { seedEvalCases } from './seed-eval-cases.js';
 
 /**
  * SPEC-01 (U7) — demo text for the Security Reviewer's seeded run trace
@@ -1262,6 +1263,9 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       createdAt: scannedAt,
     });
   }
+
+  // ---- SPEC-05: the Security Reviewer's 7 demo eval cases (own guard, see seed-eval-cases.ts) ----
+  await seedEvalCases(db, workspaceId);
 
   return { workspaceId, userId };
 }
