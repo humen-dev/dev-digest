@@ -1,4 +1,4 @@
-# Shared setup for every job in evals.yml: pnpm + Node + evals/ deps, and — when a key is passed —
+# Shared setup for every job in evals.yml (called by eval-skills/agents/workflow.yml): pnpm + Node + evals/ deps, and — when a key is passed —
 # the LiteLLM translating proxy on 127.0.0.1:4000 that the model evals talk to.
 #
 # The key is passed only to the proxy container; eval sessions get a placeholder (see evals.yml),

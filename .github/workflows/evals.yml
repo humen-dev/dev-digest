@@ -1,5 +1,7 @@
 # evals suite — the Claude Code harness evals (@devdigest/evals): skills, subagents and
 # workflow-level behaviour (CLAUDE.md / AGENTS.md / settings), run on OpenRouter.
+# Reusable: called by eval-skills.yml, eval-agents.yml and eval-workflow.yml (one pipeline each,
+# each with its own path filter and concurrency group), or dispatched by hand for a full run.
 #
 # Jobs — each eval suite is its own check on the PR:
 #  changes            static gate (no model: typecheck, SKILL.md quality, unit + script-contract
@@ -35,17 +37,39 @@
 # only through env vars, never as inline ${{ }} — no script injection.
 name: evals
 
+# Reusable engine. PRs reach it through three thin callers, one per pipeline:
+#   eval-skills.yml → suite: skills · eval-agents.yml → suite: agents · eval-workflow.yml → suite: workflow
+# Each caller runs this workflow with its own path filter; `suite` limits which model jobs may run.
 on:
-  pull_request:
-    paths:
-      - '.claude/**'
-      - '**/CLAUDE.md'
-      - '**/AGENTS.md'
-      - 'evals/**'
-      - '.github/workflows/evals.yml'
-      - '.github/actions/evals-setup/**'
+  workflow_call:
+    inputs:
+      suite:
+        description: 'Which model jobs may run: skills | agents | workflow | all'
+        type: string
+        default: all
+      scope:
+        description: 'Selection scope passed to select-cli (auto = by diff against the PR base)'
+        type: string
+        default: auto
+      model:
+        type: string
+        default: ''
+      workflow_model:
+        type: string
+        default: ''
+      judge_model:
+        type: string
+        default: ''
+    secrets:
+      OPENROUTER_API_KEY:
+        required: false
   workflow_dispatch:
     inputs:
+      suite:
+        description: 'Which model jobs may run'
+        type: choice
+        options: [all, skills, agents, workflow]
+        default: all
       model:
         description: 'OpenRouter model for skill + agent evals'
         default: 'deepseek/deepseek-v4-flash'
@@ -63,10 +87,6 @@ on:
 
 permissions:
   contents: read
-
-concurrency:
-  group: evals-${{ github.ref }}
-  cancel-in-progress: true
 
 env:
   EVAL_PROVIDER: openrouter
@@ -130,7 +150,7 @@ jobs:
   skills:
     name: skills (${{ matrix.skill }})
     needs: changes
-    if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.skills != '[]'
+    if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.skills != '[]' && contains(fromJSON('["all","skills"]'), inputs.suite || 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     continue-on-error: true
@@ -161,7 +181,7 @@ jobs:
   agents:
     name: agents (${{ matrix.agent }})
     needs: changes
-    if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.agents != '[]'
+    if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.agents != '[]' && contains(fromJSON('["all","agents"]'), inputs.suite || 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     continue-on-error: true
@@ -193,7 +213,7 @@ jobs:
   workflow:
     name: workflow
     needs: changes
-    if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.workflow != ''
+    if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.workflow != '' && contains(fromJSON('["all","workflow"]'), inputs.suite || 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     continue-on-error: true

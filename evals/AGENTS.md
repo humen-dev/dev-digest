@@ -29,7 +29,8 @@ settings). Standalone **pnpm** package: vitest + the Claude Agent SDK. Full docs
   Skill-creator's `.claude/skills/<skill>-workspace/` is gitignored too.
 
 ## CI
-`.github/workflows/evals.yml`: per-PR, only the suites the diff touches — one check per skill /
+Three PR pipelines — `eval-skills.yml`, `eval-agents.yml`, `eval-workflow.yml` — each a thin caller of the
+reusable `.github/workflows/evals.yml` (`suite: skills|agents|workflow`): per-PR, only the suites the diff touches — one check per skill /
 agent plus `workflow`. Model jobs are non-blocking. Models, proxy and limits: README → CI.
 
 ## Rules for fixtures

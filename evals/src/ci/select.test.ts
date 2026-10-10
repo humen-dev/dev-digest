@@ -75,6 +75,17 @@ describe("selectEvals", () => {
     });
   });
 
+  test("changing a pipeline caller workflow runs everything", () => {
+    for (const f of ["eval-skills", "eval-agents", "eval-workflow"]) {
+      expect(selectEvals([`.github/workflows/${f}.yml`], inv)).toEqual({
+        skills: ["dependency-checker"],
+        agents: [AR, AR_LITE],
+        workflow: ALL_WORKFLOW,
+        skipped: [],
+      });
+    }
+  });
+
   test("unrelated changes select nothing", () => {
     expect(selectEvals(["server/src/app.ts", "client/package.json"], inv)).toEqual(none);
   });

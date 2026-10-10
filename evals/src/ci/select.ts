@@ -9,7 +9,7 @@
  *                                 → every workflow eval (the harness as a whole changed)
  *   evals/skills/<name>/**        → skill <name>;  evals/agents/<dir>/** → every agent of <dir>
  *   evals/workflow/<file>         → that workflow eval
- *   the eval engine itself (evals/src, package.json, lockfile, configs, proxy/, the CI workflow)
+ *   the eval engine itself (evals/src, package.json, lockfile, configs, proxy/, the CI workflows — evals.yml and its eval-*.yml callers)
  *                                 → everything
  *   a changed skill/agent with no eval of any tier → not run, reported in `skipped`
  *
@@ -56,6 +56,7 @@ const ENGINE_FILES = [
   /^evals\/(package\.json|pnpm-lock\.yaml|vitest\.config\.ts|tsconfig\.json)$/,
   /^evals\/proxy\//,
   /^\.github\/workflows\/evals\.yml$/,
+  /^\.github\/workflows\/eval-(skills|agents|workflow)\.yml$/,
   /^\.github\/actions\/evals-setup\//,
 ];
 const HARNESS_FILES = [

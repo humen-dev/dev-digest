@@ -402,8 +402,16 @@ tokens > 125% of baseline), `missing_data` (a config has zero records for a test
 
 ## CI (GitHub Actions)
 
-`.github/workflows/evals.yml` runs on every PR that touches `.claude/**`, a `CLAUDE.md` /
-`AGENTS.md`, `evals/**` or the workflow itself, and on manual dispatch. Each suite is its own
+Three PR pipelines share one reusable engine, `.github/workflows/evals.yml` (`on: workflow_call`, plus
+manual dispatch for a full run):
+
+| Pipeline | Triggers on (besides the engine files) | Model jobs it may run |
+|----------|----------------------------------------|-----------------------|
+| `eval-skills.yml` | `.claude/skills/**`, `evals/skills/**` | `skills (<name>)` |
+| `eval-agents.yml` | `.claude/agents/**`, `evals/agents/**` | `agents (<name>)` |
+| `eval-workflow.yml` | `.claude/**`, any `CLAUDE.md` / `AGENTS.md`, `evals/workflow/**` | `workflow` |
+
+Each caller passes `suite`; selection inside is the same diff-based `select-cli`. Each suite is its own
 check on the PR:
 
 | Job | What |
@@ -421,7 +429,7 @@ check on the PR:
 | `.claude/agents/<name>.md` | `agents (<name>)` + workflow evals with a `dispatch` case for `<name>` |
 | `CLAUDE.md`, any `AGENTS.md`, `.claude/settings.json`, `.claude/hooks/**` | every workflow eval |
 | `evals/skills/<name>/**` · `evals/agents/<dir>/**` · `evals/workflow/<x>.{eval,cases}.ts` | that suite (every agent of `<dir>`) |
-| the engine (`evals/src/**`, `package.json`, lockfile, configs, `proxy/`, `evals.yml`, the setup action) | everything |
+| the engine (`evals/src/**`, `package.json`, lockfile, configs, `proxy/`, `evals.yml` and the three `eval-*.yml` callers, the setup action) | everything |
 
 The workflow-eval mapping is derived from the cases themselves — no manifest to keep in sync.
 One agent eval dir can grade several agents: `agents/<dir>/variants.json` lists the extra ones
