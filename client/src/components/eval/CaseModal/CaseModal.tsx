@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { Button, Modal } from "@devdigest/ui";
 import { ApiError } from "@/lib/api";
@@ -23,7 +24,9 @@ import { CaseFormFields } from "./_components/CaseFormFields";
 import { RunResult } from "./_components/RunResult";
 
 /** One modal for the three ways to edit an eval case — a draft from a finding, a new manual case, a stored case.
- *  Nothing is stored until Save, and Save needs a fresh scored Run case (SPEC-06 AC-100); closing asks first (AC-105). */
+ *  Nothing is stored until Save, and Save needs a fresh scored Run case (SPEC-06 AC-100); closing asks first (AC-105).
+ *  Rendered into document.body: opened from a FindingCard, an in-place fixed overlay would sit inside the card's
+ *  stacking context and later cards would paint over it. */
 export function CaseModal(props: CaseModalProps) {
   const { mode, agentId, onSaved, onClose, footerExtra, bodyExtra } = props;
   const t = useTranslations("eval");
@@ -72,7 +75,7 @@ export function CaseModal(props: CaseModalProps) {
   const files = props.mode === "finding" ? props.draft.input_files : detail?.input_files;
   const stored = detail?.expectation;
 
-  return (
+  const modal = (
     <Modal
       width={EDITOR_WIDTH}
       title={title}
@@ -132,4 +135,5 @@ export function CaseModal(props: CaseModalProps) {
       {bodyExtra && <div style={s.extra}>{bodyExtra}</div>}
     </Modal>
   );
+  return typeof document === "undefined" ? modal : createPortal(modal, document.body);
 }
