@@ -149,7 +149,33 @@
     "agent_unavailable": "The agent that produced this finding no longer exists",
     "diff_unavailable": "No diff is available for this finding's file",
     "invalid_compare_pair": "Select two different runs of the same agent",
-    "generic": "Something went wrong. Try again."
+    "generic": "Something went wrong. Try again.",
+    "decision_changed": "The finding was re-triaged since this draft was opened. Reopen the draft.",
+    "case_run_in_flight": "A case run is already in progress for this agent"
+  },
+  "caseModal": {
+    "draftTitle": "Eval case draft",
+    "newTitle": "New eval case",
+    "typeFromDecision": "Type is set by your decision on the finding",
+    "runCase": "Run case",
+    "running": "Running…",
+    "saveGate": "Run the case on its current content before saving",
+    "stale": "Inputs changed since this run — run again",
+    "discardConfirm": "Discard this draft?",
+    "discard": "Discard",
+    "keepEditing": "Keep editing",
+    "resultPassed": "Passed",
+    "resultFailed": "Failed",
+    "resultExpected": "expected {expected} at {file}:{start}–{end}, got {got}",
+    "resultMeta": "{duration} · {cost}",
+    "findingsHeading": "Agent findings",
+    "matched": "matched"
+  },
+  "reason": {
+    "timeout": "Timed out after 120 s",
+    "provider_error": "The model provider returned an error",
+    "invalid_output": "The model returned output that could not be read",
+    "error": "The case could not be run"
   },
   "compare": {
     "title": "Compare runs",

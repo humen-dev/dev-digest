@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { Verdict, Finding } from './findings.js';
 import {
+  EvalActualFinding,
   EvalCase,
+  EvalCaseMeta,
   EvalCaseOutcome,
   EvalExpectation,
   EvalRunMetrics,
@@ -219,6 +221,33 @@ export type EvalCompare = z.infer<typeof EvalCompare>;
 
 export const EvalCompareQuery = z.object({ a: z.string().uuid(), b: z.string().uuid() });
 export type EvalCompareQuery = z.infer<typeof EvalCompareQuery>;
+
+/** A draft built from a triaged finding (SPEC-06 AC-1, AC-5–AC-7, AC-11). Never stored. */
+export const EvalCaseDraft = z.object({
+  agent_id: z.string(), agent_name: z.string(), source_finding_id: z.string(),
+  name: z.string(), input_diff: z.string(), input_files: z.array(z.string()),
+  input_meta: EvalCaseMeta, expectation: EvalExpectation,
+  severity: z.string().nullable(), category: z.string().nullable(),
+});
+export type EvalCaseDraft = z.infer<typeof EvalCaseDraft>;
+/** GET /findings/:id/eval-case-draft — a draft, or the finding's existing case (AC-2). */
+export const EvalCaseDraftResponse = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('draft'), draft: EvalCaseDraft }),
+  z.object({ kind: z.literal('existing_case'), case_id: z.string(), owner_id: z.string() }),
+]);
+export type EvalCaseDraftResponse = z.infer<typeof EvalCaseDraftResponse>;
+/** POST /agents/:id/eval-cases/run — the modal's current values (AC-94, AC-108). */
+export const EvalCaseRunInput = z.object({ input_diff: z.string().min(1), pr_title: z.string(),
+  pr_body: z.string().nullable(), expectation: EvalExpectation }).strict();
+export type EvalCaseRunInput = z.infer<typeof EvalCaseRunInput>;
+/** Dry-run result; nothing is stored (AC-95). `masked` is what was sent to the model (EC-32). */
+export const EvalCaseRunResult = z.object({
+  status: z.enum(['scored', 'errored']), pass: z.boolean().nullable(), error_reason: z.string().nullable(),
+  findings_total: z.number().int(), findings_matched: z.number().int(), actual: z.array(EvalActualFinding),
+  duration_ms: z.number().int(), cost_usd: z.number().nullable(), agent_version: z.number().int(),
+  masked: z.object({ input_diff: z.string(), pr_title: z.string(), pr_body: z.string().nullable() }),
+});
+export type EvalCaseRunResult = z.infer<typeof EvalCaseRunResult>;
 
 // ===========================================================================
 // Compose Review
