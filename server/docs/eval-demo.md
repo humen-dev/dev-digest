@@ -1,11 +1,12 @@
 # Eval pipeline demo (L06) — runbook
 
-Goal of the demo: turn a triaged finding into an eval case, run the Security Reviewer over its cases,
+Goal of the demo: turn a triaged finding into an eval case (draft → **Run case** → Save), run the Security Reviewer over its cases,
 read recall / precision / citation accuracy, make the agent worse by changing its system prompt, run
 again, and **Compare** the two runs. The whole thing is code-scored: a finding counts when the file
 matches and its line range overlaps the case's expectation. The scorer makes no model call.
 
-Spec: `specs/eval-pipeline.md` (SPEC-05). Plan: `docs/plans/eval-pipeline.md`.
+Spec: `specs/eval-pipeline.md` (SPEC-06; supersedes SPEC-05). Plans: `docs/plans/eval-pipeline.md` and the delta
+`docs/plans/eval-case-draft.md` (case draft + Run case).
 
 ## 0. Prerequisites
 
@@ -16,7 +17,8 @@ Spec: `specs/eval-pipeline.md` (SPEC-05). Plan: `docs/plans/eval-pipeline.md`.
 - Seeded data. `pnpm db:seed` (in `server/`) is idempotent. On a database that already has PR #482 it
   adds only the 7 eval cases, and only when the Security Reviewer has **no** cases yet. If you already
   created cases for that agent, the seed leaves it alone. It also records the missing `v1` prompt
-  snapshot of the Security Reviewer, which Compare needs to show the prompt diff.
+  snapshot of the Security Reviewer, which Compare needs to show the prompt diff. On an older dev database
+  whose PR #482 files have no patch, the seed fills the missing patches first.
 
 ## 1. The seeded cases
 
@@ -35,7 +37,7 @@ Each range intersects a real hunk of that file's `pr_files.patch`.
 
 ## 2. Steps (on camera)
 
-### Step 1 — a case from a triaged finding
+### Step 1 — a case from a triaged finding (draft → Run case → Save)
 
 The seeded review on PR #482 was not produced by an agent, so its findings cannot become cases
 (`The agent that produced this finding no longer exists`). Produce findings with the agent first:
@@ -43,13 +45,30 @@ The seeded review on PR #482 was not produced by an agent, so its findings canno
 1. Sidebar → **Repos** → `acme/payments-api` → **Pull requests** → open **#482**.
 2. Open the **Run Review** menu and run **Security Reviewer** on the PR. Wait for the run to finish.
 3. On a finding of that run, click **Accept** (becomes a MUST FIND case) or **Reject** (becomes a
-   MUST NOT FLAG case). The **Turn into eval case** button (`Accept or dismiss first` before you triage)
-   is now enabled. Click it. The button changes to **Eval case ✓**.
-4. The case is now the 8th case of the Security Reviewer. Clicking **Eval case ✓** again returns the same
-   case (no duplicate).
+   MUST NOT FLAG case). Before you triage, **Turn into eval case** is disabled with the hint
+   `Accept or dismiss first`.
+4. Click **Turn into eval case**. Nothing is saved yet: the **Eval case draft** modal opens, pre-filled
+   from the finding:
+   - name, the frozen diff of the finding's file (secrets already masked), the PR title/body
+     (tabs **Diff** / **Files** / **PR meta**);
+   - the expectation: file + lines from the finding; the type pill is fixed by your decision
+     (`Type is set by your decision on the finding`).
+5. **Warm the case up.** Click **Run case**: the Security Reviewer runs once on exactly this draft
+   (up to 120 s; the button shows `Running…`). The result banner shows **Passed** / **Failed**,
+   `expected ≥ 1 / 0 at <file>:<start>–<end>, got M`, duration and cost, and below it **Agent findings**
+   with the ones that `matched` the expectation. Nothing is stored and no metric changes.
+6. If the expectation is off, edit the lines (or the diff) and **Run case** again. After any edit the
+   banner greys out with `Inputs changed since this run — run again`; **Save** stays disabled
+   (`Run the case on its current content before saving`) until a fresh run on the current content
+   finishes scored (pass or fail — a MUST FIND the agent still misses is a legitimate target).
+7. Click **Save**. The button on the finding becomes **Eval case ✓** (a link to the case in the agent's
+   **Evals** tab). The case is the 8th of the Security Reviewer. **Cancel** instead (after an edit or a
+   run it asks `Discard this draft?`) stores nothing.
+8. Clicking **Turn into eval case** on the same finding again opens the saved case — no duplicate.
 
 The 8th case comes from a live model run, so what it contains varies. The deterministic part of the demo
-is the seeded set.
+is the seeded set. Saved cases have the same modal with **Run case** (Evals tab → click a case), and so
+does **New eval case** for a hand-made case.
 
 ### Step 2 — first run and metrics
 
@@ -135,3 +154,8 @@ attributed to versions that differ by 1.
 | `A run is already in progress for this agent` | One run per agent at a time. Wait, or a run older than 15 minutes without progress is closed as `interrupted` on the next start. |
 | HTTP 429 when starting runs | At most 5 run starts per minute per route. |
 | No seeded cases appear | The Security Reviewer already had cases, or PR #482 is missing. Run `pnpm db:seed` on a database that has both. |
+| `A case run is already in progress for this agent` | One **Run case** per agent at a time; wait for it to finish. |
+| HTTP 429 on **Run case** | At most 10 Run case calls per minute. |
+| `The finding was re-triaged since this draft was opened. Reopen the draft.` | You changed Accept/Reject after opening the draft; close it and click **Turn into eval case** again. |
+| **Save** stays disabled | Run the case on its current content first; an errored run (`Timed out after 120 s`, provider error) does not unlock Save. |
+| `no diff for src/config.ts` from `pnpm db:seed` | An older seed left PR #482 without patches; pull the latest code — the seed now heals it. |
