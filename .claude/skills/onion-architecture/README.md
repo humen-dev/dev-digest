@@ -1,6 +1,6 @@
 # onion-architecture
 
-**Version 1.0.0** · created 2026-09-21 · scope: `server/` (`@devdigest/api` — Fastify 5, Drizzle + Postgres)
+**Version 1.4.0** · created 2026-09-21 · updated 2026-10-08 · scope: `server/` (`@devdigest/api` — Fastify 5, Drizzle + Postgres)
 
 A skill for **backend architecture**: which ring a file belongs to (domain, application,
 infrastructure, presentation), which way imports may point, and where ports, services, repositories,
@@ -34,7 +34,7 @@ create two sources of truth, so this skill owns only **organization** and links 
 
 ```
 onion-architecture/
-  SKILL.md                                   # rings, seven rules, "where does X go", module template, workflow, checklist
+  SKILL.md                                   # rings, eleven rules, "where does X go", module template, workflow, checklist
   README.md                                  # this file
   references/
     layers-and-dependency-rule.md            # ring contents, import matrix, borderline cases, smell → fix
@@ -83,6 +83,10 @@ Where the sources disagree the skill takes a position. Numbers refer to the sect
 
 | Version | Date | Change |
 |---|---|---|
+| 1.4.0 | 2026-10-08 | Rule 11 — another module's `types.ts` is private; the only published exception is `repo-intel/types.ts`. Rule 7 narrowed accordingly; Barrels table, enforcement note, checklist item, "Where does X go" rows |
+| 1.3.0 | 2026-10-08 | Rule 10 — a barrel is not a loophole: through another module's `index.ts` only types, ports, constants and pure domain functions may cross; `layers-and-dependency-rule § Barrels`, barrel drift in the mapping, checklist item, "Where does X go" row |
+| 1.2.0 | 2026-10-08 | Rule 9 — a transaction holds only database work; the **transaction trace** procedure (follow every call inside a transaction callback to a leaf, report the chain), "Where does X go" row for external calls/jobs vs transactions, checklist item |
+| 1.1.0 | 2026-10-08 | Rule 8 — table ownership (only the owner's repository writes a table); checklist item, "Where does X go" row, `drizzle-persistence-layer § Table ownership`, ownership drift in the mapping |
 | 1.0.0 | 2026-09-21 | First release: rules, eight references, dependency-cruiser config with a 33-entry baseline, CI step |
 
 **Validation (2026-09-21).** Before release the skill was dry-run by building a throw-away

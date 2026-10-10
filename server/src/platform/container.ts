@@ -6,6 +6,7 @@ import type {
   CodeIndex,
   Embedder,
   LLMProvider,
+  UnifiedDiff,
 } from '@devdigest/shared';
 import type { AppConfig } from './config.js';
 import type { Db } from '../db/client.js';
@@ -65,6 +66,9 @@ import { DrizzleBriefRepository } from '../modules/brief/repository.js';
 import { BriefService } from '../modules/brief/service.js';
 import type { BriefRepositoryPort } from '../modules/brief/ports.js';
 import { GENERATION_DEADLINE_MS } from '../modules/brief/constants.js';
+import { EvalRepository } from '../modules/eval/repository.js';
+import { EvalService } from '../modules/eval/service.js';
+import type { EvalRepositoryPort } from '../modules/eval/ports.js';
 import { GitTreeReader } from '../adapters/git/tree.js';
 import { loadPromptTemplate } from './prompts.js';
 import { EXCLUDED_DIRS, MAX_FILE_SIZE } from '../modules/repo-intel/types.js';
@@ -118,6 +122,8 @@ export interface ContainerOverrides {
   gitTree?: TourGitPort;
   /** PR Brief persistence port — tests swap the port, not the service. */
   briefRepo?: BriefRepositoryPort;
+  /** Eval persistence port — tests swap the port, not the service. */
+  evalRepo?: EvalRepositoryPort;
 }
 
 export class Container {
@@ -158,6 +164,7 @@ export class Container {
   private _gitTree?: TourGitPort;
   private _onboardingTourService?: OnboardingTourService;
   private _briefService?: BriefService;
+  private _evalService?: EvalService;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -211,6 +218,34 @@ export class Container {
   }
 
   /**
+   * The PR's current diff: real `git diff`, else reconstructed from
+   * `pr_files.patch`. Shared by `intent` and `eval` (one implementation, R3).
+   * Re-implemented here rather than importing `reviews`' `diff-loader.ts`: that
+   * file type-imports `Container`, so importing any of its exports from here
+   * closes a `container.ts -> diff-loader.ts -> container.ts` cycle (depcruise
+   * `no-circular`) — and neither module may import `reviews` internals.
+   */
+  private async loadPrDiff(workspaceId: string, prId: string): Promise<UnifiedDiff> {
+    const pull = await this.reviewRepo.getPull(workspaceId, prId);
+    if (!pull) throw new NotFoundError('Pull request not found');
+    const repoRow = await this.reviewRepo.getRepo(pull.repoId);
+    if (!repoRow) throw new NotFoundError('Repo not found');
+    try {
+      const diff = await this.git.diff({ owner: repoRow.owner, name: repoRow.name }, pull.base, pull.headSha);
+      if (diff.files.length > 0) return diff;
+    } catch {
+      /* fall through to pr_files reconstruction */
+    }
+    const files = await this.reviewRepo.getPrFiles(pull.id);
+    const parts: string[] = [];
+    for (const f of files) {
+      if (!f.patch) continue;
+      parts.push(`diff --git a/${f.path} b/${f.path}`, `--- a/${f.path}`, `+++ b/${f.path}`, f.patch);
+    }
+    return parseUnifiedDiff(parts.join('\n'));
+  }
+
+  /**
    * Intent layer — PR intent + scope classification (server/specs/intent-layer.md).
    * `loadDiff` re-implements `reviews`' `loadDiff` (server/src/modules/reviews/diff-loader.ts)
    * INLINE rather than importing it: that file type-imports `Container` itself, so importing
@@ -223,25 +258,7 @@ export class Container {
     return (this._intentService ??= new IntentService({
       intents: this.overrides.intentRepo ?? new IntentRepository(this.db),
       github: () => this.github(),
-      loadDiff: async (workspaceId, prId) => {
-        const pull = await this.reviewRepo.getPull(workspaceId, prId);
-        if (!pull) throw new NotFoundError('Pull request not found');
-        const repoRow = await this.reviewRepo.getRepo(pull.repoId);
-        if (!repoRow) throw new NotFoundError('Repo not found');
-        try {
-          const diff = await this.git.diff({ owner: repoRow.owner, name: repoRow.name }, pull.base, pull.headSha);
-          if (diff.files.length > 0) return diff;
-        } catch {
-          /* fall through to pr_files reconstruction */
-        }
-        const files = await this.reviewRepo.getPrFiles(pull.id);
-        const parts: string[] = [];
-        for (const f of files) {
-          if (!f.patch) continue;
-          parts.push(`diff --git a/${f.path} b/${f.path}`, `--- a/${f.path}`, `+++ b/${f.path}`, f.patch);
-        }
-        return parseUnifiedDiff(parts.join('\n'));
-      },
+      loadDiff: (workspaceId, prId) => this.loadPrDiff(workspaceId, prId),
       files: this.git,
       urls: this.urlFetcher,
       linkAllowlist: this.config.intentLinkAllowlist,
@@ -410,6 +427,16 @@ export class Container {
       tokenizer: this.tokenizer,
       loadSystemPrompt: () => loadPromptTemplate('brief.system.md'),
       deadlineMs: GENERATION_DEADLINE_MS,
+    }));
+  }
+
+  /** Eval pipeline — frozen cases, background runs, compare (SPEC-05, docs/plans/eval-pipeline.md). */
+  get evalService(): EvalService {
+    return (this._evalService ??= new EvalService({
+      repo: this.overrides.evalRepo ?? new EvalRepository(this.db),
+      diffs: { loadPrDiff: (workspaceId, prId) => this.loadPrDiff(workspaceId, prId) },
+      parser: { parse: parseUnifiedDiff },
+      llm: (provider) => this.llm(provider),
     }));
   }
 

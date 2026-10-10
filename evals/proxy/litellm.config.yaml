@@ -1,0 +1,30 @@
+# LiteLLM translating proxy for the evals on OpenRouter (used by .github/workflows/evals.yml).
+#
+# Every eval session runs inside the Claude Agent SDK, which speaks only the Anthropic Messages
+# protocol (POST /v1/messages). OpenRouter's Anthropic-compatible endpoint is only guaranteed for
+# anthropic/* models — Gemini / DeepSeek can fail on tool calls there. LiteLLM accepts the
+# Anthropic shape and forwards to any OpenRouter model in its native format.
+#
+# The wildcard route passes the requested model straight through: EVAL_MODEL=deepseek/deepseek-v4-flash
+# arrives as "deepseek/deepseek-v4-flash" and is sent as "openrouter/deepseek/deepseek-v4-flash",
+# so trying a new model never needs a config change.
+#
+# Local run (Docker):
+#   docker run --rm -p 4000:4000 -e OPENROUTER_API_KEY \
+#     -v "$PWD/proxy/litellm.config.yaml:/app/config.yaml:ro" \
+#     ghcr.io/berriai/litellm:v1.101.6 --config /app/config.yaml --port 4000
+#   EVAL_PROVIDER=openrouter OPENROUTER_BASE_URL=http://localhost:4000 pnpm eval:workflow
+
+model_list:
+  - model_name: "*"
+    litellm_params:
+      model: "openrouter/*"
+      api_key: os.environ/OPENROUTER_API_KEY
+
+litellm_settings:
+  # Drop Anthropic-only params the target model does not support instead of failing the call.
+  drop_params: true
+
+# No master_key: an ephemeral gateway on localhost of a CI runner. The bearer token the SDK sends
+# is ignored; the proxy authenticates to OpenRouter with its own OPENROUTER_API_KEY.
+# Never expose this port publicly.

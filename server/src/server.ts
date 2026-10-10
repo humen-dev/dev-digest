@@ -6,6 +6,13 @@ async function main() {
   const config = loadConfig();
   const app = await buildApp({ config });
 
+  // AC-29: close runs left `running` by a previous process before serving traffic.
+  try {
+    await app.container.evalService.reconcileOnBoot(app.log);
+  } catch (err) {
+    app.log.error(err, 'eval run reconcile failed');
+  }
+
   // Graceful shutdown: on SIGTERM/SIGINT close the server, which runs the
   // onClose hooks (drains in-flight requests/SSE, closes the postgres pool).
   // Guarded so a second signal during shutdown doesn't double-close.

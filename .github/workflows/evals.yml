@@ -1,0 +1,237 @@
+# evals suite — the Claude Code harness evals (@devdigest/evals): skills, subagents and
+# workflow-level behaviour (CLAUDE.md / AGENTS.md / settings), run on OpenRouter.
+# Reusable: called by eval-skills.yml, eval-agents.yml and eval-workflow.yml (one pipeline each,
+# each with its own path filter and concurrency group), or dispatched by hand for a full run.
+#
+# Jobs — each eval suite is its own check on the PR:
+#  changes            static gate (no model: typecheck, SKILL.md quality, unit + script-contract
+#                     tests), then src/ci/select-cli.ts maps the PR diff to suites:
+#                       a changed skill → its skill job + the workflow evals that activate it
+#                       a changed agent → its agent job + the workflow evals that dispatch it
+#                       CLAUDE.md / AGENTS.md / .claude settings+hooks → the workflow job
+#                       an engine change → everything
+#                     A changed skill/agent without evals gets no job — the log prints SKIP.
+#  skills (<name>)    matrix, one job per selected skill
+#  agents (<name>)    matrix, one job per selected agent; a variant (agents/<dir>/variants.json,
+#                     e.g. architecture-reviewer-lite) runs its dir's cases with EVAL_AGENT=<name>
+#  workflow           the selected workflow evals, one job
+#
+# Model jobs go through a LiteLLM translating proxy on 127.0.0.1:4000 (the Agent SDK speaks
+# Anthropic; OpenRouter's Anthropic endpoint is only guaranteed for Claude models — see
+# evals/proxy/litellm.config.yaml), started by .github/actions/evals-setup.
+# NON-BLOCKING: model jobs have continue-on-error — a failing suite shows its own red check, but
+# the run stays successful and nothing is a required check (LLM evals are nondeterministic).
+# Each job uploads its results/ as an `eval-results-*` artifact.
+#
+# Models (no UI) — three knobs, each: manual-run input → repo variable → default:
+#   EVAL_MODEL           skill + agent content tiers (no tools)  deepseek/deepseek-v4-flash
+#   EVAL_WORKFLOW_MODEL  workflow tier (real tool use: Skill /   google/gemini-3.6-flash
+#                        subagent dispatch)
+#   EVAL_JUDGE_MODEL     LLM judge for every tier                deepseek/deepseek-v4-pro
+# Repo variables: Settings → Secrets and variables → Actions → Variables.
+# Limits: on OpenRouter the evals engine doubles every turn budget and raises the per-test timeout
+# to 600 s (EVAL_TURNS_SCALE / EVAL_TEST_TIMEOUT override) — thresholds stay as they are.
+# Needs the OPENROUTER_API_KEY secret; without it (e.g. a fork PR) the model jobs are skipped.
+#
+# Untrusted values (skill/agent dir names and eval file names come from the PR) reach `run:`
+# only through env vars, never as inline ${{ }} — no script injection.
+name: evals
+
+# Reusable engine. PRs reach it through three thin callers, one per pipeline:
+#   eval-skills.yml → suite: skills · eval-agents.yml → suite: agents · eval-workflow.yml → suite: workflow
+# Each caller runs this workflow with its own path filter; `suite` limits which model jobs may run.
+on:
+  workflow_call:
+    inputs:
+      suite:
+        description: 'Which model jobs may run: skills | agents | workflow | all'
+        type: string
+        default: all
+      scope:
+        description: 'Selection scope passed to select-cli (auto = by diff against the PR base)'
+        type: string
+        default: auto
+      model:
+        type: string
+        default: ''
+      workflow_model:
+        type: string
+        default: ''
+      judge_model:
+        type: string
+        default: ''
+    secrets:
+      OPENROUTER_API_KEY:
+        required: false
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Which model jobs may run'
+        type: choice
+        options: [all, skills, agents, workflow]
+        default: all
+      model:
+        description: 'OpenRouter model for skill + agent evals'
+        default: 'deepseek/deepseek-v4-flash'
+      workflow_model:
+        description: 'OpenRouter model for workflow evals (tool use)'
+        default: 'google/gemini-3.6-flash'
+      judge_model:
+        description: 'OpenRouter judge model'
+        default: 'deepseek/deepseek-v4-pro'
+      scope:
+        description: 'Which evals to run (auto = by diff against main)'
+        type: choice
+        options: [auto, all, skills, agents, workflow]
+        default: all
+
+permissions:
+  contents: read
+
+env:
+  EVAL_PROVIDER: openrouter
+  EVAL_MODEL: ${{ inputs.model || vars.EVAL_MODEL || 'deepseek/deepseek-v4-flash' }}
+  EVAL_WORKFLOW_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'google/gemini-3.6-flash' }}
+  EVAL_JUDGE_MODEL: ${{ inputs.judge_model || vars.EVAL_JUDGE_MODEL || 'deepseek/deepseek-v4-pro' }}
+  # Eval sessions talk to the no-auth proxy with a placeholder key; the real key is passed only to
+  # the proxy container (evals-setup) and the `check OpenRouter key` step. Not full isolation (a
+  # job process can `docker inspect` the proxy) — use a dedicated, credit-limited key for CI.
+  OPENROUTER_BASE_URL: http://localhost:4000
+  OPENROUTER_API_KEY: via-proxy
+  LITELLM_IMAGE: ghcr.io/berriai/litellm:v1.101.6
+
+jobs:
+  # ── 1. Static gate + which suites this PR runs ────────────────────────────────────────────
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: evals
+    outputs:
+      skills: ${{ steps.select.outputs.skills }}
+      agents: ${{ steps.select.outputs.agents }}
+      workflow: ${{ steps.select.outputs.workflow }}
+      has_key: ${{ steps.key.outputs.present }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # select diffs base...HEAD
+
+      - uses: ./.github/actions/evals-setup
+
+      - run: pnpm typecheck
+      - run: pnpm eval:quality
+      - name: unit + script-contract tests
+        run: pnpm vitest run src/ .scripts.eval.ts
+
+      - name: select evals
+        id: select
+        env:
+          SCOPE: ${{ inputs.scope || 'auto' }}
+          BASE: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+        run: pnpm tsx src/ci/select-cli.ts --scope "$SCOPE" --base "$BASE"
+
+      # Secrets are read in a step env; the length (never the value) shows an empty secret at once.
+      - name: check OpenRouter key
+        id: key
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          if [ -n "$OPENROUTER_API_KEY" ]; then
+            echo "OPENROUTER_API_KEY is set (${#OPENROUTER_API_KEY} chars)"
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::OPENROUTER_API_KEY is empty or not available to this run — model evals skipped"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── 2. Skills — one job per skill ─────────────────────────────────────────────────────────
+  skills:
+    name: skills (${{ matrix.skill }})
+    needs: changes
+    if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.skills != '[]' && contains(fromJSON('["all","skills"]'), inputs.suite || 'all')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        skill: ${{ fromJSON(needs.changes.outputs.skills) }}
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/evals-setup
+        with:
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+      - name: evals
+        env:
+          SKILL: ${{ matrix.skill }}
+        run: pnpm vitest run "skills/$SKILL/"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results-skills-${{ matrix.skill }}
+          path: evals/results/
+          if-no-files-found: ignore
+
+  # ── 3. Agents — one job per agent (variants included) ─────────────────────────────────────
+  agents:
+    name: agents (${{ matrix.agent }})
+    needs: changes
+    if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.agents != '[]' && contains(fromJSON('["all","agents"]'), inputs.suite || 'all')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.changes.outputs.agents) }} # [{ agent, dir }]
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/evals-setup
+        with:
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+      - name: evals
+        env:
+          EVAL_AGENT: ${{ matrix.agent }}
+          AGENT_DIR: ${{ matrix.dir }}
+        run: pnpm vitest run "agents/$AGENT_DIR/"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results-agents-${{ matrix.agent }}
+          path: evals/results/
+          if-no-files-found: ignore
+
+  # ── 4. Workflow — the real harness (CLAUDE.md, skill activation, subagent dispatch) ───────
+  workflow:
+    name: workflow
+    needs: changes
+    if: needs.changes.outputs.has_key == 'true' && needs.changes.outputs.workflow != '' && contains(fromJSON('["all","workflow"]'), inputs.suite || 'all')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/evals-setup
+        with:
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+      - name: evals
+        env:
+          WORKFLOW_EVALS: ${{ needs.changes.outputs.workflow }}
+        run: pnpm vitest run $WORKFLOW_EVALS # word-split on purpose: one filter per file
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results-workflow
+          path: evals/results/
+          if-no-files-found: ignore
