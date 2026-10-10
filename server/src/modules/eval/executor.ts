@@ -18,7 +18,8 @@ export interface RunCaseInput {
   snapshot: AgentSnapshot;
   /** Already rendered skill blocks (enabled, not injection-flagged). */
   skillBlocks: string[];
-  evalCase: EvalCase;
+  /** Only the frozen input is read; a Run case passes an unsaved draft here. */
+  evalCase: Pick<EvalCase, 'input_diff' | 'input_meta'>;
   llm: LLMProvider;
   parser: DiffParser;
   now?: () => number;

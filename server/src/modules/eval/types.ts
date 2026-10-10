@@ -19,6 +19,8 @@ export const EVAL_ERROR_CODES = [
   'agent_unavailable',
   'diff_unavailable',
   'invalid_compare_pair',
+  'decision_changed',
+  'case_run_in_flight',
 ] as const;
 export type EvalErrorCode = (typeof EVAL_ERROR_CODES)[number];
 

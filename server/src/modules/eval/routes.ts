@@ -5,9 +5,12 @@ import {
   EvalAgentDetail,
   EvalCase,
   EvalCaseDetail,
+  EvalCaseDraftResponse,
   EvalCaseInput,
   EvalCaseListItem,
   EvalCasePatch,
+  EvalCaseRunInput,
+  EvalCaseRunResult,
   EvalCompare,
   EvalCompareQuery,
   EvalDashboard,
@@ -19,7 +22,7 @@ import {
 } from '@devdigest/shared';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
-import { EVAL_RUN_RATE_LIMIT } from './constants.js';
+import { EVAL_CASE_RUN_RATE_LIMIT, EVAL_RUN_RATE_LIMIT } from './constants.js';
 
 /**
  * Eval module (SPEC-05, plan §3.4). Every route resolves the workspace first;
@@ -30,13 +33,34 @@ export default async function evalRoutes(appBase: FastifyInstance) {
   const { container } = app;
   const service = () => container.evalService;
 
+  app.get(
+    '/findings/:id/eval-case-draft',
+    { schema: { params: IdParams, response: { 200: EvalCaseDraftResponse } } },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return service().draftFromFinding(workspaceId, req.params.id);
+    },
+  );
+
   app.post(
     '/findings/:id/eval-case',
-    { schema: { params: IdParams, response: { 200: EvalCase, 201: EvalCase } } },
+    { schema: { params: IdParams, body: EvalCaseInput, response: { 200: EvalCase, 201: EvalCase } } },
     async (req, reply) => {
       const { workspaceId } = await getContext(container, req);
-      const { case: evalCase, created } = await service().createFromFinding(workspaceId, req.params.id);
+      const { case: evalCase, created } = await service().saveFromFinding(workspaceId, req.params.id, req.body);
       return reply.code(created ? 201 : 200).send(evalCase);
+    },
+  );
+
+  app.post(
+    '/agents/:id/eval-cases/run',
+    {
+      schema: { params: IdParams, body: EvalCaseRunInput, response: { 200: EvalCaseRunResult } },
+      config: { rateLimit: EVAL_CASE_RUN_RATE_LIMIT },
+    },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return service().runCaseDry(workspaceId, req.params.id, req.body, req.log);
     },
   );
 

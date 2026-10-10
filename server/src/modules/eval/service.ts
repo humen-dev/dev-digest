@@ -2,9 +2,12 @@ import type {
   EvalAgentDetail,
   EvalCase,
   EvalCaseDetail,
+  EvalCaseDraftResponse,
   EvalCaseInput,
   EvalCaseListItem,
   EvalCaseOutcome,
+  EvalCaseRunInput,
+  EvalCaseRunResult,
   EvalCasePatch,
   EvalCompare,
   EvalDashboard,
@@ -101,6 +104,11 @@ interface RunPlan {
  */
 export class EvalService {
   private pending = new Set<Promise<void>>();
+  /**
+   * `workspaceId:agentId` of Run case calls in flight (SPEC-06 AC-96). Process-local on purpose:
+   * the app is single-process, and the spec forbids a new table or column for it.
+   */
+  private caseRunsInFlight = new Set<string>();
 
   constructor(private deps: EvalDeps) {}
 
@@ -115,49 +123,159 @@ export class EvalService {
 
   // ---------- cases ----------
 
-  /** Freezes one triaged finding into a case for the agent that produced it. */
-  async createFromFinding(ws: string, findingId: string): Promise<CreatedFromFinding> {
+  /**
+   * Builds the draft for a triaged finding without writing anything (SPEC-06 AC-1, AC-33):
+   * the finding's own case if one exists, otherwise a masked, validated, unsaved draft.
+   */
+  async draftFromFinding(ws: string, findingId: string): Promise<EvalCaseDraftResponse> {
     const { repo } = this.deps;
-    const src = await repo.findingSource(ws, findingId);
-    if (!src) throw new NotFoundError('Finding not found');
-
+    const src = await this.requireFinding(ws, findingId);
     const existing = await repo.caseBySourceFinding(ws, findingId);
-    if (existing) return { case: existing, created: false };
+    if (existing) return { kind: 'existing_case', case_id: existing.id, owner_id: existing.owner_id };
 
-    const kind = laterOf(src.accepted_at, src.dismissed_at);
-    if (!kind) throw unprocessable('finding_not_triaged', 'Accept or dismiss the finding first');
-    if (!src.agent_id || !(await repo.agentSnapshot(ws, src.agent_id))) {
-      throw unprocessable('agent_unavailable', 'The agent that produced this finding no longer exists');
-    }
+    const type = this.decisionType(src);
+    const agent = await this.requireFindingAgent(ws, src);
 
     const fileDiff = await this.fileDiffOf(ws, src);
     const diff = maskSecretsForStorage(fileDiff);
     const title = maskSecretsForStorage(src.pr_title);
     const body = src.pr_body == null ? null : maskSecretsForStorage(src.pr_body);
     const expectation: EvalExpectation = {
-      type: kind === 'accepted' ? 'must_find' : 'must_not_flag',
+      type,
       file: src.file,
       start_line: src.start_line,
       end_line: src.end_line,
     };
     const files = this.validateFrozen(diff, expectation);
-
     const name = maskSecretsForStorage(
-      caseNameFromTitle(maskSecretsForStorage(src.title), src.finding_id, await repo.caseNames(ws, src.agent_id)),
+      caseNameFromTitle(maskSecretsForStorage(src.title), src.finding_id, await repo.caseNames(ws, agent.agent_id)),
     );
+    return {
+      kind: 'draft',
+      draft: {
+        agent_id: agent.agent_id,
+        agent_name: agent.name,
+        source_finding_id: src.finding_id,
+        name,
+        input_diff: diff,
+        input_files: files,
+        input_meta: { pr_id: src.pr_id, pr_number: src.pr_number, title, body },
+        expectation,
+        severity: src.severity,
+        category: src.category,
+      },
+    };
+  }
+
+  /**
+   * Stores the user's edited draft as a case for the finding's agent (SPEC-06 AC-91..AC-93).
+   * Origin fields come from the finding, never from the body; the body's expectation type
+   * must still equal the finding's current decision.
+   */
+  async saveFromFinding(ws: string, findingId: string, body: EvalCaseInput): Promise<CreatedFromFinding> {
+    const { repo } = this.deps;
+    const src = await this.requireFinding(ws, findingId);
+    const existing = await repo.caseBySourceFinding(ws, findingId);
+    if (existing) return { case: existing, created: false };
+
+    const type = this.decisionType(src);
+    if (type !== body.expectation.type) {
+      throw new AppError('decision_changed', 'The finding was triaged differently since the draft was opened', 409, {
+        current_type: type,
+        submitted_type: body.expectation.type,
+      });
+    }
+    const agent = await this.requireFindingAgent(ws, src);
+
+    const diff = maskSecretsForStorage(body.input_diff);
+    const files = this.validateFrozen(diff, body.expectation);
     return repo.insertCase({
       workspace_id: ws,
-      owner_id: src.agent_id,
-      name,
-      notes: null,
+      owner_id: agent.agent_id,
+      name: maskSecretsForStorage(body.name),
+      notes: body.notes == null ? null : maskSecretsForStorage(body.notes),
       input_diff: diff,
       input_files: files,
-      input_meta: { pr_id: src.pr_id, pr_number: src.pr_number, title, body },
-      expectation,
+      input_meta: {
+        pr_id: src.pr_id,
+        pr_number: src.pr_number,
+        title: maskSecretsForStorage(body.pr_title),
+        body: body.pr_body == null ? null : maskSecretsForStorage(body.pr_body),
+      },
+      expectation: body.expectation,
       source_finding_id: src.finding_id,
       severity: src.severity,
       category: src.category,
     });
+  }
+
+  /**
+   * Run case (SPEC-06 AC-94..AC-99): one synchronous engine call over the modal's current
+   * values with the agent's current configuration. Nothing is stored. Input is masked
+   * before the model sees it, and the masked text is returned (EC-32).
+   */
+  async runCaseDry(ws: string, agentId: string, input: EvalCaseRunInput, log: EvalLog): Promise<EvalCaseRunResult> {
+    const snapshot = await this.requireAgent(ws, agentId);
+
+    const key = `${ws}:${agentId}`;
+    if (this.caseRunsInFlight.has(key)) {
+      throw new AppError('case_run_in_flight', 'A case run is already in progress for this agent', 409, {
+        agent_id: agentId,
+      });
+    }
+    this.caseRunsInFlight.add(key);
+    try {
+      const masked = {
+        input_diff: maskSecretsForStorage(input.input_diff),
+        pr_title: maskSecretsForStorage(input.pr_title),
+        pr_body: input.pr_body == null ? null : maskSecretsForStorage(input.pr_body),
+      };
+      this.validateFrozen(masked.input_diff, input.expectation);
+      const llm = await this.resolveLlm(snapshot);
+      const skillBlocks = this.skillBlocksOf(snapshot).blocks;
+
+      const ref = { id: 'draft', name: 'draft', expectation: input.expectation };
+      const t0 = Date.now();
+      let outcome: EvalCaseOutcome;
+      try {
+        const exec = await runCase({
+          snapshot,
+          skillBlocks,
+          evalCase: {
+            input_diff: masked.input_diff,
+            input_meta: { pr_id: null, pr_number: null, title: masked.pr_title, body: masked.pr_body },
+          },
+          llm,
+          parser: this.deps.parser,
+        });
+        outcome = scoreCase(ref, exec);
+      } catch (err) {
+        outcome = erroredOutcome(ref, err instanceof EvalCaseError ? err.reason : 'error', Date.now() - t0);
+      }
+
+      // EC-31: the agent was deleted while the model was running.
+      if (!(await this.deps.repo.agentSnapshot(ws, agentId))) throw new NotFoundError('Agent not found');
+
+      // NFR-7: ids, status, duration and cost only.
+      log.info(
+        { agent_id: agentId, status: outcome.status, duration_ms: outcome.duration_ms, cost_usd: outcome.cost_usd },
+        'eval case dry run',
+      );
+      return {
+        status: outcome.status,
+        pass: outcome.pass,
+        error_reason: outcome.error_reason,
+        findings_total: outcome.findings_total,
+        findings_matched: outcome.findings_matched,
+        actual: outcome.actual,
+        duration_ms: outcome.duration_ms,
+        cost_usd: outcome.cost_usd,
+        agent_version: snapshot.version,
+        masked,
+      };
+    } finally {
+      this.caseRunsInFlight.delete(key);
+    }
   }
 
   /** Manual create: the same masking, size and hunk rules as edit (I-5). */
@@ -295,17 +413,7 @@ export class EvalService {
       });
     }
 
-    let llm: RunPlan['llm'];
-    try {
-      llm = await this.deps.llm(snapshot.provider);
-    } catch (err) {
-      if (err instanceof ConfigError) {
-        throw unprocessable('provider_key_missing', `No API key is configured for ${snapshot.provider}`, {
-          provider: snapshot.provider,
-        });
-      }
-      throw err;
-    }
+    const llm = await this.resolveLlm(snapshot);
 
     const cases = await repo.listCases(ws, agentId);
     if (cases.length === 0) throw unprocessable('no_cases', 'This agent has no eval cases');
@@ -316,7 +424,7 @@ export class EvalService {
       });
     }
 
-    const sent = promptSkills(snapshot.skills);
+    const { sent, blocks } = this.skillBlocksOf(snapshot);
     const runId = await repo.insertRun({
       workspace_id: ws,
       owner_id: agentId,
@@ -329,7 +437,7 @@ export class EvalService {
     const plan: RunPlan = {
       runId,
       snapshot,
-      skillBlocks: renderSkillBlocks(sent.map((skill) => ({ skill }))),
+      skillBlocks: blocks,
       cases,
       llm,
     };
@@ -516,6 +624,45 @@ export class EvalService {
   }
 
   // ---------- helpers ----------
+
+  private async requireFinding(ws: string, findingId: string): Promise<FindingSource> {
+    const src = await this.deps.repo.findingSource(ws, findingId);
+    if (!src) throw new NotFoundError('Finding not found');
+    return src;
+  }
+
+  /** The expectation type implied by the finding's later triage decision. */
+  private decisionType(src: FindingSource): EvalExpectation['type'] {
+    const kind = laterOf(src.accepted_at, src.dismissed_at);
+    if (!kind) throw unprocessable('finding_not_triaged', 'Accept or dismiss the finding first');
+    return kind === 'accepted' ? 'must_find' : 'must_not_flag';
+  }
+
+  private async requireFindingAgent(ws: string, src: FindingSource): Promise<AgentSnapshot> {
+    const agent = src.agent_id ? await this.deps.repo.agentSnapshot(ws, src.agent_id) : null;
+    if (!agent) throw unprocessable('agent_unavailable', 'The agent that produced this finding no longer exists');
+    return agent;
+  }
+
+  /** Resolves the agent's provider; a missing key is a 422 the client can act on. */
+  private async resolveLlm(snapshot: AgentSnapshot): Promise<RunPlan['llm']> {
+    try {
+      return await this.deps.llm(snapshot.provider);
+    } catch (err) {
+      if (err instanceof ConfigError) {
+        throw unprocessable('provider_key_missing', `No API key is configured for ${snapshot.provider}`, {
+          provider: snapshot.provider,
+        });
+      }
+      throw err;
+    }
+  }
+
+  /** The prompt skills actually sent and their rendered blocks, shared by suite runs and Run case. */
+  private skillBlocksOf(snapshot: AgentSnapshot) {
+    const sent = promptSkills(snapshot.skills);
+    return { sent, blocks: renderSkillBlocks(sent.map((skill) => ({ skill }))) };
+  }
 
   private async requireAgent(ws: string, agentId: string): Promise<AgentSnapshot> {
     const agent = await this.deps.repo.agentSnapshot(ws, agentId);

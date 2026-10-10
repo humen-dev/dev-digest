@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  caseReasonKey,
   deltaTone,
+  formatDurationMs,
   formatDeltaPoints,
   formatPercent,
   formatRunCost,
@@ -26,5 +28,17 @@ describe("eval-format", () => {
     const t = (k: string, v: { version: number }) => `${k}:${v.version}`;
     expect(formatVersionLabel(3, false, t)).toBe("versionLabel:3");
     expect(formatVersionLabel(3, true, t)).toBe("versionSkillsDelta:3");
+  });
+});
+
+describe("caseReasonKey / formatDurationMs", () => {
+  it("maps the four known codes to reason.* and leaves unknown codes to the caller — AC-104", () => {
+    expect(caseReasonKey("timeout")).toBe("reason.timeout");
+    expect(caseReasonKey("provider_error")).toBe("reason.provider_error");
+    expect(caseReasonKey("invalid_output")).toBe("reason.invalid_output");
+    expect(caseReasonKey("error")).toBe("reason.error");
+    expect(caseReasonKey("weird_code")).toBeNull();
+    expect(caseReasonKey(null)).toBeNull();
+    expect(formatDurationMs(12345)).toBe("12.3 s");
   });
 });

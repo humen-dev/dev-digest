@@ -11,7 +11,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { EvalCase, EvalCompare, EvalRunAllResult, EvalRunDetail, EvalRunStarted } from '@devdigest/shared';
+import { EvalCase, EvalCaseDraftResponse, EvalCompare, EvalRunAllResult, EvalRunDetail, EvalRunStarted } from '@devdigest/shared';
 import { startPg, dockerAvailable, type PgFixture } from './helpers/pg.js';
 import { REVIEW_ON_A2, stubLlm, type StubLlm } from './helpers/eval-fakes.js';
 import { buildApp } from '../src/app.js';
@@ -344,7 +344,17 @@ d('Eval runs (Testcontainers pg)', () => {
       .returning();
     const llm = stubLlm(() => review([finding('src/a.ts', 2, 3, 'Issue')]));
     const app = await mkApp(ws, { llm });
-    const made = await app.inject({ method: 'POST', url: `/findings/${f!.id}/eval-case` });
+    // SPEC-06 modal flow: GET the draft, then save it unchanged.
+    const drafted = await app.inject({ method: 'GET', url: `/findings/${f!.id}/eval-case-draft` });
+    expect(drafted.statusCode, drafted.body).toBe(200);
+    const res = EvalCaseDraftResponse.parse(drafted.json());
+    if (res.kind !== 'draft') throw new Error('expected a draft');
+    const { draft } = res;
+    const made = await app.inject({
+      method: 'POST',
+      url: `/findings/${f!.id}/eval-case`,
+      payload: { name: draft.name, input_diff: draft.input_diff, pr_title: draft.input_meta.title, pr_body: draft.input_meta.body, expectation: draft.expectation },
+    });
     expect(made.statusCode, made.body).toBe(201);
 
     await db().delete(t.pullRequests).where(eq(t.pullRequests.id, pr!.id));

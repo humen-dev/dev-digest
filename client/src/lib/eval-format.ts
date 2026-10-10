@@ -47,3 +47,16 @@ export function formatRunTime(iso: string | null | undefined): string {
   if (Number.isNaN(ms)) return "—";
   return new Date(ms).toISOString().slice(0, 16).replace("T", " ");
 }
+
+const KNOWN_REASON_CODES = ["timeout", "provider_error", "invalid_output", "error"] as const;
+
+/** A per-case error code → its `eval.reason.*` message key (AC-104); an unknown or empty code → null, so
+ *  the caller renders the code itself. */
+export function caseReasonKey(code: string | null | undefined): string | null {
+  return (KNOWN_REASON_CODES as readonly string[]).includes(code ?? "") ? `reason.${code}` : null;
+}
+
+/** Milliseconds → "12.3 s" (one decimal). */
+export function formatDurationMs(ms: number): string {
+  return `${(ms / 1000).toFixed(1)} s`;
+}

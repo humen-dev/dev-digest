@@ -1,5 +1,5 @@
 /**
- * SPEC-05 eval cases (U11) over a real Postgres (Testcontainers) through the real
+ * SPEC-05 eval cases (U11, save path per SPEC-06) over a real Postgres (Testcontainers) through the real
  * HTTP surface: create-from-finding (AC-1/2/4/8/10/13, EC-2), the frozen-input
  * path (single-file diff, secret placeholders), edit / delete / manual create
  * (AC-46…49, UT-7, UT-8) and workspace isolation (NFR-11, UT-11).
@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { EvalCase, EvalCaseDetail, EvalCaseListItem } from '@devdigest/shared';
+import { EvalCase, EvalCaseDetail, EvalCaseDraftResponse, EvalCaseListItem, type EvalCaseDraft } from '@devdigest/shared';
 import { startPg, dockerAvailable, type PgFixture } from './helpers/pg.js';
 import { stubLlm } from './helpers/eval-fakes.js';
 import { buildApp } from '../src/app.js';
@@ -129,7 +129,18 @@ d('Eval cases (Testcontainers pg)', () => {
   }
 
   const caseRows = (owner: string) => pg.handle.db.select().from(t.evalCases).where(eq(t.evalCases.ownerId, owner));
-  const post = (a: FastifyInstance, id: string) => a.inject({ method: 'POST', url: `/findings/${id}/eval-case` });
+  const manualOf = (d: EvalCaseDraft | null) =>
+    d
+      ? { name: d.name, input_diff: d.input_diff, pr_title: d.input_meta.title, pr_body: d.input_meta.body, expectation: d.expectation }
+      : { name: 'placeholder', input_diff: 'x', pr_title: 't', pr_body: null, expectation: { type: 'must_find', file: 'a', start_line: 1, end_line: 1 } };
+  /** The modal flow: GET the draft, then save it unchanged. A finding that already has a case answers 200 either way. */
+  const post = async (a: FastifyInstance, id: string) => {
+    const drafted = await a.inject({ method: 'GET', url: `/findings/${id}/eval-case-draft` });
+    if (drafted.statusCode !== 200) return drafted;
+    const body = EvalCaseDraftResponse.parse(drafted.json());
+    if (body.kind === 'existing_case') return a.inject({ method: 'POST', url: `/findings/${id}/eval-case`, payload: manualOf(null) });
+    return a.inject({ method: 'POST', url: `/findings/${id}/eval-case`, payload: manualOf(body.draft) });
+  };
 
   it('AC-1, AC-2, AC-10: a dismissed finding → 201 and one case; again → 200, same id; a later accept keeps the expectation', async () => {
     const agent = await mkAgent();

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { EvalCaseOutcome } from '@devdigest/shared';
+import type { EvalCaseDraft, EvalCaseInput, EvalCaseOutcome } from '@devdigest/shared';
 import { AppError, ConfigError, NotFoundError } from '../src/platform/errors.js';
 import { EvalService } from '../src/modules/eval/service.js';
 import { EVAL_AGENT_RUNS_MAX, EVAL_MAX_CASES, EVAL_RECENT_RUNS, EVAL_STALE_RUN_MS } from '../src/modules/eval/constants.js';
@@ -69,67 +69,85 @@ const finding = (r: Rig, over: Parameters<typeof findingSource>[0] = {}) => {
   return f;
 };
 
-describe('eval service — cases from findings', () => {
-  it('dismissed → must_not_flag, accepted → must_find with the finding range; second POST returns the same case', async () => {
+/** Draft the finding, then save it unchanged — what the modal does when the user edits nothing. */
+async function draftOf(r: Rig, f: { finding_id: string }): Promise<EvalCaseDraft> {
+  const d = await r.service.draftFromFinding(WS, f.finding_id);
+  if (d.kind !== 'draft') throw new Error('expected a draft');
+  return d.draft;
+}
+const bodyOf = (d: EvalCaseDraft, over: Partial<EvalCaseInput> = {}): EvalCaseInput => ({
+  name: d.name,
+  notes: null,
+  input_diff: d.input_diff,
+  pr_title: d.input_meta.title,
+  pr_body: d.input_meta.body,
+  expectation: d.expectation,
+  ...over,
+});
+async function createFrom(r: Rig, f: { finding_id: string }) {
+  return r.service.saveFromFinding(WS, f.finding_id, bodyOf(await draftOf(r, f)));
+}
+
+describe('eval service — draft from a finding', () => {
+  it('dismissed → must_not_flag, accepted → must_find with the finding range; 0 case rows, 0 provider calls', async () => {
     const r = rig();
     const dismissed = finding(r, { accepted_at: null, dismissed_at: '2026-10-02T00:00:00.000Z' });
-    const a = await r.service.createFromFinding(WS, dismissed.finding_id);
-    expect(a.created).toBe(true);
-    expect(a.case.expectation).toEqual({ type: 'must_not_flag', file: 'a.ts', start_line: 2, end_line: 2 });
-    expect(a.case.name).toBe('missing-null-check');
-    expect(a.case.owner_id).toBe(r.agentId);
-    expect(a.case.input_files).toEqual(['a.ts']);
-    expect(a.case.input_diff).not.toContain('b.ts');
-    expect(a.case.input_meta).toMatchObject({ pr_number: 7, title: 'Add parser', body: 'Body text' });
+    const a = await draftOf(r, dismissed);
+    expect(a.expectation).toEqual({ type: 'must_not_flag', file: 'a.ts', start_line: 2, end_line: 2 });
+    expect(a).toMatchObject({ name: 'missing-null-check', agent_id: r.agentId, source_finding_id: dismissed.finding_id });
+    expect(a.agent_name).toBe(snapshotOf(r.agentId).name);
+    expect(a.input_files).toEqual(['a.ts']);
+    expect(a.input_diff).not.toContain('b.ts');
+    expect(a.input_meta).toMatchObject({ pr_number: 7, title: 'Add parser', body: 'Body text' });
+    expect([a.severity, a.category]).toEqual(['WARNING', 'bug']);
 
     const accepted = finding(r, { start_line: 2, end_line: 3 });
-    const b = await r.service.createFromFinding(WS, accepted.finding_id);
-    expect(b.case.expectation).toEqual({ type: 'must_find', file: 'a.ts', start_line: 2, end_line: 3 });
+    expect((await draftOf(r, accepted)).expectation).toEqual({ type: 'must_find', file: 'a.ts', start_line: 2, end_line: 3 });
 
-    const again = await r.service.createFromFinding(WS, dismissed.finding_id);
-    expect(again.created).toBe(false);
-    expect(again.case.id).toBe(a.case.id);
+    expect(await r.repo.listCases(WS, r.agentId)).toHaveLength(0);
+    expect(r.llmCalls.n).toBe(0);
   });
 
   it('when both timestamps are set the later one wins', async () => {
     const r = rig();
     const f = finding(r, { accepted_at: '2026-10-01T00:00:00.000Z', dismissed_at: '2026-10-03T00:00:00.000Z' });
-    expect((await r.service.createFromFinding(WS, f.finding_id)).case.expectation.type).toBe('must_not_flag');
+    expect((await draftOf(r, f)).expectation.type).toBe('must_not_flag');
   });
 
-  it('a later dismiss leaves the stored must_find unchanged', async () => {
+  it('a finding that already has a case → existing_case with its id and owner', async () => {
     const r = rig();
     const f = finding(r);
-    const first = await r.service.createFromFinding(WS, f.finding_id);
-    r.repo.findings.get(f.finding_id)!.src.dismissed_at = '2026-10-09T00:00:00.000Z';
-    const second = await r.service.createFromFinding(WS, f.finding_id);
-    expect(second.created).toBe(false);
-    expect(second.case.expectation.type).toBe('must_find');
-    expect(second.case.id).toBe(first.case.id);
+    const saved = await createFrom(r, f);
+    expect(await r.service.draftFromFinding(WS, f.finding_id)).toEqual({
+      kind: 'existing_case',
+      case_id: saved.case.id,
+      owner_id: r.agentId,
+    });
   });
 
-  it('refuses with the 422 codes and the details the client reads', async () => {
+  it('refuses with the 422 codes and the details the client reads; nothing is written', async () => {
     const r = rig();
     const untriaged = finding(r, { accepted_at: null, dismissed_at: null });
-    expect((await code(r.service.createFromFinding(WS, untriaged.finding_id))).code).toBe('finding_not_triaged');
+    expect((await code(r.service.draftFromFinding(WS, untriaged.finding_id))).code).toBe('finding_not_triaged');
 
     const noAgent = finding(r, { agent_id: null });
-    const e1 = await code(r.service.createFromFinding(WS, noAgent.finding_id));
+    const e1 = await code(r.service.draftFromFinding(WS, noAgent.finding_id));
     expect([e1.statusCode, e1.code]).toEqual([422, 'agent_unavailable']);
 
     const outside = finding(r, { start_line: 90, end_line: 91 });
-    const e2 = await code(r.service.createFromFinding(WS, outside.finding_id));
+    const e2 = await code(r.service.draftFromFinding(WS, outside.finding_id));
     expect([e2.statusCode, e2.code]).toEqual([422, 'expectation_outside_diff']);
     expect(e2.details).toMatchObject({ file: 'a.ts', start_line: 90, end_line: 91, start: 90, end: 91 });
 
     const noFile = finding(r, { file: 'missing.ts' });
-    expect((await code(r.service.createFromFinding(WS, noFile.finding_id))).code).toBe('diff_unavailable');
+    expect((await code(r.service.draftFromFinding(WS, noFile.finding_id))).code).toBe('diff_unavailable');
 
     r.setDiff(new NotFoundError('gone'));
     const ok = finding(r);
-    expect((await code(r.service.createFromFinding(WS, ok.finding_id))).code).toBe('diff_unavailable');
+    expect((await code(r.service.draftFromFinding(WS, ok.finding_id))).code).toBe('diff_unavailable');
 
     expect(await r.repo.listCases(WS, r.agentId)).toHaveLength(0);
+    expect(r.llmCalls.n).toBe(0);
   });
 
   it('rejects a frozen diff over 200 KB with size and limit', async () => {
@@ -137,29 +155,170 @@ describe('eval service — cases from findings', () => {
     r.setDiff(
       ['diff --git a/a.ts b/a.ts', '--- a/a.ts', '+++ b/a.ts', '@@ -1,1 +1,2 @@', ' keep', `+${'x'.repeat(210_000)}`, ''].join('\n'),
     );
-    const err = await code(r.service.createFromFinding(WS, finding(r).finding_id));
+    const err = await code(r.service.draftFromFinding(WS, finding(r).finding_id));
     expect(err.code).toBe('frozen_input_too_large');
     expect(err.details).toMatchObject({ limit: 204_800 });
     expect((err.details as { size: number }).size).toBeGreaterThan(204_800);
   });
 
-  it('masks secrets in the stored diff and PR text', async () => {
+  it('names: slug, -2 suffix against existing names, at most 120 characters', async () => {
+    const r = rig();
+    const first = finding(r);
+    await createFrom(r, first);
+    const second = finding(r);
+    expect((await draftOf(r, second)).name).toMatch(/^missing-null-check-2$/);
+    const long = finding(r, { title: 'Word '.repeat(80) });
+    expect((await draftOf(r, long)).name.length).toBeLessThanOrEqual(120);
+  });
+
+  it('masks a token and a PEM block in the draft diff and PR text', async () => {
     const r = rig();
     const token = `ghp_${'a1B2'.repeat(9)}`;
     const awsKey = 'AKIA' + 'ABCDEFGHIJKLMNOP';
-    r.setDiff(['diff --git a/a.ts b/a.ts', '--- a/a.ts', '+++ b/a.ts', '@@ -1,1 +1,2 @@', ' keep', `+const t = "${token}";`, ''].join('\n'));
+    const pemBody = 'MIIEvQIBADANBgkqhkiG9w0BAQEFAASC';
+    r.setDiff(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1,1 +1,5 @@',
+        ' keep',
+        `+const t = "${token}";`,
+        `+-----BEGIN ${'RSA PRIVATE'} KEY-----`,
+        `+${pemBody}`,
+        `+-----END ${'RSA PRIVATE'} KEY-----`,
+        '',
+      ].join('\n'),
+    );
     const f = finding(r, { pr_title: `use ${awsKey}`, pr_body: token });
-    const { case: c } = await r.service.createFromFinding(WS, f.finding_id);
-    expect(c.input_diff).not.toContain(token);
-    expect(c.input_diff).toContain('ghp_XXXX');
-    expect(c.input_meta.title).not.toContain(awsKey);
-    expect(c.input_meta.body).not.toContain(token);
+    const d = await draftOf(r, f);
+    expect(d.input_diff).not.toContain(token);
+    expect(d.input_diff).not.toContain(pemBody);
+    expect(d.input_diff).toContain('ghp_XXXX');
+    expect(d.input_meta.title).not.toContain(awsKey);
+    expect(d.input_meta.body).not.toContain(token);
   });
 
   it('another workspace sees 404 for the finding', async () => {
     const r = rig();
     const f = finding(r);
-    await expect(r.service.createFromFinding(OTHER_WS, f.finding_id)).rejects.toBeInstanceOf(NotFoundError);
+    await expect(r.service.draftFromFinding(OTHER_WS, f.finding_id)).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe('eval service — save a draft from a finding', () => {
+  it('stores the edited values and the source finding; origin fields come from the finding; 0 provider calls', async () => {
+    const r = rig();
+    const f = finding(r);
+    const d = await draftOf(r, f);
+    const saved = await r.service.saveFromFinding(
+      WS,
+      f.finding_id,
+      bodyOf(d, { name: 'my edit', notes: 'why', pr_title: 'Edited', expectation: { ...d.expectation, end_line: 3 } }),
+    );
+    expect(saved.created).toBe(true);
+    expect(saved.case).toMatchObject({
+      name: 'my edit',
+      notes: 'why',
+      owner_id: r.agentId,
+      source_finding_id: f.finding_id,
+      severity: 'WARNING',
+      category: 'bug',
+      expectation: { type: 'must_find', file: 'a.ts', start_line: 2, end_line: 3 },
+      input_meta: { pr_id: f.pr_id, pr_number: 7, title: 'Edited', body: 'Body text' },
+    });
+    expect(r.llmCalls.n).toBe(0);
+  });
+
+  it('two saves → created then the same case; one row', async () => {
+    const r = rig();
+    const f = finding(r);
+    const d = await draftOf(r, f);
+    const first = await r.service.saveFromFinding(WS, f.finding_id, bodyOf(d));
+    const second = await r.service.saveFromFinding(WS, f.finding_id, bodyOf(d, { name: 'other' }));
+    expect([first.created, second.created]).toEqual([true, false]);
+    expect(second.case.id).toBe(first.case.id);
+    expect(await r.repo.listCases(WS, r.agentId)).toHaveLength(1);
+  });
+
+  it('a later dismiss leaves the stored must_find unchanged on a repeat save', async () => {
+    const r = rig();
+    const f = finding(r);
+    const d = await draftOf(r, f);
+    await r.service.saveFromFinding(WS, f.finding_id, bodyOf(d));
+    r.repo.findings.get(f.finding_id)!.src.dismissed_at = '2026-10-09T00:00:00.000Z';
+    const second = await r.service.saveFromFinding(WS, f.finding_id, bodyOf(d));
+    expect(second.created).toBe(false);
+    expect(second.case.expectation.type).toBe('must_find');
+  });
+
+  it('accept → draft → dismiss → save → 409 decision_changed with both types; 0 rows', async () => {
+    const r = rig();
+    const f = finding(r);
+    const d = await draftOf(r, f);
+    expect(d.expectation.type).toBe('must_find');
+    r.repo.findings.get(f.finding_id)!.src.dismissed_at = '2099-01-01T00:00:00.000Z';
+    const err = await code(r.service.saveFromFinding(WS, f.finding_id, bodyOf(d)));
+    expect([err.statusCode, err.code]).toEqual([409, 'decision_changed']);
+    expect(err.details).toEqual({ current_type: 'must_not_flag', submitted_type: 'must_find' });
+    expect(await r.repo.listCases(WS, r.agentId)).toHaveLength(0);
+  });
+
+  it('refuses a missing finding (404), untriaged, no agent, out-of-hunk and oversize — nothing written', async () => {
+    const r = rig();
+    const base = bodyOf(await draftOf(r, finding(r)));
+    await expect(r.service.saveFromFinding(WS, uuid(), base)).rejects.toBeInstanceOf(NotFoundError);
+
+    const untriaged = finding(r, { accepted_at: null, dismissed_at: null });
+    expect((await code(r.service.saveFromFinding(WS, untriaged.finding_id, base))).code).toBe('finding_not_triaged');
+
+    const noAgent = finding(r, { agent_id: null });
+    expect((await code(r.service.saveFromFinding(WS, noAgent.finding_id, base))).code).toBe('agent_unavailable');
+
+    const f = finding(r);
+    const outside = await code(
+      r.service.saveFromFinding(WS, f.finding_id, { ...base, expectation: { ...base.expectation, start_line: 90, end_line: 91 } }),
+    );
+    expect([outside.statusCode, outside.code]).toEqual([422, 'expectation_outside_diff']);
+
+    const big = [
+      'diff --git a/a.ts b/a.ts', '--- a/a.ts', '+++ b/a.ts', '@@ -1,1 +1,2 @@', ' keep', `+${'x'.repeat(210_000)}`, '',
+    ].join('\n');
+    expect((await code(r.service.saveFromFinding(WS, f.finding_id, { ...base, input_diff: big }))).code).toBe(
+      'frozen_input_too_large',
+    );
+    expect(await r.repo.listCases(WS, r.agentId)).toHaveLength(0);
+  });
+
+  it('masks secrets in the stored name, notes, diff and PR text', async () => {
+    const r = rig();
+    const token = `ghp_${'a1B2'.repeat(9)}`;
+    const awsKey = 'AKIA' + 'ABCDEFGHIJKLMNOP';
+    const f = finding(r);
+    const d = await draftOf(r, f);
+    const { case: c } = await r.service.saveFromFinding(
+      WS,
+      f.finding_id,
+      bodyOf(d, {
+        name: `n ${awsKey}`,
+        notes: token,
+        pr_title: `t ${awsKey}`,
+        pr_body: token,
+        input_diff: d.input_diff.replace('fixtureSecretMarker', token),
+      }),
+    );
+    const stored = JSON.stringify(c);
+    expect(stored).not.toContain(token);
+    expect(stored).not.toContain(awsKey);
+    expect(c.input_diff).toContain('ghp_XXXX');
+  });
+
+  it('another workspace sees 404 and nothing is written', async () => {
+    const r = rig();
+    const f = finding(r);
+    const body = bodyOf(await draftOf(r, f));
+    await expect(r.service.saveFromFinding(OTHER_WS, f.finding_id, body)).rejects.toBeInstanceOf(NotFoundError);
+    expect(await r.repo.listCases(WS, r.agentId)).toHaveLength(0);
   });
 });
 
@@ -469,7 +628,7 @@ describe('eval service — read paths', () => {
     expect(list[0]!.last!.run_id).not.toBe(first); // newest completed run wins
     const f = findingSource({ agent_id: r.agentId });
     r.repo.seedFinding(WS, f);
-    const sourced = await r.service.createFromFinding(WS, f.finding_id);
+    const sourced = await createFrom(r, f);
     expect(await r.service.getCaseDetail(WS, sourced.case.id)).toMatchObject({
       source: { repo_id: 'repo-1', pr_number: 7 },
       source_deleted: false,

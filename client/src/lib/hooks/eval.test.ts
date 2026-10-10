@@ -7,11 +7,14 @@ import { api } from "../api";
 import {
   EVAL_RUN_POLL_MS,
   evalAgentKey,
+  evalCaseKey,
   evalCasesKey,
   evalDashboardKey,
   evalRunKey,
   evalRunsKey,
-  useCreateEvalCaseFromFinding,
+  useEvalCaseDraft,
+  useRunEvalCase,
+  useSaveEvalCaseFromFinding,
   useEvalCases,
   useEvalRun,
 } from "./eval";
@@ -69,20 +72,61 @@ describe("useEvalCases", () => {
   });
 });
 
-describe("useCreateEvalCaseFromFinding", () => {
-  it("POSTs the finding route and refreshes the owner's case list", async () => {
+describe("draft / save / run-case hooks", () => {
+  it("useEvalCaseDraft GETs the draft route and stores nothing", async () => {
+    vi.mocked(api.get).mockResolvedValue({ kind: "existing_case", case_id: "c1", owner_id: "ag1" });
+    const { result } = renderHook(() => useEvalCaseDraft(), { wrapper: wrapperFor(makeClient()) });
+    await act(async () => {
+      await result.current.mutateAsync("f1");
+    });
+    expect(api.get).toHaveBeenCalledWith("/findings/f1/eval-case-draft");
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it("useSaveEvalCaseFromFinding POSTs the edited draft and refreshes cases, detail and dashboard — AC-91", async () => {
     const created = { id: "c9", owner_id: "ag1" } as EvalCase;
     vi.mocked(api.post).mockResolvedValue(created);
     const qc = makeClient();
     const spy = vi.spyOn(qc, "invalidateQueries");
-    const { result } = renderHook(() => useCreateEvalCaseFromFinding(), { wrapper: wrapperFor(qc) });
+    const { result } = renderHook(() => useSaveEvalCaseFromFinding("f1"), { wrapper: wrapperFor(qc) });
+    const input = {
+      name: "n",
+      notes: null,
+      input_diff: "d",
+      pr_title: "t",
+      pr_body: null,
+      expectation: { type: "must_find" as const, file: "a.ts", start_line: 1, end_line: 2 },
+    };
 
     await act(async () => {
-      await result.current.mutateAsync("f1");
+      await result.current.mutateAsync(input);
     });
 
-    expect(api.post).toHaveBeenCalledWith("/findings/f1/eval-case");
+    expect(api.post).toHaveBeenCalledWith("/findings/f1/eval-case", input);
     expect(spy).toHaveBeenCalledWith({ queryKey: evalCasesKey("ag1") });
+    expect(spy).toHaveBeenCalledWith({ queryKey: evalCaseKey("c9") });
+    expect(spy).toHaveBeenCalledWith({ queryKey: evalDashboardKey });
+  });
+
+  it("useRunEvalCase POSTs the run route with no signal and invalidates nothing — NFR-14, AC-95", async () => {
+    vi.mocked(api.post).mockResolvedValue({ status: "scored" });
+    const qc = makeClient();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    const { result } = renderHook(() => useRunEvalCase("ag1"), { wrapper: wrapperFor(qc) });
+    const input = {
+      input_diff: "d",
+      pr_title: "t",
+      pr_body: null,
+      expectation: { type: "must_find" as const, file: "a.ts", start_line: 1, end_line: 2 },
+    };
+
+    await act(async () => {
+      await result.current.mutateAsync(input);
+    });
+
+    expect(api.post).toHaveBeenCalledWith("/agents/ag1/eval-cases/run", input);
+    expect(vi.mocked(api.post).mock.calls[0]).toHaveLength(2);
+    expect(spy).not.toHaveBeenCalled();
   });
 });
 

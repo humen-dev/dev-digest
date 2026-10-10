@@ -10,9 +10,12 @@ import type {
   EvalAgentDetail,
   EvalCase,
   EvalCaseDetail,
+  EvalCaseDraftResponse,
   EvalCaseInput,
   EvalCaseListItem,
   EvalCasePatch,
+  EvalCaseRunInput,
+  EvalCaseRunResult,
   EvalCompare,
   EvalDashboard,
   EvalRunAllResult,
@@ -60,16 +63,31 @@ export function useEvalCase(id: string | null | undefined) {
   });
 }
 
-/** AC-1: POST /findings/:id/eval-case → 201 (created) or 200 (already exists). */
-export function useCreateEvalCaseFromFinding() {
+/** SPEC-06 AC-1/AC-2: GET /findings/:id/eval-case-draft — a read-only draft or the finding's existing case.
+ *  A mutation over GET (fired on click, never cached). */
+export function useEvalCaseDraft() {
+  return useMutation({
+    mutationFn: (findingId: string) => api.get<EvalCaseDraftResponse>(`/findings/${findingId}/eval-case-draft`),
+  });
+}
+
+/** AC-91: POST /findings/:id/eval-case with the edited draft → 201 (created) or 200 (already exists). */
+export function useSaveEvalCaseFromFinding(findingId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (findingId: string) => api.post<EvalCase>(`/findings/${findingId}/eval-case`),
+    mutationFn: (input: EvalCaseInput) => api.post<EvalCase>(`/findings/${findingId}/eval-case`, input),
     onSuccess: (c) => {
-      qc.invalidateQueries({ queryKey: evalCasesKey(c.owner_id) });
-      qc.invalidateQueries({ queryKey: evalAgentKey(c.owner_id) });
-      qc.invalidateQueries({ queryKey: evalDashboardKey });
+      qc.invalidateQueries({ queryKey: evalCaseKey(c.id) });
+      return invalidateAgentEval(qc, c.owner_id);
     },
+  });
+}
+
+/** AC-94: POST /agents/:id/eval-cases/run — synchronous dry run, nothing stored, so nothing to invalidate.
+ *  Deliberately no AbortSignal / timeout: the call may take up to ~120 s (NFR-14). */
+export function useRunEvalCase(agentId: string) {
+  return useMutation({
+    mutationFn: (input: EvalCaseRunInput) => api.post<EvalCaseRunResult>(`/agents/${agentId}/eval-cases/run`, input),
   });
 }
 

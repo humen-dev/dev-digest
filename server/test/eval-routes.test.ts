@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { EvalCase, EvalRunDetail, EvalRunStarted } from '@devdigest/shared';
+import { EvalCase, EvalCaseDraftResponse, EvalRunDetail, EvalRunStarted } from '@devdigest/shared';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/platform/config.js';
 import { MockAuthProvider } from '../src/adapters/mocks.js';
@@ -92,13 +92,58 @@ describe('eval routes (no DB)', () => {
     });
   });
 
-  it('finding → eval case: 404 unknown, 422 untriaged', async () => {
-    expect((await app.inject({ method: 'POST', url: `/findings/${uuid()}/eval-case` })).statusCode).toBe(404);
-    const f = findingSource({ agent_id: AGENT, accepted_at: null, dismissed_at: null });
+  it('finding draft + save: 404 unknown, 422 untriaged, draft → 200 with no row, save → 201 then 200, 409 on a changed decision', async () => {
+    expect((await app.inject({ method: 'GET', url: `/findings/${uuid()}/eval-case-draft` })).statusCode).toBe(404);
+    expect(
+      (await app.inject({ method: 'POST', url: `/findings/${uuid()}/eval-case`, payload: manualBody })).statusCode,
+    ).toBe(404);
+
+    const untriaged = findingSource({ agent_id: AGENT, accepted_at: null, dismissed_at: null });
+    repo.seedFinding(WS, untriaged);
+    const un = await app.inject({ method: 'GET', url: `/findings/${untriaged.finding_id}/eval-case-draft` });
+    expect([un.statusCode, un.json().error.code]).toEqual([422, 'finding_not_triaged']);
+    const unSave = await app.inject({ method: 'POST', url: `/findings/${untriaged.finding_id}/eval-case`, payload: manualBody });
+    expect([unSave.statusCode, unSave.json().error.code]).toEqual([422, 'finding_not_triaged']);
+
+    // The route-level app has no PR diff source (that needs the DB — see eval-case-draft.it.test.ts),
+    // so a draft that must read the diff is 422 here, with nothing written.
+    const f = findingSource({ agent_id: AGENT });
     repo.seedFinding(WS, f);
-    const res = await app.inject({ method: 'POST', url: `/findings/${f.finding_id}/eval-case` });
-    expect(res.statusCode).toBe(422);
-    expect(res.json().error.code).toBe('finding_not_triaged');
+    const before = (await repo.listCases(WS, AGENT)).length;
+    const noDiff = await app.inject({ method: 'GET', url: `/findings/${f.finding_id}/eval-case-draft` });
+    expect([noDiff.statusCode, noDiff.json().error.code]).toEqual([422, 'diff_unavailable']);
+    expect((await repo.listCases(WS, AGENT)).length).toBe(before);
+
+    const payload = manualBody;
+    const saved = await app.inject({ method: 'POST', url: `/findings/${f.finding_id}/eval-case`, payload });
+    expect(saved.statusCode, saved.body).toBe(201);
+    const again = await app.inject({ method: 'POST', url: `/findings/${f.finding_id}/eval-case`, payload });
+    expect(again.statusCode).toBe(200);
+    expect(again.json().id).toBe(saved.json().id);
+    const existing = EvalCaseDraftResponse.parse(
+      (await app.inject({ method: 'GET', url: `/findings/${f.finding_id}/eval-case-draft` })).json(),
+    );
+    expect(existing).toEqual({ kind: 'existing_case', case_id: saved.json().id, owner_id: AGENT });
+
+    const g = findingSource({ agent_id: AGENT, dismissed_at: '2099-01-01T00:00:00.000Z' });
+    repo.seedFinding(WS, g);
+    const conflict = await app.inject({ method: 'POST', url: `/findings/${g.finding_id}/eval-case`, payload });
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json().error).toMatchObject({
+      code: 'decision_changed',
+      details: { current_type: 'must_not_flag', submitted_type: 'must_find' },
+    });
+  });
+
+  it('save rejects an unknown body key and a bad expectation with the field path (422)', async () => {
+    const f = findingSource({ agent_id: AGENT });
+    repo.seedFinding(WS, f);
+    const url = `/findings/${f.finding_id}/eval-case`;
+    const extra = await app.inject({ method: 'POST', url, payload: { ...manualBody, owner_id: 'x' } });
+    expect(extra.statusCode).toBe(422);
+    const bad = await app.inject({ method: 'POST', url, payload: { ...manualBody, expectation: { ...manualBody.expectation, type: 'maybe' } } });
+    expect(bad.statusCode).toBe(422);
+    expect(JSON.stringify(bad.json().error.details)).toContain('expectation');
   });
 
   it('run lifecycle: 202 → poll → completed; a second start while running is 409; read routes work', async () => {
