@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type {
   Agent,
@@ -26,6 +26,7 @@ vi.mock("next/navigation", () => ({
 const updateMutate = vi.fn();
 const deleteMutate = vi.fn();
 const createMutate = vi.fn();
+const runMutateAsync = vi.fn();
 let detailData: EvalAgentDetail | undefined;
 let casesData: EvalCaseListItem[] | undefined;
 let caseData: EvalCaseDetail | undefined;
@@ -38,6 +39,8 @@ vi.mock("@/lib/hooks/eval", () => ({
   useUpdateEvalCase: () => ({ ...idle, mutate: updateMutate }),
   useDeleteEvalCase: () => ({ ...idle, mutate: deleteMutate }),
   useCreateEvalCase: () => ({ ...idle, mutate: createMutate }),
+  useRunEvalCase: () => ({ mutateAsync: runMutateAsync }),
+  useSaveEvalCaseFromFinding: () => idle,
   useEvalEstimate: () => ({ data: undefined, isError: false }),
   useEvalRun: () => ({ data: undefined, isError: false }),
   useStartEvalRun: () => idle,
@@ -143,6 +146,22 @@ const ITEMS: EvalCaseListItem[] = [
   },
 ];
 
+/** A scored Run case result that echoes the case input back as the masked text. */
+function scoredRun(diff: string, title = "T") {
+  return {
+    status: "scored",
+    pass: true,
+    error_reason: null,
+    findings_total: 0,
+    findings_matched: 0,
+    actual: [],
+    duration_ms: 1000,
+    cost_usd: null,
+    agent_version: 1,
+    masked: { input_diff: diff, pr_title: title, pr_body: null },
+  };
+}
+
 function renderTab() {
   return render(
     <NextIntlClientProvider locale="en" messages={{ eval: evalMessages, common: commonMessages }}>
@@ -159,6 +178,7 @@ beforeEach(() => {
   updateMutate.mockReset();
   deleteMutate.mockReset();
   createMutate.mockReset();
+  runMutateAsync.mockReset();
   routerReplace.mockReset();
 });
 afterEach(cleanup);
@@ -211,7 +231,7 @@ describe("Evals tab", () => {
     expect(screen.queryByText(/ pt$/)).not.toBeInTheDocument();
   });
 
-  it("opens the editor from a row, shows banner, tabs and outcome as text, saves and deletes", () => {
+  it("opens the editor from a row, shows banner, tabs and outcome as text, saves and deletes", async () => {
     caseData = {
       ...ITEMS[0]!,
       name: "leak",
@@ -265,7 +285,13 @@ describe("Evals tab", () => {
     const dialog = within(screen.getByRole("dialog"));
     expect(dialog.getByRole("button", { name: "Save" })).toBeDisabled();
     fireEvent.change(dialog.getByLabelText("Name"), { target: { value: "renamed" } });
+    expect(dialog.getByRole("button", { name: "Save" })).toBeEnabled(); // rename only — no run needed (AC-109)
     fireEvent.change(dialog.getByLabelText("End line"), { target: { value: "9" } });
+    expect(dialog.getByRole("button", { name: "Save" })).toBeDisabled(); // gated until a scored run (AC-46)
+    runMutateAsync.mockResolvedValue(scoredRun("+a"));
+    fireEvent.click(dialog.getByRole("button", { name: "Run case" }));
+    await waitFor(() => expect(dialog.getByRole("button", { name: "Save" })).toBeEnabled());
+    expect(updateMutate).not.toHaveBeenCalled();
     fireEvent.click(dialog.getByRole("button", { name: "Save" }));
     expect(updateMutate).toHaveBeenCalledWith(
       {
@@ -285,7 +311,7 @@ describe("Evals tab", () => {
     expect(deleteMutate).toHaveBeenCalledWith("c1", expect.anything());
   });
 
-  it("opens the case named by ?case= and creates a manual case", () => {
+  it("opens the case named by ?case= and creates a manual case after a scored run", async () => {
     searchCase = "c1";
     caseData = {
       ...ITEMS[0]!,
@@ -308,6 +334,10 @@ describe("Evals tab", () => {
     fireEvent.change(dialog.getByLabelText("File"), { target: { value: "a.ts" } });
     fireEvent.change(dialog.getByLabelText("Start line"), { target: { value: "1" } });
     fireEvent.change(dialog.getByLabelText("End line"), { target: { value: "2" } });
+    expect(dialog.getByRole("button", { name: "Save" })).toBeDisabled();
+    runMutateAsync.mockResolvedValue(scoredRun("+x", ""));
+    fireEvent.click(dialog.getByRole("button", { name: "Run case" }));
+    await waitFor(() => expect(dialog.getByRole("button", { name: "Save" })).toBeEnabled());
     fireEvent.click(dialog.getByRole("button", { name: "Save" }));
     expect(createMutate).toHaveBeenCalledWith(
       {
@@ -361,5 +391,35 @@ describe("Evals tab", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(routerReplace).toHaveBeenCalledWith("?tab=evals&other=1", { scroll: false });
+  });
+
+  it("renders a known last-outcome reason through its message and an unknown one raw — AC-104", () => {
+    const outcome = (reason: string) => ({
+      run_id: "r1",
+      outcome: {
+        case_id: "c1",
+        name: "x",
+        expectation_type: "must_find" as const,
+        status: "errored" as const,
+        pass: null,
+        error_reason: reason,
+        findings_total: 0,
+        findings_matched: 0,
+        grounding_kept: 0,
+        grounding_total: 0,
+        duration_ms: 1,
+        cost_usd: null,
+        actual: [],
+      },
+    });
+    searchCase = "c1";
+    caseData = { ...ITEMS[0]!, source: null, source_deleted: false, last_outcome: outcome("timeout") } as EvalCaseDetail;
+    const { unmount } = renderTab();
+    expect(screen.getByText("Timed out after 120 s")).toBeInTheDocument();
+    unmount();
+
+    caseData = { ...ITEMS[0]!, source: null, source_deleted: false, last_outcome: outcome("weird_code") } as EvalCaseDetail;
+    renderTab();
+    expect(screen.getByText("weird_code")).toBeInTheDocument();
   });
 });

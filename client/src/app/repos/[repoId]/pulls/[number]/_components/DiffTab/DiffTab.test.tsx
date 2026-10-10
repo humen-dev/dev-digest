@@ -174,6 +174,7 @@ vi.mock("@/lib/hooks/smart-diff", () => ({
   useSmartDiff: () => smartDiffState,
 }));
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) })); // EvalCaseAction navigates to an existing case
 import { DiffTab } from "./DiffTab";
 
 afterEach(() => {

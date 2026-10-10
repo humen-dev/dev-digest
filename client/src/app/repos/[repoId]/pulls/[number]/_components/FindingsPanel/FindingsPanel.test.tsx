@@ -10,6 +10,7 @@ vi.mock("../../../../../../../lib/hooks/reviews", () => ({
   useFindingAction: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) })); // EvalCaseAction navigates to an existing case
 import { FindingsPanel } from "./FindingsPanel";
 
 afterEach(cleanup);

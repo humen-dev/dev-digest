@@ -252,7 +252,7 @@ Checks follow the base plan (`node scripts/agent-check.mjs <pkg> <files>`; serve
 | Owns (create/modify) | `client/src/lib/hooks/eval.ts`, `client/src/lib/hooks/eval.test.ts`, `client/src/lib/eval-format.ts` (+ `.test.ts`), `client/src/components/eval/CaseModal/**` (new: `CaseModal.tsx`, `CaseModal.test.tsx`, `index.ts`, `types.ts`, `helpers.ts`, `helpers.test.ts`, `constants.ts`, `styles.ts`, `useCaseWarmup.ts`, `useDialogKeyboard.ts`, `_components/{CaseFormFields,RunResult}/**`) |
 | Must not touch | `client/src/lib/api.ts`; anything under `client/src/app/**` |
 | Consumes | §3.1, §3.3, §3.4; `ExpectationPill`, `TruncatedText` |
-| Produces | hooks `useEvalCaseDraft` (mutation over GET), `useSaveEvalCaseFromFinding(findingId)`, `useRunEvalCase(agentId)` (no invalidation); `caseReasonKey(code)` in `eval-format.ts`; `<CaseModal mode agentId onSaved onClose footerExtra? />` |
+| Produces | hooks `useEvalCaseDraft` (mutation over GET), `useSaveEvalCaseFromFinding(findingId)`, `useRunEvalCase(agentId)` (no invalidation); `caseReasonKey(code)` in `eval-format.ts`; `<CaseModal mode agentId onSaved onClose footerExtra? bodyExtra? />` (`bodyExtra` added during U3 — the footer is too narrow for the last-outcome block) |
 | Checks | `node scripts/agent-check.mjs client <owned files, explicit>` |
 
 **Steps**
@@ -268,7 +268,7 @@ Checks follow the base plan (`node scripts/agent-check.mjs <pkg> <files>`; serve
      - finding and manual drafts need a fresh `scored` result;
      - for a saved case, a name / notes-only change saves without a run; otherwise it needs a fresh `scored` result (AC-100, AC-109, Q-8);
    - `dirty` and `ran` flags for the discard prompt.
-4. **`CaseModal`** has three modes: `finding` (draft + findingId, locked type), `manual` (empty draft, type select) and `saved` (detail, `footerExtra` slot for delete / source / last outcome). It shows:
+4. **`CaseModal`** has three modes: `finding` (draft + findingId, locked type), `manual` (empty draft, type select) and `saved` (detail; `footerExtra` slot for delete, `bodyExtra` slot under the form for source link / last outcome). It shows:
    - a Run case button;
    - the `RunResult` banner, plain text: Passed / Failed · "expected ≥ 1 / 0 at file:range, got M" · duration · `formatRunCost`; the errored reason via `caseReasonKey`; a stale grey-out;
    - the findings list as plain text with a "matched" marker;
@@ -316,7 +316,7 @@ Checks follow the base plan (`node scripts/agent-check.mjs <pkg> <files>`; serve
    - `onSaved` → the "Eval case ✓" link (AC-12);
    - draft errors show `errors.*`;
    - the untriaged disabled state is kept (AC-3).
-2. `NewCaseForm` becomes `<CaseModal mode="manual">`. `CaseEditorView` becomes `<CaseModal mode="saved">`, and its delete / source link / last outcome go into `footerExtra`; the last-outcome reason goes through `caseReasonKey`.
+2. `NewCaseForm` becomes `<CaseModal mode="manual">`. `CaseEditorView` becomes `<CaseModal mode="saved">`, and its delete goes into `footerExtra` and its source link / last outcome into `bodyExtra`; the last-outcome reason goes through `caseReasonKey`.
 3. Remove the moved helpers, types and hooks from EvalsTab. Nothing in `app/**` may import them any more.
 
 **Acceptance criteria**
