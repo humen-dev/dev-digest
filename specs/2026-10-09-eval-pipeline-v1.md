@@ -1,23 +1,12 @@
-# Spec: Eval Pipeline — regression harness for review agents (L06), with case warm-up
+# Spec: Eval Pipeline — regression harness for review agents (L06)
 
-Spec ID: SPEC-06
-Status: approved
-Created: 2026-10-10
-Approved: 2026-10-10 by user
+Spec ID: SPEC-05
+Status: superseded
+Created: 2026-10-09
+Approved: 2026-10-09 by user
 Modules: client · server · reviewer-core (consumer only, unchanged) · vendored `shared` contracts
-Supersedes: [2026-10-09-eval-pipeline-v1.md](./2026-10-09-eval-pipeline-v1.md) (SPEC-05)
-Superseded by: none
-
-> **Successor of SPEC-05.** SPEC-06 is the full, current spec of the eval pipeline. It repeats
-> every SPEC-05 requirement that still holds, under the same AC / EC / NFR / UT numbers. The
-> course's acceptance review (user-approved, 2026-10-10) changes case creation:
-> - "Turn into eval case" no longer saves a case immediately. It opens a pre-filled **draft**
->   in the case modal.
-> - The user "warms the case up" with **Run case** (one synchronous execution, nothing stored),
->   then chooses **Save** or **Cancel**.
->
-> The ACs changed by this are AC-1, AC-2, AC-4 to AC-9, AC-11 to AC-14a, AC-45, AC-46 and
-> AC-49. AC-88 to AC-110 are new. The SPEC-05 text is kept verbatim in the superseded file.
+Supersedes: none
+Superseded by: [eval-pipeline.md](./eval-pipeline.md) (SPEC-06)
 
 > File name exception: the course requires this exact path (`specs/eval-pipeline.md`), so the
 > spec does not follow the dated `YYYY-MM-DD-<slug>.md` convention of `specs/README.md:9`.
@@ -82,7 +71,7 @@ The reserved row shapes do not fit the feature:
 
 | ID | Goal | Success measure |
 |---|---|---|
-| G-1 | Turn a triaged finding into a *verified* eval case | One click on an accepted or dismissed finding opens a pre-filled draft. Accepted findings give `must_find`, dismissed findings give `must_not_flag`. The draft is saved only after at least one Run case on its current content, and Cancel stores nothing. |
+| G-1 | Turn a triaged finding into an eval case in one action | One click on an accepted or dismissed finding produces exactly one case. Accepted findings give `must_find`, dismissed findings give `must_not_flag`. |
 | G-2 | Frozen, self-contained case input | A case runs unchanged after its source PR, review and repository are deleted. |
 | G-3 | One agent against its whole case set as one identifiable suite run | A stored run carries the agent version, the skills fingerprint, the covered case ids, the metrics and the per-case outcomes. |
 | G-4 | Scoring without any LLM call | A test with a throwing provider stub scores a run successfully. |
@@ -99,10 +88,8 @@ The reserved row shapes do not fit the feature:
 - Gating merges, CI or agent enablement on a metric.
 - Treating the dashboard as a cross-agent leaderboard.
 - **Promote vN** (restore a version's config as current). Deferred; AC-58 is reserved.
-- "Run on save" and the "30 days" range filter. Deferred. (Running a single case — **Run
-  case** — was a non-goal in SPEC-05 and is now in scope: AC-94 to AC-110.)
-- Persisting Run case results. A Run case is a dry run: it never creates a suite run and never
-  changes metrics, badges or history (AC-94).
+- Running a single case on its own, "Run on save", and the "30 days" range filter. The
+  reference implementation does not implement these. Deferred.
 - An MCP tool or an e2e browser flow for evals.
 - Export or import of case sets.
 - Eval cost appearing in the existing PR-list or run-history cost surfaces. Cost is shown only
@@ -110,14 +97,10 @@ The reserved row shapes do not fit the feature:
 - Any change to how reviews, findings, accept/dismiss, grounding or agent versioning work today.
 
 ## User stories
-- **US-1** — As a reviewer who accepted a finding, I open a pre-filled eval case draft from it,
-  check it with Run case and save it, so that the agent must keep finding that problem at that
-  file and those lines.
-- **US-2** — As a reviewer who dismissed a noisy finding, I open a pre-filled draft, check it
-  with Run case and save it, so that the agent must stop commenting there.
-- **US-13** — As a case author, I "warm up" a case before it enters the set: I run it, see the
-  agent's actual result and pass/fail, adjust the diff or expected lines, and run it again.
-  Only then do I save, so that no bad case pollutes the set. Cancel leaves nothing behind.
+- **US-1** — As a reviewer who accepted a finding, I turn it into an eval case in one click, so
+  that the agent must keep finding that problem at that file and those lines.
+- **US-2** — As a reviewer who dismissed a noisy finding, I turn it into an eval case in one
+  click, so that the agent must stop commenting there.
 - **US-3** — As an agent owner, I see every case of my agent's set with its expectation and its
   last outcome.
 - **US-4** — As an agent owner, I open a case, see exactly what the agent is given and what is
@@ -160,64 +143,28 @@ The reserved row shapes do not fit the feature:
   a run starts.
 - **Uncovered finding** — a grounded finding of a case execution that does not match that
   case's expectation.
-- **Draft** — an unsaved case built by the API from a triaged finding, or started empty for a
-  manual case. It holds frozen input, name, expectation and source finding id, lives only in the
-  web app, and the API never stores it.
-- **Run case** — one synchronous execution of one draft or one case's current editor values
-  against the agent's current configuration. It returns its result to the caller and stores
-  nothing.
-- **Fresh result** — the latest Run case result of the open modal, when the diff, PR metadata
-  and expectation have not changed since that run. Otherwise the result is **stale**.
 
-### Case creation from a triaged finding (draft → Save)
+### Case creation from a triaged finding
 
 | ID | Pattern | Requirement | Story | Priority | Verify by |
 |---|---|---|---|---|---|
-| AC-1 | Event-driven | WHEN a draft is requested for an accepted or dismissed finding that has no case yet, the API shall respond with HTTP 200 and a draft for the agent that produced the finding, without storing any case row. *(Changed from SPEC-05: creation used to store immediately.)* | US-1, US-2, US-13 | Must | integration (`*.it.test.ts`) — draft request for a dismissed finding → 200 with a draft; zero case rows afterwards |
-| AC-2 | Event-driven | WHEN a draft is requested for a finding that already has a case, the API shall respond with HTTP 200 and that case's id and owner agent id in place of a draft. | US-1, US-2 | Must | integration — save a case → request a draft for the same finding → response names the existing case; case count stays 1 |
+| AC-1 | Event-driven | WHEN the user activates "Turn into eval case" on an accepted or dismissed finding that has no case yet, the API shall create exactly one case owned by the agent that produced the finding and respond with HTTP 201 and the case. | US-1, US-2 | Must | integration (`*.it.test.ts`) — seed a dismissed finding → POST → assert 201 and one case row for that agent |
+| AC-2 | Event-driven | WHEN the action is activated on a finding that already has a case, the API shall respond with HTTP 200 and the existing case without creating a second case. | US-1, US-2 | Must | integration — POST twice → second response 200 with the same id; case count stays 1 |
 | AC-3 | State-driven | WHILE a finding has neither `accepted_at` nor `dismissed_at`, the web app shall show the "Turn into eval case" action disabled, with the hint "Accept or dismiss first". | US-1 | Must | unit (RTL) — render FindingCard untriaged → button disabled with hint; set `accepted_at` → enabled |
-| AC-4 | Unwanted behaviour | IF a draft or save request targets a finding with neither decision, THEN the API shall respond with HTTP 422 `finding_not_triaged` without creating a case. | US-1 | Must | integration — untriaged finding → draft 422 and save 422, zero cases |
-| AC-5 | Event-driven | WHEN a draft is built from an accepted finding, the API shall set its expectation type to `must_find` with the finding's `file`, `start_line` and `end_line` (the type a case saved from it keeps, AC-90, AC-93). | US-1 | Must | integration — accepted finding → draft and saved expectation equal `{must_find, file, start, end}` |
-| AC-6 | Event-driven | WHEN a draft is built from a dismissed finding, the API shall set its expectation type to `must_not_flag` with the finding's `file`, `start_line` and `end_line` (the type a case saved from it keeps, AC-90, AC-93). | US-2 | Must | integration — dismissed finding → draft and saved expectation type `must_not_flag` |
-| AC-7 | Event-driven | WHEN a draft is built from a finding, the API shall fill its frozen input with the full unified diff of the finding's file from the PR's current diff (every hunk of that file), a file list holding that one path, and the PR id, title and body. | US-1, US-2 | Must | unit — frozen-input builder on a two-file diff → only the finding's file with all its hunks |
-| AC-8 | Unwanted behaviour | IF the expectation range intersects no hunk of the frozen diff (at draft time, at save, on edit or in a Run case request), THEN the API shall respond with HTTP 422 `expectation_outside_diff` stating the file and range, without creating or changing a case and without any LLM call. | US-1, US-2, US-13 | Must | integration — finding whose lines lie outside every hunk → draft 422; edited draft with out-of-hunk lines → save 422 and Run case 422; zero cases, zero provider calls |
-| AC-9 | Unwanted behaviour | IF a frozen diff exceeds 204 800 bytes (200 KB) at draft time, at save, on edit or in a Run case request, THEN the API shall respond with HTTP 422 `frozen_input_too_large` stating the size and the limit, without creating or changing a case and without any LLM call. | US-11 | Should | unit — 201 KB diff fixture → refused on every path |
+| AC-4 | Unwanted behaviour | IF a create-from-finding request targets a finding with neither decision, THEN the API shall respond with HTTP 422 `finding_not_triaged` without creating a case. | US-1 | Must | integration — untriaged finding → 422, zero cases |
+| AC-5 | Event-driven | WHEN a case is created from an accepted finding, the API shall store the expectation type `must_find` with the finding's `file`, `start_line` and `end_line`. | US-1 | Must | integration — accepted finding → stored expectation equals `{must_find, file, start, end}` |
+| AC-6 | Event-driven | WHEN a case is created from a dismissed finding, the API shall store the expectation type `must_not_flag` with the finding's `file`, `start_line` and `end_line`. | US-2 | Must | integration — dismissed finding → stored expectation `must_not_flag` |
+| AC-7 | Event-driven | WHEN a case is created from a finding, the API shall store as its frozen input the full unified diff of the finding's file from the PR's current diff (every hunk of that file), a file list holding that one path, and the PR id, title and body. | US-1, US-2 | Must | unit — frozen-input builder on a two-file diff → only the finding's file with all its hunks |
+| AC-8 | Unwanted behaviour | IF the expectation range intersects no hunk of the case's frozen diff, THEN the API shall respond with HTTP 422 `expectation_outside_diff` stating the file and range, without creating a case. | US-1, US-2 | Must | integration — finding whose lines lie outside every hunk of the current diff → 422, zero cases |
+| AC-9 | Unwanted behaviour | IF a case's frozen diff exceeds 204 800 bytes (200 KB), THEN the API shall respond with HTTP 422 `frozen_input_too_large` stating the size and the limit, without creating a case. | US-11 | Should | unit — 201 KB diff fixture → refused |
 | AC-10 | Ubiquitous | The API shall keep a case's expectation unchanged when its source finding's accept/dismiss decision changes after the case was created. | US-1, US-2 | Must | integration — accept → create case → dismiss the finding → expectation still `must_find` |
-| AC-11 | Event-driven | WHEN a draft is built from a finding, the API shall pre-fill its name with the kebab-case form of the finding title, adding the suffix `-2`, `-3`, … when that name already exists in the agent's set, and truncating the base so that the name plus suffix is at most 120 characters (UT-8). | US-1 | Should | unit — "Hardcoded Stripe secret key" → `hardcoded-stripe-secret-key`; second one → `…-2`; a 300-character title → ≤ 120 characters (`server/src/modules/eval/domain/naming.ts:10-13`) |
-| AC-12 | Event-driven | WHEN Save succeeds or the API reports an existing case for the finding, the web app shall replace the action with an "Eval case ✓" link to `/agents/<owner_id>?tab=evals&case=<case id>`, which opens that case's editor in the agent's Evals tab. Closing the editor removes `case` from the URL. | US-1 | Should | unit (RTL) — mocked 201 → link `href` = `/agents/ag1?tab=evals&case=c1` (`client/src/app/repos/[repoId]/pulls/[number]/_components/FindingCard/_components/EvalCaseAction/helpers.ts:5`); closing the editor drops `case` (`…/AgentEditor/_components/EvalsTab/EvalsTab.tsx:34`) |
-| AC-13 | Unwanted behaviour | IF the finding's review has no agent (its `agent_id` is null because the agent was deleted, `server/src/db/schema/reviews.ts:17`), THEN the API shall respond to a draft or save request with HTTP 422 `agent_unavailable` without creating a case. | US-1 | Should | integration — review with null agent → draft 422 and save 422 |
-| AC-14 | Event-driven | WHEN the API builds a draft, stores a case (at save or on edit), or receives Run case input, it shall, before returning, storing or sending any of it to the LLM, replace every substring that matches the existing secret patterns (`server/src/modules/_shared/secrets.ts:14-22`) with a placeholder of the same length that keeps the token's literal prefix (for example `sk_live_`) and fills the remaining characters with a fixed alphanumeric filler. | US-11 | Must | unit — fixture built at runtime (server INSIGHTS 2026-10-07 DET-006) → stored diff has the same length and line count, contains the prefix, and does not contain the original token |
-| AC-14a | Event-driven | WHEN a draft, a stored case field (at save or on edit) or Run case input contains a PEM private-key block, before returning, storing or sending it to the LLM, the API shall replace the whole block, from the `-----BEGIN … PRIVATE KEY-----` line through the matching `-----END … PRIVATE KEY-----` line, with a placeholder block that keeps both marker lines, the line count, each line's length and diff prefix (`+` / `-` / space), and fills every body character with a fixed deterministic filler. This needs a block-level matcher beyond the line-level `SECRET_PATTERNS`, which match only the header (`server/src/modules/_shared/secrets.ts:20`); the planner decides where the matcher lives. | US-11 | Must | unit — frozen diff with a full PEM block (built at runtime) → the stored text contains no line of the original key body, keeps the BEGIN/END markers, has the same line count and line lengths, and two stores of the same input produce identical text |
+| AC-11 | Event-driven | WHEN a case is created from a finding, the API shall name it with the kebab-case form of the finding title, adding the suffix `-2`, `-3`, … when that name already exists in the agent's set, and truncating the base so that the name plus suffix is at most 120 characters (UT-8). | US-1 | Should | unit — "Hardcoded Stripe secret key" → `hardcoded-stripe-secret-key`; second one → `…-2`; a 300-character title → ≤ 120 characters (`server/src/modules/eval/domain/naming.ts:10-13`) |
+| AC-12 | Event-driven | WHEN case creation succeeds or returns an existing case, the web app shall replace the action with an "Eval case ✓" link to `/agents/<owner_id>?tab=evals&case=<case id>`, which opens that case's editor in the agent's Evals tab. Closing the editor removes `case` from the URL. | US-1 | Should | unit (RTL) — mocked 201 → link `href` = `/agents/ag1?tab=evals&case=c1` (`client/src/app/repos/[repoId]/pulls/[number]/_components/FindingCard/_components/EvalCaseAction/helpers.ts:5`); closing the editor drops `case` (`…/AgentEditor/_components/EvalsTab/EvalsTab.tsx:34`) |
+| AC-13 | Unwanted behaviour | IF the finding's review has no agent (its `agent_id` is null because the agent was deleted, `server/src/db/schema/reviews.ts:17`), THEN the API shall respond with HTTP 422 `agent_unavailable` without creating a case. | US-1 | Should | integration — review with null agent → 422 |
+| AC-14 | Event-driven | WHEN the API stores a case's frozen diff, PR title, PR body or name (at creation or on edit), it shall replace every substring that matches the existing secret patterns (`server/src/modules/_shared/secrets.ts:14-22`) with a placeholder of the same length that keeps the token's literal prefix (for example `sk_live_`) and fills the remaining characters with a fixed alphanumeric filler. | US-11 | Must | unit — fixture built at runtime (server INSIGHTS 2026-10-07 DET-006) → stored diff has the same length and line count, contains the prefix, and does not contain the original token |
+| AC-14a | Event-driven | WHEN the API stores a case field (at creation or on edit) that contains a PEM private-key block, it shall replace the whole block, from the `-----BEGIN … PRIVATE KEY-----` line through the matching `-----END … PRIVATE KEY-----` line, with a placeholder block that keeps both marker lines, the line count, each line's length and diff prefix (`+` / `-` / space), and fills every body character with a fixed deterministic filler. This needs a block-level matcher beyond the line-level `SECRET_PATTERNS`, which match only the header (`server/src/modules/_shared/secrets.ts:20`); the planner decides where the matcher lives. | US-11 | Must | unit — frozen diff with a full PEM block (built at runtime) → the stored text contains no line of the original key body, keeps the BEGIN/END markers, has the same line count and line lengths, and two stores of the same input produce identical text |
 | AC-15 | Ubiquitous | The API shall run a case whose source finding, review, PR or repository has been deleted, using only the case's stored frozen input. | US-4 | Must | integration — create case → delete the PR → start run → case scored |
 | AC-16 | Optional feature | WHERE a case's source finding no longer exists, the web app shall show "Source finding deleted" in that case's editor in place of the source link. | US-4 | Could | unit (RTL) — case with null source → text shown |
-| AC-88 | Event-driven | WHEN the user activates "Turn into eval case" on an accepted or dismissed finding, the web app shall open the eval case modal pre-filled from the API's draft (name, Diff / Files / PR meta, expectation) without storing anything. | US-1, US-2, US-13 | Must | unit (RTL) — mocked draft → modal fields show its values; no save POST issued |
-| AC-89 | Event-driven | WHEN the API reports an existing case in place of a draft (AC-2), the web app shall open that saved case in its owner agent's Evals tab editor (`/agents/<owner_id>?tab=evals&case=<id>`) instead of a new draft. | US-1, US-2 | Must | unit (RTL) — mocked `existing_case` → navigation to that URL |
-| AC-90 | State-driven | WHILE the modal holds a draft built from a finding, the web app shall show the expectation type as a fixed "MUST FIND" / "MUST NOT FLAG" pill (decided by accept/dismiss) and allow editing only the expectation's file and line range. | US-1, US-2 | Must | unit (RTL) — finding draft → no type selector; file/lines inputs editable |
-| AC-91 | Event-driven | WHEN the user saves a draft built from a finding, the API shall create one case owned by the finding's agent with that `source_finding_id`, using the draft's edited name, notes, diff, PR title and body and expectation range, and respond with HTTP 201 and the case. | US-1, US-2, US-13 | Must | integration — save an edited draft → 201; stored case holds the edited values and the source finding id |
-| AC-92 | Event-driven | WHEN a save request arrives for a finding that already has a case, the API shall respond with HTTP 200 and the existing case without creating a second case. | US-1, US-2 | Must | integration — two saves of drafts for one finding → 201 then 200 with the same id; one case row |
-| AC-93 | Unwanted behaviour | IF the finding's accept/dismiss decision at save time gives a different expectation type than the draft's, THEN the API shall respond with HTTP 409 `decision_changed` without creating a case. | US-1, US-2 | Should | integration — draft from an accepted finding → dismiss the finding → save → 409, zero cases |
-
-### Case warm-up: Run case, Save, Cancel
-
-| ID | Pattern | Requirement | Story | Priority | Verify by |
-|---|---|---|---|---|---|
-| AC-94 | Event-driven | WHEN the user activates Run case in the eval case modal (a finding draft, a manual draft or a saved case's editor), the API shall respond, after executing the modal's current values once and synchronously through the same executor and prompt rules as a suite case (AC-19, AC-20, AC-22, NFR-4) with the agent's current version and linked skills, with the grounded findings with a `matched` flag each, pass/fail, the matched count, duration, cost and, for an `errored` result, the error reason. | US-13 | Must | integration — stub LLM returning one matching finding → 200 with `pass: true`, matched 1, the finding flagged `matched`; scoring done with no extra LLM call |
-| AC-95 | Ubiquitous | The API shall make a Run case write nothing: no `eval_runs` row, no change to any stored case, and no change to metrics, the "x / y passing" badge, case-row status or run history. | US-13 | Must | integration — count rows in `eval_cases` / `eval_runs` and read the agent's dashboard before and after a Run case → identical |
-| AC-96 | State-driven | WHILE a Run case request for an agent is in progress, the API shall answer another Run case request for the same agent with HTTP 409 `case_run_in_flight`, without any LLM call. | US-13 | Must | integration — blocking stub; two Run case requests → one 200 and one 409 |
-| AC-97 | Unwanted behaviour | IF more than 10 Run case requests arrive from one client within 1 minute, THEN the API shall answer the excess ones with HTTP 429 without any LLM call (a bucket separate from the suite-start routes of AC-30). | US-13 | Should | integration — 11 requests in a loop → the 11th returns 429 |
-| AC-98 | Unwanted behaviour | IF no API key is configured for the agent's provider, THEN the API shall answer a Run case request with HTTP 422 `provider_key_missing` naming the provider, before any LLM call. | US-13 | Must | integration — secrets stub without key → 422; provider stub records 0 calls |
-| AC-99 | Optional feature | WHERE a suite run of the same agent is in progress, the API shall still accept a Run case request for that agent. | US-13 | Should | integration — running suite + Run case → 200 |
-| AC-100 | State-driven | WHILE the modal has no fresh Run case result with status `scored` (passed or failed) for its current content, the web app shall keep Save disabled and show "Run the case on its current content before saving". | US-13 | Must | unit (RTL) — new draft → Save disabled; Run case scored → enabled; edit the diff → disabled again; `errored` result → disabled |
-| AC-101 | Event-driven | WHEN the diff, PR metadata or expectation changes after a Run case, the web app shall grey out the result banner with the text "Inputs changed since this run — run again". | US-13 | Should | unit (RTL) — run → edit lines → stale text shown |
-| AC-102 | Event-driven | WHEN a Run case result arrives, the web app shall show a banner reading "Passed" or "Failed" · "expected ≥ 1 / 0 at `<file>:<range>`, got M" · duration · cost, as plain text. | US-13 | Must | unit (RTL) — mocked pass and fail results → banner texts; cost null → "—" |
-| AC-103 | Event-driven | WHEN a Run case result arrives, the web app shall list the agent's grounded findings of that execution (severity, title, `file:start–end`, matched marker) as plain text. | US-13 | Should | unit (RTL) — 2 findings, one matched → both listed, one marked "matched" |
-| AC-104 | Event-driven | WHEN a Run case result (or a case row of a suite run) is `errored`, the web app shall show the reason through i18n copy keyed by the reason code: `timeout` → "Timed out after 120 s", `provider_error` → "The model provider returned an error", `invalid_output` → "The model returned output that could not be read", `error` → "The case could not be run", and the raw code for any other reason. | US-10, US-13 | Must | unit (RTL) — each code renders its text; an unknown code renders the code (reason codes: `server/src/modules/eval/constants.ts:18-21`) |
-| AC-105 | Event-driven | WHEN the user activates Cancel, presses Esc or clicks outside the modal after the draft was edited or run, the web app shall ask "Discard this draft?" before closing. | US-13 | Should | unit (RTL) — edited draft → Esc → confirm shown; unedited → closes at once |
-| AC-106 | Event-driven | WHEN the user cancels the modal of an unsaved draft, the web app shall close it without any save or create request, leaving the set unchanged. | US-13 | Must | unit (RTL) — Cancel → no POST to the save or manual-create route |
-| AC-107 | Event-driven | WHEN the modal is closed while a Run case request is in progress, the web app shall discard that request's response when it arrives, without showing or applying it. | US-13 | Should | unit (RTL) — close during a pending mock → resolve it → no banner or state change |
-| AC-108 | Event-driven | WHEN the user activates Run case in a saved case's editor, the API shall run the editor's current values, including unsaved edits, and leave the stored case unchanged. | US-4, US-13 | Must | integration — edit lines without saving → Run case → stored case still has the old lines |
-| AC-109 | State-driven | WHILE a saved case's editor has unsaved changes to the diff, PR metadata or expectation, the web app shall keep Save disabled until a fresh `scored` Run case result exists (changes to the name or notes alone do not need a run). | US-4, US-13 | Should | unit (RTL) — rename only → Save enabled; change lines → Save disabled until run |
-| AC-110 | Event-driven | WHEN the user activates "New eval case" in the Evals tab, the web app shall open the same modal with an empty draft whose expectation type the user picks, with Run case and the AC-100 Save rule, and Save goes through manual creation (AC-49). | US-4, US-13 | Should | unit (RTL) — New eval case → type selector present; Save disabled until a scored run |
 
 ### Running a suite
 
@@ -239,7 +186,7 @@ The reserved row shapes do not fit the feature:
 | AC-30 | Unwanted behaviour | IF more than 5 requests to the same run-start route (`POST /agents/:id/eval-runs` or `POST /eval-runs/all`) arrive from one client within 1 minute, THEN the API shall answer the excess requests to that route with HTTP 429 without starting a run. *Implementation note (plan I-6 revised, user decision):* each of the two routes has its own 5/min bucket per IP, because the in-memory store of `@fastify/rate-limit` cannot share a bucket across routes. Starts are therefore bounded at ≤ 10 per minute in total, plus one in-flight run per agent (AC-25). | US-9 | Should | integration — 6 POSTs to one route in a loop → the 6th returns 429 (`server/src/modules/eval/routes.ts:98`, `:117`) |
 | AC-31 | Event-driven | WHEN the user activates "Run all evals" for one agent, the web app shall show the number of cases that will be executed before it sends the start request. | US-9 | Should | unit (RTL) — estimate mocked at 8 → confirmation text shows 8 and no POST before confirm |
 | AC-32 | State-driven | WHILE a run of the shown agent is `running`, the web app shall re-read that run's status every 3 s. | US-5 | Must | unit — fake timers → GET re-issued every 3 s; it stops after status `completed` |
-| AC-33 | Event-driven | WHEN the user opens the Evals tab, the Eval Dashboard, an agent eval page, a case editor, a draft modal or a comparison, DevDigest shall make no LLM call (only an explicit Run case or suite run calls the model). | US-9 | Must | integration — load every read route against a throwing provider stub → 0 calls |
+| AC-33 | Event-driven | WHEN the user opens the Evals tab, the Eval Dashboard, an agent eval page, a case editor or a comparison, DevDigest shall make no LLM call. | US-9 | Must | integration — load every read route against a throwing provider stub → 0 calls |
 | AC-34 | Optional feature | WHERE an agent is disabled, the API shall still accept eval runs for it. | US-5 | Could | integration — disabled agent → 202 |
 
 ### Scoring (code only, zero LLM calls)
@@ -261,11 +208,11 @@ The reserved row shapes do not fit the feature:
 | ID | Pattern | Requirement | Story | Priority | Verify by |
 |---|---|---|---|---|---|
 | AC-44 | Event-driven | WHEN the user opens the Evals tab of an agent, the web app shall list every case of the agent's set with its name, expectation type, severity · category tags (or "—"), expected vs actual finding counts (as defined in AC-84), and status (`pass`, `fail`, `errored` or `never run`) from the latest completed run that covered it. | US-3 | Must | unit (RTL) — mocked cases and run → each row shows these values |
-| AC-45 | Event-driven | WHEN the user opens a case, the web app shall show, in the same modal used for drafts, its name, its frozen input split into Diff, Files and PR meta tabs, its expectation in an editable form, its outcome in the latest completed run that covered it, and the Run case action (AC-108). | US-4 | Should | unit (RTL) — open case → three input tabs, expectation editor and Run case |
-| AC-46 | Event-driven | WHEN the user saves an edited case, the API shall store the new name, notes, frozen input or expectation, applying the AC-8, AC-9, AC-14 and AC-14a rules to the edited values (the web app gates Save per AC-109). | US-4 | Should | integration — PATCH a valid expectation → 200 and stored |
+| AC-45 | Event-driven | WHEN the user opens a case, the web app shall show its name, its frozen input split into Diff, Files and PR meta tabs, its expectation in an editable form, and its outcome in the latest completed run that covered it. | US-4 | Should | unit (RTL) — open case → three input tabs and the expectation editor |
+| AC-46 | Event-driven | WHEN the user saves an edited case, the API shall store the new name, notes, frozen input or expectation, applying the AC-8, AC-9 and AC-14 rules to the edited values. | US-4 | Should | integration — PATCH a valid expectation → 200 and stored |
 | AC-47 | Unwanted behaviour | IF an edited or new expectation fails contract validation (unknown type, non-integer or < 1 line, `start_line` > `end_line`, empty file), THEN the API shall respond with HTTP 422 naming the failing field and leave the stored case unchanged. *Note:* a JSON body containing a `__proto__` key is refused with HTTP 400 by Fastify's secure JSON parser before schema validation runs; in both cases nothing is stored (UT-7). | US-4 | Must | integration — `type: "maybe"` → 422 with the field path; row unchanged; `__proto__` body → 400 or 422 (`server/test/eval-cases.it.test.ts:287-295`) |
 | AC-48 | Event-driven | WHEN the user confirms deletion of a case, the API shall delete that case and respond with HTTP 204. | US-4 | Should | integration — DELETE → 204; list no longer contains it |
-| AC-49 | Event-driven | WHEN the user saves a "New eval case" draft (AC-110) with a name, a unified diff, PR title and body, and a typed expectation, the API shall create a case owned by that agent with a null source finding, applying the same AC-8, AC-9, AC-14 and AC-14a rules as an edit (plan I-5). | US-4 | Should | integration — POST hand-authored case → 201; a manual case with an out-of-hunk range → 422 |
+| AC-49 | Event-driven | WHEN the user submits the "New eval case" form with a name, a unified diff, PR title and body, and a typed expectation, the API shall create a case owned by that agent with a null source finding, applying the same AC-8, AC-9, AC-14 and AC-14a rules as an edit (plan I-5). | US-4 | Should | integration — POST hand-authored case → 201; a manual case with an out-of-hunk range → 422 |
 | AC-81 | Event-driven | WHEN the user opens a case, the web app shall show a banner stating the expectation in words, rendered as plain text: "Positive case — MUST find a finding at `<file>:<start>–<end>`" for `must_find`, and "Negative case — MUST NOT comment on `<file>:<start>–<end>`" for `must_not_flag`. | US-4 | Could | unit (RTL) — must_find and must_not_flag cases → the two sentences with file and range; a file path containing `<b>` renders as text |
 | AC-84 | Event-driven | WHEN a case row is shown, the web app shall show "expected N, got M", where N is "≥ 1 finding at `<file>:<range>`" for `must_find` or "0 findings at `<file>:<range>`" for `must_not_flag`, and M is the case's matched-finding count from the latest completed run that covered it, with no M shown for an `errored` or never-run case. | US-3 | Could | unit (RTL) — must_find with matched 1 → "expected ≥ 1 …, got 1"; must_not_flag with matched 2 → "expected 0 …, got 2"; errored → no "got" |
 | AC-87 | Ubiquitous | The web app shall label expectation types with the pills "MUST FIND" (`must_find`) and "MUST NOT FLAG" (`must_not_flag`) on every eval surface, as the only expectation-type labels (the prototype's "assert empty" label does not appear). | US-3 | Could | unit (RTL) — rows of both types → pill texts; "assert empty" absent |
@@ -332,7 +279,7 @@ The reserved row shapes do not fit the feature:
 | EC-1 | The PR got a new head after the review. The current diff no longer covers the finding's lines (reviews store no head SHA, `server/src/db/schema/reviews.ts:9-26`; diff rebuilt by `server/src/modules/reviews/diff-loader.ts:12-44`). | → AC-8 | integration |
 | EC-2 | No diff can be loaded for the PR (no clone, no `pr_files.patch`). | IF the PR's diff contains no hunk for the finding's file, THEN the API shall respond with HTTP 422 `diff_unavailable` without creating a case. | integration — PR without patches |
 | EC-3 | Two findings in the same file. | → AC-1, AC-7: two cases, each with its own copy of the file's diff. | integration |
-| EC-4 | Double click on "Turn into eval case", or on Save. | Draft requests store nothing (AC-1); a second Save → AC-92. | integration |
+| EC-4 | Double click on "Turn into eval case". | → AC-2 | integration |
 | EC-5 | Double click on Run, or two browser tabs. | → AC-25 | integration |
 | EC-6 | The user navigates away while a run is in progress. | WHEN the user returns to the agent's Evals tab while its run is `running`, the web app shall show the running state of that run. | unit (RTL) |
 | EC-7 | The agent is edited while its run is in progress. | → AC-18 | integration |
@@ -354,13 +301,6 @@ The reserved row shapes do not fit the feature:
 | EC-23 | The metric moved but no case changed pass/fail state. | IF no case changed pass/fail state between an agent's two most recent completed runs, THEN the web app shall show the banner with metric, direction, size and version only, without a causal clause. | unit — pure banner builder |
 | EC-24 | Compared runs cover different case sets. | WHEN two compared runs cover different case sets, the web app shall name the cases present in only one of the runs. | unit (RTL) |
 | EC-25 | A run is in progress on the shown agent. | WHILE a run of the shown agent is `running`, the web app shall show a running indicator with the run's start time in place of the enabled run actions. | unit (RTL) |
-| EC-26 | The modal is closed while Run case is in progress. | The server request runs to completion or its 120 s deadline, and its cost is incurred (NFR-4). The web app ignores the response (AC-107). | unit (RTL) + inspection |
-| EC-27 | Two browser tabs hold drafts of the same finding, and both save. | → AC-92: one case; the second tab gets the existing case and shows the "Eval case ✓" link (AC-12). | integration |
-| EC-28 | The finding is re-triaged between the draft and Save. | → AC-93 | integration |
-| EC-29 | The finding, its review or its agent is deleted between the draft and Save. | IF the source finding no longer exists at save time, THEN the API shall respond with HTTP 404 without creating a case (deleted agent → AC-13). | integration |
-| EC-30 | Run case times out or the provider fails. | → AC-22 / NFR-4: the result is `errored` with its reason (AC-104); Save stays disabled (AC-100). | unit |
-| EC-31 | The agent is deleted while its Run case is in progress. | IF the agent of an in-progress Run case is deleted, THEN the API shall respond to that Run case with HTTP 404. | integration |
-| EC-32 | A Run case on a draft whose user-edited diff contains a live secret. | → AC-14, AC-14a: masked before the LLM call; the masked text is what the modal shows after the run. | unit |
 
 ## Module interactions
 
@@ -373,25 +313,11 @@ sequenceDiagram
   participant E as review engine
   participant L as LLM provider
   U->>W: Turn into eval case (accepted/dismissed finding)
-  W->>A: request draft for finding (new)
-  A->>D: read finding + review + PR + diff (pr_files / git) · existing case?
-  A->>A: expectation from decision · freeze file diff · mask secrets · hunk + size check
-  A-->>W: 200 draft (nothing stored) · or existing case · 422 reason
-  loop warm-up, until the user is satisfied
-    U->>W: edit diff / lines · Run case
-    W->>A: run case (draft values) (new, synchronous)
-    A->>A: guards: rate limit · key · in-flight · size · hunk · mask
-    A->>E: reviewPullRequest(current agent config, draft diff) ≤ 120 s
-    E->>L: review call(s)
-    E-->>A: grounded findings + dropped
-    A->>A: score in code (0 LLM calls) · store nothing
-    A-->>W: 200 findings · matched · pass/fail · duration · cost / errored reason
-  end
-  U->>W: Save (enabled only with a fresh scored result)
-  W->>A: POST /findings/:id/eval-case (draft body)
-  A->>A: re-check decision · triage · agent · hunk · size · mask
-  A->>D: insert case with source_finding_id (or return existing)
-  A-->>W: 201 / 200 case · 409 decision_changed · 422 reason
+  W->>A: POST /findings/:id/eval-case (new)
+  A->>D: read finding + review + PR + diff (pr_files / git)
+  A->>A: expectation from decision · freeze file diff · secret placeholder · hunk check
+  A->>D: insert case (or return existing)
+  A-->>W: 201 / 200 case · 422 reason
   U->>W: Run all evals
   W->>A: POST /agents/:id/eval-runs (new)
   A->>D: reconcile stale runs · guard in-flight · insert run (running)
@@ -416,9 +342,7 @@ sequenceDiagram
 
 | From → To | Contract | Data | Source of truth | On failure / timeout / stale data |
 |---|---|---|---|---|
-| web app → API | draft for a finding (new; path chosen by the planner) | finding id → draft or existing case | finding + PR diff (nothing stored) | 422 with code (AC-4, AC-8, AC-9, AC-13, EC-2); 404 for another workspace's finding (UT-11) |
-| web app → API | `POST /findings/:id/eval-case` (existing route `server/src/modules/eval/routes.ts:33-41`; changes from "create from finding" to "save the edited draft") | draft body → case | `eval_cases` | 409 `decision_changed` (AC-93); 422 (AC-4, AC-8, AC-9, AC-13, AC-47); 404 (EC-29); 200 existing case (AC-92) |
-| web app → API | Run case (new, synchronous; path chosen by the planner) | draft or editor values + agent id → result | agent config + review engine output (nothing stored) | 409 `case_run_in_flight`, 422 `provider_key_missing` / `expectation_outside_diff` / `frozen_input_too_large`, 429, 404 (AC-96 to AC-98, EC-31); `errored` result with reason (AC-104). The client does not abort before 125 s (NFR-14). |
+| web app → API | `POST /findings/:id/eval-case` (new) | finding id → case | `eval_cases` | 422 with code (AC-4, AC-8, AC-9, AC-13, EC-2); 404 for another workspace's finding (UT-11) |
 | web app → API | case CRUD: list per agent, create manual, get, edit, delete (new) | case DTO with typed expectation | `eval_cases` | 422 with field path (AC-47); 404 cross-workspace |
 | web app → API | run estimate per agent (new) | case count | `eval_cases` | estimate error → Run action disabled with the error text |
 | web app → API | `POST /agents/:id/eval-runs` (new, course-mandated path) | → 202 `{run_id}` | `eval_runs` | 409 `run_in_flight`, 422 `no_cases` / `provider_key_missing` / `too_many_cases`, 429 (AC-25 to AC-30) |
@@ -462,8 +386,6 @@ sequenceDiagram
   Linking skills does not bump the agent version (`server/src/modules/agents/service.ts:148-155`);
   that is why the skills fingerprint exists.
 - **Retention:** no automatic pruning.
-- **Drafts and Run case results are never stored** (AC-1, AC-95). They live only in the open
-  modal and are lost when it closes. No new table or column is needed for warm-up.
 
 ## Compatibility and rollout
 
@@ -479,12 +401,6 @@ sequenceDiagram
 - The PR detail FindingCard gains one action; Accept and Dismiss are unchanged
   (`FindingCard.tsx:91-111`). The e2e flows assert the tab URLs (`e2e/specs/04-pr-findings.flow.json:11`)
   and do not assert the action row, so no flow changes.
-- **SPEC-06 change.** `POST /findings/:id/eval-case` changes meaning from "create immediately
-  from the finding" to "save an edited draft", with a request body. Client and server change
-  together, and no other consumer exists (the only caller is
-  `client/src/app/repos/[repoId]/pulls/[number]/_components/FindingCard/_components/EvalCaseAction/EvalCaseAction.tsx:18-40`).
-  Cases created under SPEC-05's one-click flow stay valid and unchanged. The `EvalCaseAction`
-  test that expects a link right after the click is replaced by the modal flow.
 - The sidebar gains an "Eval Dashboard" item in SKILLS LAB (`client/src/vendor/ui/nav.ts:30-43`;
   the vendored copy is the source, client INSIGHTS 2026-09-22).
 
@@ -524,25 +440,12 @@ sequenceDiagram
 
   **Where the prototype conflicts with this spec, the spec wins:**
   - the expectation is typed, not a JSON array of findings;
+  - case creation is one click, not a modal;
   - the action is disabled until the finding is triaged;
   - there are no `[]` / "assert empty" cases (AC-87);
   - the prompt diff is line-level;
-  - Run on save, the 30-day filter and Promote stay deferred and are not shown;
+  - Run case, Run on save, the 30-day filter and Promote stay deferred and are not shown;
   - selecting a third run keeps Compare disabled (AC-50).
-
-  Since SPEC-06 the spec **agrees** with the prototype on two points: case creation goes
-  through the EvalCaseEditor modal with **Run case** and a last-run banner
-  ("expected N, got M · 1.8s · $0.02", `cf033392-…js`), and Save / Cancel close it.
-- **Course acceptance review (2026-10-10, user-approved).** "Turn into eval case" must not save
-  immediately. It opens a modal pre-filled from the finding, the user warms the case up with
-  Run case until it is right, then chooses Save or Cancel. A bad case in the set is worse than
-  none.
-- Code read for SPEC-06:
-  - server: `server/src/modules/eval/routes.ts:33-59`, `service.ts:119-188`,
-    `executor.ts:75`, `constants.ts:18-21`, `:25`, and `server/src/app.ts:49` (`bodyLimit`
-    1 MB);
-  - client: `EvalCaseAction.tsx:15-56`, and `client/src/lib/api.ts` (no fetch timeout);
-  - Evals tab components `CaseEditor`, `NewCaseForm`, `CaseFormFields`.
 
 **UI reference (for the planner).**
 - Mirror the prototype's layout and icons:
@@ -559,10 +462,7 @@ sequenceDiagram
     `caseEditor.validJson` / `invalidJson` / `resultSummary` (`eval.json:54-58`) and
     `evalsTab.recallSuffix` (`eval.json:70`);
   - add the missing keys (pills, banners, empty/never-run states, Compare, Run all agents
-    confirmation, mechanical-scoring note);
-  - SPEC-06 adds keys for the draft modal: Run case / Running…, Save gate hint, stale result,
-    "Discard this draft?", result banner, and per-case error reasons
-    (`timeout`, `provider_error`, `invalid_output`, `error`, with the texts of AC-104).
+    confirmation, mechanical-scoring note).
 - Existing code read for this spec:
   - server: `server/src/db/schema/{eval,reviews,runs,agents,skills}.ts`,
     `server/src/modules/agents/{repository,service}.ts`,
@@ -594,33 +494,17 @@ sequenceDiagram
 | F-14 | NFR | Model output is not deterministic | NFR-2 promises deterministic scoring and identical input (AC-21) only |
 | F-15 | NFR | Cost is known only for OpenRouter | NFR-6 |
 | F-16 | UX | Nav item and tab whitelist | AC-59, AC-62 |
-| F-17 | Conflict | SPEC-05 was approved, yet the course requires `specs/eval-pipeline.md` to stay the main spec | SPEC-06 at that path; SPEC-05 moved verbatim and marked superseded (decision Q1 of 2026-10-10) |
-| F-18 | Gap | The FindingCard cannot know beforehand whether a case exists (`FindingRecord` has no case id) | AC-2, AC-89 |
-| F-19 | Gap | Whether the expectation type is editable in a finding draft | AC-90, AC-93 (Q2: fixed) |
-| F-20 | Gap | When Save is allowed | AC-100, AC-109 (Q3: after a fresh scored run) |
-| F-21 | Corner case | Stale result after an edit | AC-101 |
-| F-22 | Gap | What Run case runs in a saved case's editor | AC-108 (Q4: current form values) |
-| F-23 | Security / Cost | Guards for a synchronous, unpersisted LLM call | AC-96 to AC-99, AC-8, AC-9, AC-14, AC-14a |
-| F-24 | Corner case | Cancel while a Run case is in progress | AC-107, EC-26 |
-| F-25 | Corner case | Save race between two tabs | AC-92, EC-27 |
-| F-26 | Corner case | The draft is stale against the finding (re-triage, deletion) | AC-93, EC-28, EC-29 |
-| F-27 | Compatibility | `POST /findings/:id/eval-case` changes meaning | Compatibility section |
-| F-28 | NFR | A synchronous request of up to 120 s | NFR-14 |
 
 **UX improvements**
 
 | # | Proposal | Decision |
 |---|---|---|
-| UX-1 | Idempotent button, disabled until the finding is triaged | accepted (as reference) → AC-2, AC-3, AC-12. The "decision changed since" indicator is not included (not in reference). SPEC-06: the click opens a draft (AC-88). |
+| UX-1 | Idempotent one-click button, disabled until the finding is triaged | accepted (as reference) → AC-2, AC-3, AC-12. The "decision changed since" indicator is not included (not in reference). |
 | UX-2 | Same-shape secret placeholder in stored cases | accepted (our improvement) → AC-14, UT-3 |
 | UX-3 | Self-contained case that survives deletion of its source | accepted → AC-15, AC-16 |
-| UX-4 | Automatic slug name | accepted → AC-11, EC-21. SPEC-06: the name is pre-filled in the draft and editable. |
+| UX-4 | Automatic slug name, no modal | accepted → AC-11, EC-21 |
 | UX-5 | Skills fingerprint, "vN · skills Δ" label, skills diff in Compare | accepted (our improvement) → AC-18, AC-55, AC-56 |
 | UX-6 | "N findings not covered by any case", display only | accepted (our improvement) → AC-42 |
-| UX-7 | One entry point for an existing case: a draft request returns the existing case and the client opens it | accepted (SPEC-06) → AC-2, AC-89 |
-| UX-8 | Stale result marker after an edit | accepted → AC-101 |
-| UX-9 | Confirm before discarding an edited or run draft | accepted → AC-105 |
-| UX-10 | Prototype-style result banner plus the list of the agent's findings with matched markers | accepted → AC-102, AC-103 |
 
 ## Non-functional requirements
 
@@ -638,10 +522,7 @@ sequenceDiagram
 | NFR-12 | A11y | The web app shall provide the values of the metric trend chart as a table or list readable by assistive technology. | unit (RTL) — the trend has a tabular equivalent with the same values |
 | NFR-13 | A11y | WHEN a run's status changes, the web app shall announce the new status through a polite live region. | unit (RTL) — live region text changes on `completed` |
 | NFR-10 | I18n | The web app shall take every new user-facing string of this feature from the `eval` namespace in `client/messages/en/eval.json`. | inspection — no new literal UI strings in the eval components |
-| NFR-11 | Security | WHEN an eval case, draft, Run case, run, comparison or estimate is requested, the API shall resolve the caller's workspace and act only on rows of that workspace. | integration — another workspace's ids → 404 |
-| NFR-14 | Reliability | WHEN a Run case request is made, DevDigest shall deliver its response within 125 s, with neither the web app nor the API aborting the request before then. Today `client/src/lib/api.ts` sets no fetch timeout, and the API sets no request timeout. | integration — stub LLM delaying 110 s (fake timers on the server) → 200; inspection of client fetch options |
-| NFR-15 | Cost (LLM calls) | WHEN a draft is requested or a draft is saved, the API shall make 0 LLM calls. | unit — counting provider stub around the draft and save paths → 0 |
-| NFR-16 | Cost (LLM calls) | WHEN a Run case is requested, the API shall invoke the review engine at most once. | unit — counting engine stub → ≤ 1 per request; 0 for refused requests |
+| NFR-11 | Security | WHEN an eval case, run, comparison or estimate is requested, the API shall resolve the caller's workspace and act only on rows of that workspace. | integration — another workspace's ids → 404 |
 
 ## Inputs and provenance
 
@@ -673,10 +554,6 @@ sequenceDiagram
 | UT-9 | Findings shown in the case editor (actual vs expected) | HTML/Markdown injection | IF a finding title or rationale produced during a run contains raw HTML, THEN the web app shall render it without executing or inserting the markup. | unit (RTL) — `<img onerror>` rationale → no img element |
 | UT-10 | System prompt in the Compare diff | HTML injection | IF a system prompt contains HTML markup, THEN the web app shall render the prompt diff lines as plain text. | unit (RTL) |
 | UT-11 | Ids in eval routes | broken access control | IF an id in an eval request belongs to another workspace, THEN the API shall respond with HTTP 404 without returning or changing that row (→ NFR-11). | integration |
-| UT-12 | Unsaved draft diff and PR title/body sent to Run case | prompt injection | IF Run case input contains instruction-like text, THEN the API shall pass it to the model only through the engine's untrusted diff and PR-description slots, as for a stored case (→ UT-1, UT-2). | unit — hostile draft fixture appears only inside untrusted blocks |
-| UT-13 | Unsaved draft diff and PR body sent to Run case | secret leakage | IF Run case input contains a secret-shaped token or a PEM private-key block, THEN the API shall mask it before the LLM call (→ AC-14, AC-14a). | unit — captured provider request contains no original secret line |
-| UT-14 | Run case result (agent findings, reasons) | HTML/Markdown injection | IF a Run case result contains raw HTML in a finding title, file path or error reason, THEN the web app shall render it as plain text. | unit (RTL) — `<img onerror>` title → no img element |
-| UT-15 | Run case request body | oversized payload | IF a Run case request body exceeds the API's 1 MB body limit (`server/src/app.ts:49`), THEN the API shall refuse it with HTTP 413 before any LLM call (a smaller body over 200 KB of diff → AC-9). | integration — 1.1 MB body → 413; 0 provider calls |
 
 ## Assumptions and dependencies
 
@@ -698,13 +575,8 @@ sequenceDiagram
 
 | Source | Requirements |
 |---|---|
-| US-1 | AC-1 to AC-5, AC-7, AC-8, AC-10 to AC-13, AC-88 to AC-93 |
-| US-2 | AC-1, AC-2, AC-6 to AC-8, AC-10, AC-88 to AC-93 |
-| US-13 | AC-1, AC-8, AC-88, AC-91, AC-94 to AC-110, EC-26 to EC-32, NFR-14 to NFR-16, UT-12 to UT-15 |
-| Course acceptance review 2026-10-10 (SPEC-06) | AC-1, AC-2, AC-4 to AC-9, AC-11 to AC-14a, AC-45, AC-46, AC-49, AC-88 to AC-110 |
-| F-17 to F-28 | F-17 → file layout; F-18 → AC-2, AC-89; F-19 → AC-90, AC-93; F-20 → AC-100, AC-109; F-21 → AC-101; F-22 → AC-108; F-23 → AC-96 to AC-99; F-24 → AC-107, EC-26; F-25 → AC-92, EC-27; F-26 → AC-93, EC-28, EC-29; F-27 → Compatibility; F-28 → NFR-14 |
-| UX-7 to UX-10 | AC-2, AC-89 · AC-101 · AC-105 · AC-102, AC-103 |
-| SPEC-06 answers Q1–Q5 (2026-10-10) | Q1 → file layout; Q2 → AC-90; Q3 → AC-100; Q4 → AC-108; Q5 → AC-96 to AC-99, AC-8, AC-9, AC-14, AC-14a |
+| US-1 | AC-1 to AC-5, AC-7, AC-8, AC-10 to AC-13 |
+| US-2 | AC-1, AC-2, AC-6 to AC-8, AC-10 |
 | US-3 | AC-44, AC-59 to AC-61, AC-75, AC-84, AC-85, AC-87 |
 | US-4 | AC-15, AC-16, AC-43, AC-45 to AC-49, AC-81 |
 | Design prototype (revision 2026-10-09) | AC-81 to AC-87, AC-23 (matched count) |
@@ -772,13 +644,6 @@ sequenceDiagram
   security review, so AC-14 / AC-14a do not placeholder those secrets today · default: a separate
   task extends the shared secret patterns, which AC-14 then picks up unchanged · owner: user /
   server
-- **Q-7 (SPEC-06 interpretation)** — The finding is re-triaged between the draft and Save ·
-  default: 409 `decision_changed`, and the user reopens the draft (AC-93) · owner: user
-- **Q-8 (SPEC-06 interpretation)** — An `errored` Run case result does not unlock Save (only
-  `scored` pass or fail does, AC-100). A saved case's name- or notes-only edits save without a
-  run (AC-109) · default: as written · owner: user
-- **Q-9 (SPEC-06)** — Route paths for the draft and Run case requests · default: the planner
-  chooses them under the existing eval routes · owner: implementation-planner
 
 ## Revision history
 | Date | Change | By |
@@ -788,7 +653,7 @@ sequenceDiagram
 | 2026-10-09 | status → approved (user: "approve SPEC-05") | spec-creator |
 | 2026-10-09 | revised, user-approved (Status stays approved): added the course design prototype as a design source with spec-wins conflict rules and a UI reference note; added Could ACs AC-81 to AC-87 (case banner, agent selector, sparklines, "expected N, got M", "x / y passing" badge, mechanical-scoring note, MUST FIND / MUST NOT FLAG pills); AC-23 stores the per-case matched count; AC-44 points to AC-84 | spec-creator |
 | 2026-10-09 | post-implementation sync (Status stays approved; no renumbering) with `docs/plans/eval-pipeline.md` §1 and the implementation commits (e700261..HEAD):<br>• NFR-4 / AC-22 — executor-level 120 s deadline; abandoned request discarded (I-1)<br>• AC-75 / EC-9 — DB foreign-key cascade; executor stops when its run row disappears (I-2)<br>• AC-29 / NFR-5 — heartbeat-based staleness (OQ-1)<br>• AC-30 — a 5/min bucket per start route (I-6 revised)<br>• AC-67 — `details` on run-all entries<br>• AC-12 — `case` URL parameter<br>• AC-47 / UT-7 — `__proto__` → 400<br>• AC-76 — v1 snapshot seed, demo runbook<br>• AC-11, AC-20, AC-49, AC-53 — notes for I-4, I-3, I-5, I-7<br>• Q-5 resolved; Q-6 secret-pattern gap added as future work | spec-creator |
-| 2026-10-10 | **SPEC-06 created (approved by user)**, superseding SPEC-05, which moved verbatim to `2026-10-09-eval-pipeline-v1.md`. Rows above are SPEC-05's history. Course acceptance review — case warm-up:<br>• "Turn into eval case" opens a pre-filled draft (nothing stored)<br>• synchronous Run case: dry run, nothing stored<br>• Save only with a fresh scored result; Cancel stores nothing<br>• changed: AC-1, AC-2, AC-4 to AC-9, AC-11 to AC-14a, AC-33 (note), AC-45, AC-46, AC-49, EC-4<br>• added: AC-88 to AC-110, EC-26 to EC-32, NFR-14 to NFR-16, UT-12 to UT-15, US-13, F-17 to F-28, UX-7 to UX-10, Q-7 to Q-9<br>• "Run case" removed from non-goals; Run on save stays deferred | spec-creator |
+| 2026-10-10 | status → superseded by SPEC-06; file moved verbatim from `specs/eval-pipeline.md` (the course-required path now holds SPEC-06) | spec-creator |
 
 ## Self-check
 - [x] every AC / EC / NFR / UT rule: one EARS pattern, one `shall`, observable response, no vague words
