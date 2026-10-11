@@ -1,0 +1,1 @@
+export { InsightBanner } from "./InsightBanner";

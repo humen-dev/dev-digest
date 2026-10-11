@@ -38,6 +38,10 @@ step calls `depcruise` inline.
 | `adapters-not-into-modules` | Infrastructure does not import feature modules | Move the shared constant/type inward |
 | `no-cross-module-internals` | Other modules see only `index.ts` / `ports.ts` / `types.ts` | Use the port, or promote the piece |
 
+The rule still whitelists `types.ts` for historical reasons (the three `repo-intel/types.ts` consumers).
+Rule 11 is stricter: only `repo-intel/types.ts` is published — review every other `../<m>/types.js`
+import by hand.
+
 How the rules read files: by **name convention** — `service.ts` / `*.service.ts` are services,
 `repository.ts` or `repository/` are repositories, `mappers.ts` is the row mapper beside them,
 `ports.ts`, `domain/`, `constants.ts`, `types.ts` are inner contracts. Name files accordingly or the rules cannot see them.

@@ -1,0 +1,22 @@
+{
+  "$comment": "Dependency type taxonomy. First matching rule wins; patterns are anchored regexes on the package name. Anything unmatched is 'other' — the agent classifies it in the report. Extend here, not in code.",
+  "categories": [
+    { "id": "types", "label": "Type definitions", "patterns": ["^@types/"] },
+    { "id": "framework", "label": "Framework / runtime", "patterns": ["^next$", "^react$", "^react-dom$", "^fastify$", "^@fastify/", "^fastify-", "^express$", "^next-intl$", "^@modelcontextprotocol/"] },
+    { "id": "ai", "label": "AI / LLM SDK", "patterns": ["^@anthropic-ai/", "^openai$", "^@ai-sdk/", "^ai$", "^js-tiktoken$", "^tiktoken$", "^langchain", "^@langchain/"] },
+    { "id": "data", "label": "Database / ORM", "patterns": ["^drizzle-", "^postgres$", "^pg$", "^@neondatabase/", "^prisma$", "^@prisma/"] },
+    { "id": "validation", "label": "Validation / contracts", "patterns": ["^zod$", "^@hookform/", "^yup$", "^valibot$", "^ajv"] },
+    { "id": "api-client", "label": "External API clients", "patterns": ["^octokit$", "^@octokit/", "^simple-git$", "^@tanstack/react-query"] },
+    { "id": "ui", "label": "UI / rendering", "patterns": ["^lucide-", "^recharts$", "^mermaid$", "^react-markdown$", "^remark-", "^rehype-", "^tailwindcss$", "^@tailwindcss/", "^postcss$", "^clsx$"] },
+    { "id": "testing", "label": "Testing", "patterns": ["^vitest$", "^@vitest/", "^jest$", "^@testing-library/", "^jsdom$", "^happy-dom$", "^testcontainers$", "^@testcontainers/", "^playwright", "^@playwright/", "^msw$", "^supertest$"] },
+    { "id": "build", "label": "Build / dev tooling", "patterns": ["^typescript$", "^tsx$", "^ts-node$", "^esbuild$", "^vite$", "^@vitejs/", "^drizzle-kit$", "^dependency-cruiser$", "^pino-pretty$", "^eslint", "^prettier$", "^gray-matter$", "^@swc/"] },
+    { "id": "code-analysis", "label": "Code analysis / parsing", "patterns": ["^@ast-grep/", "^@vscode/ripgrep$", "^graphology", "^tree-sitter", "^@babel/parser$"] },
+    { "id": "utility", "label": "Utility", "patterns": ["^dotenv$", "^p-queue$", "^p-limit$", "^fflate$", "^lodash", "^date-fns$", "^nanoid$", "^uuid$", "^fastify-sse-v2$"] }
+  ],
+  "sharedContractLibs": ["zod", "typescript", "react", "react-dom"],
+  "thresholds": {
+    "heavyProdClosureBytes": 20971520,
+    "duplicateWasteBytes": 524288,
+    "diagramTopN": 6
+  }
+}

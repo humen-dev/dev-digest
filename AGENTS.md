@@ -1,12 +1,10 @@
 # DevDigest — repo map (not docs)
 
-Context injected every session. Keep it a **map**: stack, commands, layout,
-non-default conventions, gotchas. Everything deep is a **link** below — Claude
-reads those files only when a task touches them. Keep ≤100 lines.
+Context injected every session. Keep it a **map**: stack, commands, layout, non-default conventions,
+gotchas. Everything deep is a **link** below — read only when a task touches it. Keep ≤100 lines.
 
-Local-first AI PR review. **Standalone packages, not a workspace**: each has its
-own `package.json` + lockfile; cross-package code is shared via **tsconfig path
-aliases**, not published modules. Each package has its own `AGENTS.md`.
+Local-first AI PR review. **Standalone packages, not a workspace**: each has its own `package.json` +
+lockfile; cross-package code is shared via **tsconfig path aliases**, not published modules.
 
 ## Packages (each has its own AGENTS.md — read it when working there)
 - [`server/`](./server/AGENTS.md) — `@devdigest/api` · Fastify + Drizzle/Postgres · `:3001`
@@ -15,6 +13,7 @@ aliases**, not published modules. Each package has its own `AGENTS.md`.
 - [`e2e/`](./e2e/AGENTS.md) — `@devdigest/e2e` · deterministic agent-browser flows
 - [`mcp/`](./mcp/AGENTS.md) — `@devdigest/mcp` · local stdio MCP server over the API (registered in `.mcp.json`)
 - `@devdigest/shared` — Zod contracts, vendored into each package under `src/vendor/shared`
+- [`evals/`](./evals/AGENTS.md) — `@devdigest/evals` · harness evals (skills, agents, workflow) · vitest + Agent SDK, CI on OpenRouter
 
 ## Toolchain
 Node ≥ 22 · **pnpm** ≥ 10 (server/client) · **npm** (reviewer-core/e2e/mcp) ·
@@ -31,15 +30,12 @@ Docker (Postgres only). TypeScript 5.7 throughout.
   deliberate override is `PR_SELF_REVIEW_BYPASS=1`. Retire a false positive with
   `pr-self-review.mjs accept "<key>" --reason "…"` — never with a habitual bypass.
 - **Plan → implement (subagents in `.claude/agents/`):** optional `brainstormer`
-  turns a raw idea into a Design brief → `spec-creator` analyses the designs
-  (gaps, corner cases, module interactions, UX; facts via parallel `researcher`s
-  the main session runs on its requests) and, after the user's answers,
-  writes an EARS spec `<pkg>/specs/YYYY-MM-DD-<slug>.md` (cross-module: root
-  `specs/`; template `specs/_TEMPLATE.md`; user approves it) → `implementation-planner` reviews the
-  requirements (spec / brief — it never writes specs), asks questions + the
-  **multi-agent vs single-agent** choice, then writes `docs/plans/<slug>.md`
-  (template `_TEMPLATE.md`) → user approves. spec-creator and the planner run
-  **manually**; then **`/impl <plan> [notes] [designs]`** builds it: Wave 0 (main
+  turns a raw idea into a Design brief → `spec-creator` analyses the designs and,
+  after the user's answers, writes an EARS spec `<pkg>/specs/YYYY-MM-DD-<slug>.md`
+  (cross-module: root `specs/`; template `specs/_TEMPLATE.md`; user approves) →
+  `implementation-planner` reviews it, asks + the **multi-agent vs single-agent**
+  choice, writes `docs/plans/<slug>.md` → user approves (both run **manually**);
+  then **`/impl <plan> [notes] [designs]`** builds it: Wave 0 (main
   session) → one implementer per unit, by Kind (`implementer-backend` ·
   `implementer-ui` · `implementer` for engine/e2e/mcp) — **in parallel in the same
   checkout** (multi-agent; disjoint file ownership) or sequentially (single-agent)
@@ -53,6 +49,10 @@ Docker (Postgres only). TypeScript 5.7 throughout.
   `node scripts/agent-check.mjs <pkg> <files>` (typecheck + related tests).
 - **Checks:** every package exposes `test` + `typecheck`; **`tsc --noEmit` is the
   lint gate** — there is no separate ESLint step, so a clean typecheck is required.
+- **Harness evals** ([`evals/AGENTS.md`](./evals/AGENTS.md)) — run in `evals/`; change → run: `.claude/skills/<x>/**` →
+  `pnpm eval:quality` + `pnpm vitest run skills/<x>/` · `.claude/agents/<x>.md` → `pnpm vitest run agents/<x>/` ·
+  `CLAUDE.md` / `AGENTS.md` / `.claude/settings*` / hooks → `pnpm vitest run workflow/` · `evals/src/**` → `pnpm eval`.
+  New suite: `pnpm eval:scaffold`. CI: `eval-skills.yml` · `eval-agents.yml` · `eval-workflow.yml` (→ `evals.yml`).
 
 ## Conventions (non-default)
 - Cross-package imports resolve through **tsconfig path aliases** to `src` —

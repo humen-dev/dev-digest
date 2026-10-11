@@ -1,0 +1,1 @@
+export { AgentTrendTable } from "./AgentTrendTable";

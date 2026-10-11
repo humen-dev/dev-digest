@@ -25,15 +25,20 @@
       "precision": "Precision",
       "citation": "Citation",
       "pass": "Pass",
-      "cost": "Cost"
+      "cost": "Cost",
+      "version": "Version",
+      "status": "Status",
+      "agent": "Agent"
     },
     "pass": "pass",
-    "fail": "fail"
+    "fail": "fail",
+    "notRanking": "Each agent's metrics are computed over that agent's own case set. They are not a ranking.",
+    "runAllAgents": "Run all agents",
+    "trendTable": "Trend as a table"
   },
   "caseEditor": {
     "newCase": "New eval case",
     "caseTitle": "Eval case · {name}",
-    "runCase": "Run case",
     "running": "Running…",
     "save": "Save",
     "saving": "Saving…",
@@ -42,20 +47,26 @@
     "inputLabel": "Input",
     "tabs": {
       "diff": "Diff",
-      "prMeta": "PR meta"
+      "prMeta": "PR meta",
+      "files": "Files"
     },
     "diffPlaceholder": "--- a/src/config.ts\n+++ b/src/config.ts\n@@ -10,6 +10,7 @@\n+  stripeKey: \"sk_live_...\"",
     "titleLabel": "Title",
     "titlePlaceholder": "Add Stripe integration",
     "bodyLabel": "Body",
     "bodyPlaceholder": "Wire up payments via Stripe SDK.",
-    "preview": "Preview",
-    "expectedOutput": "Expected output",
-    "validJson": "valid JSON",
-    "invalidJson": "invalid JSON",
     "lastRunPassed": "Last run passed",
     "lastRunFailed": "Last run failed",
-    "resultSummary": "recall {recall}% · precision {precision}% · citation {citation}% · {duration}s"
+    "expectation": "Expectation",
+    "type": "Type",
+    "file": "File",
+    "startLine": "Start line",
+    "endLine": "End line",
+    "notes": "Notes",
+    "sourceLink": "Source finding",
+    "sourceDeleted": "Source finding deleted",
+    "deleteConfirm": "Delete this eval case?",
+    "lastOutcome": "Last outcome"
   },
   "evalsTab": {
     "metricsTitle": "Eval metrics",
@@ -63,11 +74,6 @@
     "casesHeading": "Eval cases",
     "newCase": "New case",
     "loadingCases": "Loading cases…",
-    "emptyCases": "No eval cases yet. Create one to assert this agent's expected findings on a sample diff.",
-    "neverRun": "never run",
-    "passed": "passed",
-    "failed": "failed",
-    "recallSuffix": " · recall {recall}%",
     "run": "Run",
     "running": "Running…",
     "edit": "Edit",
@@ -80,5 +86,115 @@
     "crumbEvals": "Evals",
     "crumbNewCase": "New case",
     "crumbEvalCase": "Eval case"
-  }
+  },
+  "finding": {
+    "turnInto": "Turn into eval case",
+    "eligibleHint": "Accept or dismiss first",
+    "done": "Eval case ✓"
+  },
+  "pill": {
+    "mustFind": "MUST FIND",
+    "mustNotFlag": "MUST NOT FLAG"
+  },
+  "status": {
+    "pass": "pass",
+    "fail": "fail",
+    "errored": "errored",
+    "neverRun": "never run",
+    "running": "running",
+    "completed": "completed"
+  },
+  "banner": {
+    "positive": "Positive case — MUST find a finding at {file}:{start}–{end}",
+    "negative": "Negative case — MUST NOT comment on {file}:{start}–{end}"
+  },
+  "expected": {
+    "mustFind": "expected ≥ 1 finding at {file}:{start}–{end}",
+    "mustNotFlag": "expected 0 findings at {file}:{start}–{end}",
+    "got": "got {count}"
+  },
+  "metrics": {
+    "recall": "Recall",
+    "precision": "Precision",
+    "citation": "Citation accuracy",
+    "casesPassed": "Cases passed",
+    "notApplicable": "n/a",
+    "deltaPts": "{points} pt"
+  },
+  "passingBadge": "{passed} / {total} passing",
+  "uncovered": "{count, plural, one {# finding} other {# findings}} not covered by any case",
+  "scoringNote": "Scoring is mechanical: a finding counts when the file matches and the line ranges overlap. The scorer makes no model call.",
+  "empty": {
+    "noCases": "No eval cases yet",
+    "howToCreate": "Create one from an accepted or dismissed finding (Turn into eval case) or with New eval case.",
+    "neverRun": "Never run",
+    "runAgain": "Run again to compare"
+  },
+  "run": {
+    "confirmOne": "This will run {count, plural, one {# case} other {# cases}}. Continue?",
+    "confirmAll": "{agents, plural, one {# agent} other {# agents}} · {executions, plural, one {# execution} other {# executions}}",
+    "start": "Run all evals",
+    "startAll": "Run all agents",
+    "runningSince": "Run in progress, status refreshes every 3 seconds",
+    "refreshFailed": "Could not refresh the run status"
+  },
+  "errors": {
+    "run_in_flight": "A run is already in progress for this agent",
+    "no_cases": "This agent has no eval cases",
+    "provider_key_missing": "No API key is configured for {provider}",
+    "too_many_cases": "Too many cases: {count} (the limit is 50)",
+    "finding_not_triaged": "Accept or dismiss the finding first",
+    "expectation_outside_diff": "The expectation range {file}:{start}–{end} is outside the diff",
+    "frozen_input_too_large": "The frozen diff is too large (the limit is 200 KB)",
+    "agent_unavailable": "The agent that produced this finding no longer exists",
+    "diff_unavailable": "No diff is available for this finding's file",
+    "invalid_compare_pair": "Select two different runs of the same agent",
+    "generic": "Something went wrong. Try again.",
+    "decision_changed": "The finding was re-triaged since this draft was opened. Reopen the draft.",
+    "case_run_in_flight": "A case run is already in progress for this agent"
+  },
+  "caseModal": {
+    "draftTitle": "Eval case draft",
+    "newTitle": "New eval case",
+    "typeFromDecision": "Type is set by your decision on the finding",
+    "runCase": "Run case",
+    "running": "Running…",
+    "saveGate": "Run the case on its current content before saving",
+    "stale": "Inputs changed since this run — run again",
+    "discardConfirm": "Discard this draft?",
+    "discard": "Discard",
+    "keepEditing": "Keep editing",
+    "resultPassed": "Passed",
+    "resultFailed": "Failed",
+    "resultExpected": "expected {expected} at {file}:{start}–{end}, got {got}",
+    "resultMeta": "{duration} · {cost}",
+    "findingsHeading": "Agent findings",
+    "matched": "matched"
+  },
+  "reason": {
+    "timeout": "Timed out after 120 s",
+    "provider_error": "The model provider returned an error",
+    "invalid_output": "The model returned output that could not be read",
+    "error": "The case could not be run"
+  },
+  "compare": {
+    "title": "Compare runs",
+    "action": "Compare",
+    "older": "Older",
+    "newer": "Newer",
+    "onlyInOlder": "Only in the older run",
+    "onlyInNewer": "Only in the newer run",
+    "promptDiff": "System prompt diff",
+    "snapshotUnavailable": "Prompt snapshot unavailable for v{version}",
+    "skills": "Skills",
+    "skillAdded": "added",
+    "skillRemoved": "removed",
+    "skillChanged": "changed"
+  },
+  "insight": {
+    "withCases": "{metric} {direction, select, up {rose} other {dipped}} {points, plural, one {# pt} other {# pts}} on v{version} · cases that changed: {cases}",
+    "noCases": "{metric} {direction, select, up {rose} other {dipped}} {points, plural, one {# pt} other {# pts}} on v{version}"
+  },
+  "versionLabel": "v{version}",
+  "versionSkillsDelta": "v{version} · skills Δ"
 }

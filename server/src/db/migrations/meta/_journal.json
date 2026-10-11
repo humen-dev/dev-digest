@@ -127,6 +127,20 @@
       "when": 1791306803600,
       "tag": "0017_onboarding_tour",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791566273024,
+      "tag": "0018_eval_reshape_add",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791566323986,
+      "tag": "0019_eval_reshape_drop",
+      "breakpoints": true
     }
   ]
 }

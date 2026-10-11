@@ -1,8 +1,12 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { FindingRecord } from "@devdigest/shared";
 import messages from "../../../../../../../../messages/en/prReview.json";
+import evalMessages from "../../../../../../../../messages/en/eval.json";
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) })); // EvalCaseAction navigates to an existing case
+
 import { FindingCard } from "./FindingCard";
 
 afterEach(cleanup);
@@ -28,9 +32,11 @@ const FINDING: FindingRecord = {
 
 function renderWithIntl(ui: React.ReactElement) {
   return render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      {ui}
-    </NextIntlClientProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <NextIntlClientProvider locale="en" messages={{ prReview: messages, eval: evalMessages }}>
+        {ui}
+      </NextIntlClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -56,5 +62,17 @@ describe("FindingCard (smoke, both themes)", () => {
     expect(onAction).toHaveBeenCalledWith("accept");
     fireEvent.click(screen.getByText("Reject"));
     expect(onAction).toHaveBeenCalledWith("dismiss");
+  });
+
+  it("offers 'Turn into eval case' only once the finding is accepted or dismissed — AC-3", () => {
+    const { unmount } = renderWithIntl(<FindingCard f={FINDING} defaultExpanded onAction={() => {}} />);
+    expect(screen.getByRole("button", { name: "Turn into eval case" })).toBeDisabled();
+    expect(screen.getByText("Accept or dismiss first")).toBeInTheDocument();
+    unmount();
+
+    renderWithIntl(
+      <FindingCard f={{ ...FINDING, accepted_at: "2026-10-09T10:00:00.000Z" }} defaultExpanded onAction={() => {}} />,
+    );
+    expect(screen.getByRole("button", { name: "Turn into eval case" })).toBeEnabled();
   });
 });

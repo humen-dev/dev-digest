@@ -22,3 +22,9 @@
     transform: translateY(0);
   }
 }
+
+/* A flex <input> keeps its intrinsic min-width (~20ch) and overflows narrow columns;
+   the vendored TextInput does not expose the input's style, so opt in per field. */
+.dd-shrink-input input {
+  min-width: 0;
+}

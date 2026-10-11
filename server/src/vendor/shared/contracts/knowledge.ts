@@ -26,41 +26,96 @@ export const Conformance = z.object({
 export type Conformance = z.infer<typeof Conformance>;
 
 // ---- Eval ----
-export const EvalPerTrace = z.object({
-  name: z.string(),
-  pass: z.boolean(),
-  expected: z.unknown(),
-  actual: z.unknown(),
-});
-export type EvalPerTrace = z.infer<typeof EvalPerTrace>;
-
-export const EvalRun = z.object({
-  recall: z.number().min(0).max(1),
-  precision: z.number().min(0).max(1),
-  citation_accuracy: z.number().min(0).max(1),
-  traces_passed: z.number().int(),
-  traces_total: z.number().int(),
-  duration_ms: z.number().int(),
-  cost_usd: z.number().nullable(),
-  per_trace: z.array(EvalPerTrace),
-});
-export type EvalRun = z.infer<typeof EvalRun>;
-
 export const EvalOwnerKind = z.enum(['skill', 'agent']);
 export type EvalOwnerKind = z.infer<typeof EvalOwnerKind>;
+
+export const EvalExpectationType = z.enum(['must_find', 'must_not_flag']);
+export type EvalExpectationType = z.infer<typeof EvalExpectationType>;
+
+export const EvalExpectation = z
+  .object({
+    type: EvalExpectationType,
+    file: z.string().min(1),
+    start_line: z.number().int().min(1),
+    end_line: z.number().int().min(1),
+  })
+  .strict()
+  .refine((e) => e.start_line <= e.end_line, {
+    path: ['start_line'],
+    message: 'start_line must be <= end_line',
+  });
+export type EvalExpectation = z.infer<typeof EvalExpectation>;
+
+export const EvalCaseMeta = z.object({
+  pr_id: z.string().nullable(),
+  pr_number: z.number().int().nullable(),
+  title: z.string(),
+  body: z.string().nullable(),
+});
+export type EvalCaseMeta = z.infer<typeof EvalCaseMeta>;
 
 export const EvalCase = z.object({
   id: z.string(),
   owner_kind: EvalOwnerKind,
   owner_id: z.string(),
   name: z.string(),
+  notes: z.string().nullable(),
   input_diff: z.string(),
-  input_files: z.unknown(),
-  input_meta: z.unknown(),
-  expected_output: z.unknown(),
-  notes: z.string().nullish(),
+  input_files: z.array(z.string()),
+  input_meta: EvalCaseMeta,
+  expectation: EvalExpectation,
+  source_finding_id: z.string().nullable(),
+  severity: z.string().nullable(),
+  category: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
 });
 export type EvalCase = z.infer<typeof EvalCase>;
+
+export const EvalActualFinding = z.object({
+  file: z.string(),
+  start_line: z.number().int(),
+  end_line: z.number().int(),
+  severity: z.string(),
+  category: z.string(),
+  title: z.string(),
+  rationale: z.string(),
+  matched: z.boolean(),
+});
+export type EvalActualFinding = z.infer<typeof EvalActualFinding>;
+
+export const EvalCaseOutcome = z.object({
+  case_id: z.string(),
+  name: z.string(),
+  expectation_type: EvalExpectationType,
+  status: z.enum(['scored', 'errored']),
+  pass: z.boolean().nullable(),
+  error_reason: z.string().nullable(),
+  findings_total: z.number().int(),
+  findings_matched: z.number().int(),
+  grounding_kept: z.number().int(),
+  grounding_total: z.number().int(),
+  actual: z.array(EvalActualFinding),
+  duration_ms: z.number().int(),
+  cost_usd: z.number().nullable(),
+});
+export type EvalCaseOutcome = z.infer<typeof EvalCaseOutcome>;
+
+const Ratio = z.number().min(0).max(1).nullable();
+
+export const EvalRunMetrics = z.object({
+  recall: Ratio,
+  precision: Ratio,
+  citation_accuracy: Ratio,
+  cases_passed: z.number().int(),
+  cases_total: z.number().int(),
+  cases_errored: z.number().int(),
+  uncovered_findings: z.number().int(),
+});
+export type EvalRunMetrics = z.infer<typeof EvalRunMetrics>;
+
+export const EvalRun = EvalRunMetrics.extend({ per_case: z.array(EvalCaseOutcome) });
+export type EvalRun = z.infer<typeof EvalRun>;
 
 // ---- Memory ----
 export const MemoryScope = z.enum(['repo', 'global', 'team']);

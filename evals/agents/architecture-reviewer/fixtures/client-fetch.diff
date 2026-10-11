@@ -1,0 +1,48 @@
+diff --git a/client/src/app/digests/_components/DigestList/DigestList.tsx b/client/src/app/digests/_components/DigestList/DigestList.tsx
+new file mode 100644
+--- /dev/null
++++ b/client/src/app/digests/_components/DigestList/DigestList.tsx
+@@ -0,0 +1,37 @@
++'use client';
++
++import { useEffect, useState } from 'react';
++import { useTranslations } from 'next-intl';
++import type { DigestListItem } from '@devdigest/shared';
++import { RepoBadge } from '../../../repos/[repoId]/_components/RepoCard/RepoBadge';
++
++const PAGE_SIZE = 20;
++
++export function DigestList({ repoId }: { repoId: string }) {
++  const t = useTranslations('digests');
++  const [items, setItems] = useState<DigestListItem[]>([]);
++  const [page, setPage] = useState(0);
++
++  useEffect(() => {
++    fetch(`${process.env.NEXT_PUBLIC_API_URL}/repos/${repoId}/digests?offset=${page * PAGE_SIZE}&limit=${PAGE_SIZE}`)
++      .then((r) => r.json())
++      .then((body) => setItems(body.items));
++  }, [repoId, page]);
++
++  return (
++    <section>
++      <h2>{t('title')}</h2>
++      <ul>
++        {items.map((d) => (
++          <li key={d.id}>
++            <RepoBadge repoId={repoId} />
++            {d.title}
++          </li>
++        ))}
++      </ul>
++      <button onClick={() => setPage((p) => p + 1)}>{t('more')}</button>
++    </section>
++  );
++}
++
++export default DigestList;
+diff --git a/client/src/app/digests/_components/DigestList/index.ts b/client/src/app/digests/_components/DigestList/index.ts
+new file mode 100644
+--- /dev/null
++++ b/client/src/app/digests/_components/DigestList/index.ts
+@@ -0,0 +1 @@
++export { DigestList } from './DigestList';

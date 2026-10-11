@@ -1,0 +1,35 @@
+# Skill evals pipeline — thin caller of the reusable eval engine (evals.yml) with suite: skills.
+# Runs when a skill in .claude/skills/ or its eval in evals/skills/ changes.
+# Selection (which skills suites run) is done by evals/src/ci/select-cli.ts from the PR diff;
+# a change with no matching eval prints SKIP. Model jobs are non-blocking (see evals.yml).
+name: eval-skills
+
+on:
+  pull_request:
+    paths:
+      - '.claude/skills/**'
+      - 'evals/skills/**'
+      - 'evals/src/**'
+      - 'evals/package.json'
+      - 'evals/pnpm-lock.yaml'
+      - 'evals/*.config.*'
+      - 'evals/tsconfig*.json'
+      - 'evals/proxy/**'
+      - '.github/workflows/evals.yml'
+      - '.github/actions/evals-setup/**'
+      - '.github/workflows/eval-skills.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval-skills-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evals:
+    uses: ./.github/workflows/evals.yml
+    with:
+      suite: skills
+      scope: auto
+    secrets: inherit

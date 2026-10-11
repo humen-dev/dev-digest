@@ -1,0 +1,37 @@
+# Workflow evals pipeline — thin caller of the reusable eval engine (evals.yml) with suite: workflow.
+# Runs when the harness changes: CLAUDE.md / AGENTS.md, settings, hooks, or a skill/agent whose activation or dispatch a workflow eval checks.
+# Selection (which workflow suites run) is done by evals/src/ci/select-cli.ts from the PR diff;
+# a change with no matching eval prints SKIP. Model jobs are non-blocking (see evals.yml).
+name: eval-workflow
+
+on:
+  pull_request:
+    paths:
+      - '.claude/**'
+      - '**/CLAUDE.md'
+      - '**/AGENTS.md'
+      - 'evals/workflow/**'
+      - 'evals/src/**'
+      - 'evals/package.json'
+      - 'evals/pnpm-lock.yaml'
+      - 'evals/*.config.*'
+      - 'evals/tsconfig*.json'
+      - 'evals/proxy/**'
+      - '.github/workflows/evals.yml'
+      - '.github/actions/evals-setup/**'
+      - '.github/workflows/eval-workflow.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval-workflow-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evals:
+    uses: ./.github/workflows/evals.yml
+    with:
+      suite: workflow
+      scope: auto
+    secrets: inherit

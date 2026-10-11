@@ -1,0 +1,5360 @@
+{
+  "tool": "dependency-checker",
+  "version": "1.0.0",
+  "generatedAt": "2026-10-08T16:24:08.181Z",
+  "root": "D:/Code/PycharmProjects/dev-digest",
+  "options": {
+    "audit": true,
+    "outdated": true,
+    "packages": "all"
+  },
+  "packages": [
+    {
+      "name": "@devdigest/web",
+      "dir": "client",
+      "manager": "pnpm",
+      "lockfiles": [
+        "pnpm"
+      ],
+      "unreachableBytes": 911234,
+      "strayDirs": [],
+      "lockPackages": 536,
+      "installed": true,
+      "nodeModulesBytes": 588256336,
+      "reachableBytes": 587345102,
+      "reachablePackages": 438,
+      "prodBytes": 491935469,
+      "prodPackages": 267,
+      "sourceFiles": 561,
+      "engines": null,
+      "aliases": [
+        {
+          "alias": "@/*",
+          "target": "./src/*"
+        },
+        {
+          "alias": "@devdigest/shared",
+          "target": "./src/vendor/shared/index.ts"
+        },
+        {
+          "alias": "@devdigest/shared/*",
+          "target": "./src/vendor/shared/*"
+        },
+        {
+          "alias": "@devdigest/ui",
+          "target": "./src/vendor/ui/index.ts"
+        },
+        {
+          "alias": "@devdigest/ui/*",
+          "target": "./src/vendor/ui/*"
+        }
+      ],
+      "deps": [
+        {
+          "name": "@tanstack/react-query",
+          "kind": "prod",
+          "specifier": "^5.62.8",
+          "installedVersion": "5.101.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "api-client",
+          "selfBytes": 858893,
+          "files": 329,
+          "closureBytes": 3343970,
+          "closurePackages": 3,
+          "exclusiveBytes": 3172366,
+          "usage": {
+            "prodFiles": 17,
+            "testFiles": 6,
+            "configFiles": 0,
+            "examples": [
+              "src/app/agents/_components/AgentCard/AgentCard.test.tsx",
+              "src/app/repos/[repoId]/pulls/[number]/page.test.tsx",
+              "src/app/repos/[repoId]/pulls/[number]/page.tsx"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "lucide-react",
+          "kind": "prod",
+          "specifier": "^0.469.0",
+          "installedVersion": "0.469.0",
+          "license": "ISC",
+          "deprecated": null,
+          "category": "ui",
+          "selfBytes": 28595555,
+          "files": 3521,
+          "closureBytes": 28767159,
+          "closurePackages": 2,
+          "exclusiveBytes": 28595555,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/vendor/ui/icons.tsx"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "mermaid",
+          "kind": "prod",
+          "specifier": "^11.15.0",
+          "installedVersion": "11.15.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "ui",
+          "selfBytes": 76342428,
+          "files": 888,
+          "closureBytes": 120758396,
+          "closurePackages": 111,
+          "exclusiveBytes": 118938229,
+          "usage": {
+            "prodFiles": 2,
+            "testFiles": 2,
+            "configFiles": 0,
+            "examples": [
+              "src/app/repos/[repoId]/tour/_components/TourSections/_components/ArchitectureSection/ArchitectureSection.test.tsx",
+              "src/app/repos/[repoId]/tour/_components/TourView/helpers.test.ts",
+              "src/app/repos/[repoId]/tour/_components/TourView/helpers.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "next",
+          "kind": "prod",
+          "specifier": "^15.1.3",
+          "installedVersion": "15.5.19",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "framework",
+          "selfBytes": 139468164,
+          "files": 7270,
+          "closureBytes": 320158602,
+          "closurePackages": 20,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 26,
+            "testFiles": 4,
+            "configFiles": 2,
+            "examples": [
+              "next-env.d.ts",
+              "next.config.mjs",
+              "src/app/agents/[id]/page.tsx"
+            ],
+            "scriptBins": [
+              "next"
+            ],
+            "implicit": "peer of next-intl"
+          }
+        },
+        {
+          "name": "next-intl",
+          "kind": "prod",
+          "specifier": "^3.26.0",
+          "installedVersion": "3.26.5",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "framework",
+          "selfBytes": 364196,
+          "files": 316,
+          "closureBytes": 322531543,
+          "closurePackages": 31,
+          "exclusiveBytes": 2088594,
+          "usage": {
+            "prodFiles": 102,
+            "testFiles": 49,
+            "configFiles": 1,
+            "examples": [
+              "next.config.mjs",
+              "src/app/agents/[id]/_components/AgentEditor/AgentEditor.test.tsx",
+              "src/app/agents/[id]/_components/AgentEditor/AgentEditor.tsx"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "react",
+          "kind": "prod",
+          "specifier": "^19.0.0",
+          "installedVersion": "19.2.7",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "framework",
+          "selfBytes": 171604,
+          "files": 27,
+          "closureBytes": 171604,
+          "closurePackages": 1,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 242,
+            "testFiles": 7,
+            "configFiles": 0,
+            "examples": [
+              "src/app/agents/[id]/page.tsx",
+              "src/app/agents/[id]/_components/AgentEditor/AgentEditor.tsx",
+              "src/app/agents/[id]/_components/AgentEditor/styles.ts"
+            ],
+            "scriptBins": [],
+            "implicit": "peer of @tanstack/react-query"
+          }
+        },
+        {
+          "name": "react-dom",
+          "kind": "prod",
+          "specifier": "^19.0.0",
+          "installedVersion": "19.2.7",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "framework",
+          "selfBytes": 7319413,
+          "files": 43,
+          "closureBytes": 7573682,
+          "closurePackages": 3,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/app/repos/[repoId]/pulls/_components/FindingsHoverCard/FindingsHoverCard.tsx"
+            ],
+            "scriptBins": [],
+            "implicit": "peer of next"
+          }
+        },
+        {
+          "name": "react-markdown",
+          "kind": "prod",
+          "specifier": "^9.0.3",
+          "installedVersion": "9.1.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "ui",
+          "selfBytes": 51913,
+          "files": 9,
+          "closureBytes": 4614187,
+          "closurePackages": 85,
+          "exclusiveBytes": 923482,
+          "usage": {
+            "prodFiles": 2,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/app/repos/[repoId]/tour/_components/TourSections/_components/ArchitectureSection/ArchitectureSection.tsx",
+              "src/vendor/ui/primitives/Markdown.tsx"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "recharts",
+          "kind": "prod",
+          "specifier": "^2.15.0",
+          "installedVersion": "2.15.4",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "ui",
+          "selfBytes": 4650058,
+          "files": 291,
+          "closureBytes": 18546365,
+          "closurePackages": 44,
+          "exclusiveBytes": 8027148,
+          "usage": {
+            "prodFiles": 2,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/vendor/ui/charts/Donut.tsx",
+              "src/vendor/ui/charts/LineChart.tsx"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "remark-gfm",
+          "kind": "prod",
+          "specifier": "^4.0.0",
+          "installedVersion": "4.0.1",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "ui",
+          "selfBytes": 21993,
+          "files": 8,
+          "closureBytes": 2382770,
+          "closurePackages": 68,
+          "exclusiveBytes": 550946,
+          "usage": {
+            "prodFiles": 2,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/app/repos/[repoId]/tour/_components/TourSections/_components/ArchitectureSection/ArchitectureSection.tsx",
+              "src/vendor/ui/primitives/Markdown.tsx"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "zod",
+          "kind": "prod",
+          "specifier": "^3.24.1",
+          "installedVersion": "3.25.76",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "validation",
+          "selfBytes": 3594196,
+          "files": 596,
+          "closureBytes": 3594196,
+          "closurePackages": 1,
+          "exclusiveBytes": 3594196,
+          "usage": {
+            "prodFiles": 13,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/vendor/shared/adapters.ts",
+              "src/vendor/shared/contracts/brief.ts",
+              "src/vendor/shared/contracts/eval-ci.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "@tailwindcss/postcss",
+          "kind": "dev",
+          "specifier": "^4.0.0",
+          "installedVersion": "4.3.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "ui",
+          "selfBytes": 99688,
+          "files": 7,
+          "closureBytes": 17757533,
+          "closurePackages": 23,
+          "exclusiveBytes": 5666733,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 1,
+            "examples": [
+              "postcss.config.mjs"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "@testing-library/jest-dom",
+          "kind": "dev",
+          "specifier": "^6.6.3",
+          "installedVersion": "6.9.1",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "testing",
+          "selfBytes": 300900,
+          "files": 39,
+          "closureBytes": 1044992,
+          "closurePackages": 10,
+          "exclusiveBytes": 1038619,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 1,
+            "configFiles": 0,
+            "examples": [
+              "src/test/setup.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "@testing-library/react",
+          "kind": "dev",
+          "specifier": "^16.1.0",
+          "installedVersion": "16.3.2",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "testing",
+          "selfBytes": 336758,
+          "files": 25,
+          "closureBytes": 13146093,
+          "closurePackages": 22,
+          "exclusiveBytes": 3514441,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 54,
+            "configFiles": 0,
+            "examples": [
+              "src/app/agents/[id]/_components/AgentEditor/AgentEditor.test.tsx",
+              "src/app/agents/[id]/_components/AgentEditor/_components/ContextTab/ContextTab.test.tsx",
+              "src/app/agents/[id]/_components/AgentEditor/_components/SkillsTab/SkillsTab.test.tsx"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "@types/node",
+          "kind": "dev",
+          "specifier": "^22.10.0",
+          "installedVersion": "22.19.19",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "types",
+          "selfBytes": 2427022,
+          "files": 73,
+          "closureBytes": 2510702,
+          "closurePackages": 2,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [],
+            "implicit": "types for node"
+          }
+        },
+        {
+          "name": "@types/react",
+          "kind": "dev",
+          "specifier": "^19.0.2",
+          "installedVersion": "19.2.16",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "types",
+          "selfBytes": 407675,
+          "files": 16,
+          "closureBytes": 1661124,
+          "closurePackages": 2,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [],
+            "implicit": "types for react"
+          }
+        },
+        {
+          "name": "@types/react-dom",
+          "kind": "dev",
+          "specifier": "^19.0.2",
+          "installedVersion": "19.2.3",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "types",
+          "selfBytes": 30063,
+          "files": 17,
+          "closureBytes": 1691187,
+          "closurePackages": 3,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [],
+            "implicit": "types for react-dom"
+          }
+        },
+        {
+          "name": "@vitejs/plugin-react",
+          "kind": "dev",
+          "specifier": "^4.3.4",
+          "installedVersion": "4.7.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 60271,
+          "files": 8,
+          "closureBytes": 46215273,
+          "closurePackages": 64,
+          "exclusiveBytes": 9525198,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 1,
+            "examples": [
+              "vitest.config.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "jsdom",
+          "kind": "dev",
+          "specifier": "^25.0.1",
+          "installedVersion": "25.0.1",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "testing",
+          "selfBytes": 3111179,
+          "files": 480,
+          "closureBytes": 13852190,
+          "closurePackages": 60,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 1,
+            "examples": [
+              "vitest.config.ts"
+            ],
+            "scriptBins": [],
+            "implicit": "peer of vitest"
+          }
+        },
+        {
+          "name": "postcss",
+          "kind": "dev",
+          "specifier": "^8.4.49",
+          "installedVersion": "8.5.15",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "ui",
+          "selfBytes": 205618,
+          "files": 55,
+          "closureBytes": 385028,
+          "closurePackages": 4,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [],
+            "implicit": null
+          },
+          "providedBy": "next"
+        },
+        {
+          "name": "tailwindcss",
+          "kind": "dev",
+          "specifier": "^4.0.0",
+          "installedVersion": "4.3.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "ui",
+          "selfBytes": 754919,
+          "files": 34,
+          "closureBytes": 754919,
+          "closurePackages": 1,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 2,
+            "examples": [
+              "src/app/globals.css",
+              "src/vendor/ui/styles.css"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          },
+          "providedBy": "@tailwindcss/postcss"
+        },
+        {
+          "name": "typescript",
+          "kind": "dev",
+          "specifier": "^5.7.2",
+          "installedVersion": "5.9.3",
+          "license": "Apache-2.0",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 23625066,
+          "files": 132,
+          "closureBytes": 23625066,
+          "closurePackages": 1,
+          "exclusiveBytes": 23625066,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [
+              "tsc"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "vitest",
+          "kind": "dev",
+          "specifier": "^2.1.8",
+          "installedVersion": "2.1.9",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "testing",
+          "selfBytes": 1640576,
+          "files": 105,
+          "closureBytes": 51774787,
+          "closurePackages": 107,
+          "exclusiveBytes": 3647985,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 70,
+            "configFiles": 1,
+            "examples": [
+              "src/app/agents/[id]/_components/AgentEditor/AgentEditor.test.tsx",
+              "src/app/agents/[id]/_components/AgentEditor/_components/ContextTab/ContextTab.test.tsx",
+              "src/app/agents/[id]/_components/AgentEditor/_components/SkillsTab/helpers.test.ts"
+            ],
+            "scriptBins": [
+              "vitest"
+            ],
+            "implicit": null
+          }
+        }
+      ],
+      "duplicates": [
+        {
+          "name": "@formatjs/intl-localematcher",
+          "versions": [
+            "0.5.10",
+            "0.6.2"
+          ],
+          "wasteBytes": 398848,
+          "inProd": true
+        },
+        {
+          "name": "layout-base",
+          "versions": [
+            "1.0.2",
+            "2.0.1"
+          ],
+          "wasteBytes": 301942,
+          "inProd": true
+        },
+        {
+          "name": "dom-accessibility-api",
+          "versions": [
+            "0.5.16",
+            "0.6.3"
+          ],
+          "wasteBytes": 257340,
+          "inProd": false
+        },
+        {
+          "name": "d3-shape",
+          "versions": [
+            "1.3.7",
+            "3.2.0"
+          ],
+          "wasteBytes": 231330,
+          "inProd": true
+        },
+        {
+          "name": "postcss",
+          "versions": [
+            "8.4.31",
+            "8.5.15"
+          ],
+          "wasteBytes": 196517,
+          "inProd": true
+        },
+        {
+          "name": "aria-query",
+          "versions": [
+            "5.3.0",
+            "5.3.2"
+          ],
+          "wasteBytes": 176114,
+          "inProd": false
+        },
+        {
+          "name": "commander",
+          "versions": [
+            "7.2.0",
+            "8.3.0"
+          ],
+          "wasteBytes": 144710,
+          "inProd": true
+        },
+        {
+          "name": "d3-array",
+          "versions": [
+            "2.12.1",
+            "3.2.4"
+          ],
+          "wasteBytes": 135892,
+          "inProd": true
+        },
+        {
+          "name": "rrweb-cssom",
+          "versions": [
+            "0.7.1",
+            "0.8.0"
+          ],
+          "wasteBytes": 101567,
+          "inProd": false
+        },
+        {
+          "name": "cose-base",
+          "versions": [
+            "1.0.3",
+            "2.2.0"
+          ],
+          "wasteBytes": 93352,
+          "inProd": true
+        },
+        {
+          "name": "semver",
+          "versions": [
+            "6.3.1",
+            "7.8.1"
+          ],
+          "wasteBytes": 68343,
+          "inProd": true
+        },
+        {
+          "name": "react-is",
+          "versions": [
+            "16.13.1",
+            "17.0.2",
+            "18.3.1"
+          ],
+          "wasteBytes": 47967,
+          "inProd": true
+        },
+        {
+          "name": "tinyexec",
+          "versions": [
+            "0.3.2",
+            "1.2.4"
+          ],
+          "wasteBytes": 22860,
+          "inProd": true
+        },
+        {
+          "name": "d3-path",
+          "versions": [
+            "1.0.9",
+            "3.1.0"
+          ],
+          "wasteBytes": 20235,
+          "inProd": true
+        },
+        {
+          "name": "lru-cache",
+          "versions": [
+            "10.4.3",
+            "5.1.1"
+          ],
+          "wasteBytes": 15714,
+          "inProd": false
+        },
+        {
+          "name": "internmap",
+          "versions": [
+            "1.0.1",
+            "2.0.3"
+          ],
+          "wasteBytes": 10299,
+          "inProd": true
+        },
+        {
+          "name": "@types/unist",
+          "versions": [
+            "2.0.11",
+            "3.0.3"
+          ],
+          "wasteBytes": 6262,
+          "inProd": true
+        }
+      ],
+      "audit": {
+        "vulns": [
+          {
+            "name": "next",
+            "severity": "critical",
+            "advisories": 12,
+            "direct": true,
+            "inProd": true,
+            "title": "Next.js: Denial of Service in App Router using Server Actions; Next.js: Server-Side Request Forgery in Server Actions on custom servers; Next.js: Cache confusion of response bodies for requests with bodies",
+            "fix": ">=15.5.27"
+          },
+          {
+            "name": "vitest",
+            "severity": "critical",
+            "advisories": 2,
+            "direct": true,
+            "inProd": false,
+            "title": "When Vitest UI server is listening, arbitrary file can be read and executed; Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock",
+            "fix": ">=4.1.11"
+          },
+          {
+            "name": "tinypool",
+            "severity": "critical",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution; Tinypool: Prototype Pollution Gadget to RCE in run() options",
+            "fix": ">=2.1.2"
+          },
+          {
+            "name": "postcss",
+            "severity": "high",
+            "advisories": 4,
+            "direct": true,
+            "inProd": true,
+            "title": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output; PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments; PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+            "fix": ">=8.5.23"
+          },
+          {
+            "name": "sharp",
+            "severity": "high",
+            "advisories": 3,
+            "direct": false,
+            "inProd": true,
+            "title": "sharp inherited vulnerabilities in libvips: CVE-2026-33327, CVE-2026-33328, CVE-2026-35590, CVE-2026-35591; sharp: Vulnerabilities in libheif: GHSA-g89c-p67h-r497 and GHSA-2jg2-4ch7-h545; sharp : Vulnerability in librsvg dependency CVE-2026-96889",
+            "fix": ">=0.35.5"
+          },
+          {
+            "name": "nanoid",
+            "severity": "high",
+            "advisories": 2,
+            "direct": false,
+            "inProd": true,
+            "title": "nanoid: non-secure generators can loop indefinitely with negative size; nanoid: custom generators can loop indefinitely when size is zero",
+            "fix": ">=3.3.18"
+          },
+          {
+            "name": "source-map-js",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": true,
+            "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+            "fix": ">=1.2.2"
+          },
+          {
+            "name": "vite",
+            "severity": "high",
+            "advisories": 3,
+            "direct": false,
+            "inProd": false,
+            "title": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling; launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows; vite: `server.fs.deny` bypass on Windows alternate paths",
+            "fix": ">=6.4.3"
+          },
+          {
+            "name": "form-data",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames",
+            "fix": ">=4.0.6"
+          },
+          {
+            "name": "browserslist",
+            "severity": "high",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM; Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
+            "fix": ">=4.28.7"
+          },
+          {
+            "name": "next-intl",
+            "severity": "moderate",
+            "advisories": 2,
+            "direct": true,
+            "inProd": true,
+            "title": "next-intl has an open redirect vulnerability; next-intl has prototype pollution with `experimental.messages.precompile` via attacker-controlled translation catalog keys",
+            "fix": ">=4.9.2"
+          },
+          {
+            "name": "dompurify",
+            "severity": "moderate",
+            "advisories": 5,
+            "direct": false,
+            "inProd": true,
+            "title": "DOMPurify: Permanent `ALLOWED_ATTR` pollution via `setConfig()` bypassing the hook clone-guard (incomplete fix of the 3.4.7 hook-pollution patch); DOMPurify: Trusted Types policy survives `clearConfig()` and can poison later `RETURN_TRUSTED_TYPE` output; DOMPurify: IN_PLACE hook removal leaves a detached subtree executable, causing XSS",
+            "fix": ">=3.4.9"
+          },
+          {
+            "name": "mermaid",
+            "severity": "moderate",
+            "advisories": 5,
+            "direct": true,
+            "inProd": true,
+            "title": "Mermaid configuration APIs allow prototype pollution; Mermaid allows CSS injection applying to sibling elements of the diagram; Mermaid Architecture diagrams are vulnerable to prototype pollution",
+            "fix": ">=11.16.1"
+          },
+          {
+            "name": "esbuild",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "esbuild enables any website to send any requests to the development server and read the response",
+            "fix": ">=0.25.0"
+          },
+          {
+            "name": "@vitest/mocker",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock",
+            "fix": ">=4.1.11"
+          },
+          {
+            "name": "baseline-browser-mapping",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "baseline-browser-mapping process termination on invalid input causes denial of service",
+            "fix": ">=2.11.0"
+          },
+          {
+            "name": "katex",
+            "severity": "low",
+            "advisories": 1,
+            "direct": false,
+            "inProd": true,
+            "title": "KaTeX: Existing prototype pollution can bypass trust restrictions",
+            "fix": ">=0.18.2"
+          }
+        ]
+      },
+      "outdated": {
+        "items": [
+          {
+            "name": "@tailwindcss/postcss",
+            "current": "4.3.0",
+            "wanted": "4.3.0",
+            "latest": "4.3.3",
+            "deprecated": false
+          },
+          {
+            "name": "@testing-library/react",
+            "current": "16.3.2",
+            "wanted": "16.3.2",
+            "latest": "16.3.3",
+            "deprecated": false
+          },
+          {
+            "name": "postcss",
+            "current": "8.5.15",
+            "wanted": "8.5.15",
+            "latest": "8.5.29",
+            "deprecated": false
+          },
+          {
+            "name": "tailwindcss",
+            "current": "4.3.0",
+            "wanted": "4.3.0",
+            "latest": "4.3.3",
+            "deprecated": false
+          },
+          {
+            "name": "@tanstack/react-query",
+            "current": "5.101.0",
+            "wanted": "5.101.0",
+            "latest": "5.104.1",
+            "deprecated": false
+          },
+          {
+            "name": "@types/react",
+            "current": "19.2.16",
+            "wanted": "19.2.16",
+            "latest": "19.3.0",
+            "deprecated": false
+          },
+          {
+            "name": "@types/react-dom",
+            "current": "19.2.3",
+            "wanted": "19.2.3",
+            "latest": "19.3.0",
+            "deprecated": false
+          },
+          {
+            "name": "react",
+            "current": "19.2.7",
+            "wanted": "19.2.7",
+            "latest": "19.3.0",
+            "deprecated": false
+          },
+          {
+            "name": "react-dom",
+            "current": "19.2.7",
+            "wanted": "19.2.7",
+            "latest": "19.3.0",
+            "deprecated": false
+          },
+          {
+            "name": "@testing-library/jest-dom",
+            "current": "6.9.1",
+            "wanted": "6.9.1",
+            "latest": "7.0.1",
+            "deprecated": false
+          },
+          {
+            "name": "@types/node",
+            "current": "22.19.19",
+            "wanted": "22.19.19",
+            "latest": "26.6.4",
+            "deprecated": false
+          },
+          {
+            "name": "@vitejs/plugin-react",
+            "current": "4.7.0",
+            "wanted": "4.7.0",
+            "latest": "6.1.2",
+            "deprecated": false
+          },
+          {
+            "name": "jsdom",
+            "current": "25.0.1",
+            "wanted": "25.0.1",
+            "latest": "30.1.2",
+            "deprecated": false
+          },
+          {
+            "name": "lucide-react",
+            "current": "0.469.0",
+            "wanted": "0.469.0",
+            "latest": "1.52.0",
+            "deprecated": false
+          },
+          {
+            "name": "mermaid",
+            "current": "11.15.0",
+            "wanted": "11.15.0",
+            "latest": "12.1.0",
+            "deprecated": false
+          },
+          {
+            "name": "next",
+            "current": "15.5.19",
+            "wanted": "15.5.19",
+            "latest": "16.4.0",
+            "deprecated": false
+          },
+          {
+            "name": "next-intl",
+            "current": "3.26.5",
+            "wanted": "3.26.5",
+            "latest": "4.14.9",
+            "deprecated": false
+          },
+          {
+            "name": "react-markdown",
+            "current": "9.1.0",
+            "wanted": "9.1.0",
+            "latest": "10.1.0",
+            "deprecated": false
+          },
+          {
+            "name": "recharts",
+            "current": "2.15.4",
+            "wanted": "2.15.4",
+            "latest": "3.10.1",
+            "deprecated": false
+          },
+          {
+            "name": "typescript",
+            "current": "5.9.3",
+            "wanted": "5.9.3",
+            "latest": "7.0.2",
+            "deprecated": false
+          },
+          {
+            "name": "vitest",
+            "current": "2.1.9",
+            "wanted": "2.1.9",
+            "latest": "5.0.3",
+            "deprecated": false
+          },
+          {
+            "name": "zod",
+            "current": "3.25.76",
+            "wanted": "3.25.76",
+            "latest": "4.6.5",
+            "deprecated": false
+          }
+        ]
+      },
+      "analysisMs": 5877
+    },
+    {
+      "name": "@devdigest/e2e",
+      "dir": "e2e",
+      "manager": "npm",
+      "lockfiles": [
+        "npm"
+      ],
+      "unreachableBytes": 9899,
+      "strayDirs": [],
+      "lockPackages": 32,
+      "installed": true,
+      "nodeModulesBytes": 38446933,
+      "reachableBytes": 38437034,
+      "reachablePackages": 6,
+      "prodBytes": 0,
+      "prodPackages": 0,
+      "sourceFiles": 3,
+      "engines": null,
+      "aliases": [],
+      "deps": [
+        {
+          "name": "@types/node",
+          "kind": "dev",
+          "specifier": "^22.10.0",
+          "installedVersion": "22.19.21",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "types",
+          "selfBytes": 2427226,
+          "files": 73,
+          "closureBytes": 2510906,
+          "closurePackages": 2,
+          "exclusiveBytes": 2510906,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [],
+            "implicit": "types for node"
+          }
+        },
+        {
+          "name": "tsx",
+          "kind": "dev",
+          "specifier": "^4.19.2",
+          "installedVersion": "4.22.4",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 518418,
+          "files": 50,
+          "closureBytes": 12301062,
+          "closurePackages": 3,
+          "exclusiveBytes": 12301062,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [
+              "tsx"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "typescript",
+          "kind": "dev",
+          "specifier": "^5.7.2",
+          "installedVersion": "5.9.3",
+          "license": "Apache-2.0",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 23625066,
+          "files": 132,
+          "closureBytes": 23625066,
+          "closurePackages": 1,
+          "exclusiveBytes": 23625066,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [
+              "tsc"
+            ],
+            "implicit": null
+          }
+        }
+      ],
+      "duplicates": [],
+      "audit": {
+        "vulns": [
+          {
+            "name": "esbuild",
+            "severity": "low",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "esbuild allows arbitrary file read when running the development server on Windows",
+            "fix": "available"
+          }
+        ]
+      },
+      "outdated": {
+        "items": [
+          {
+            "name": "@types/node",
+            "current": "22.19.21",
+            "wanted": "22.20.5",
+            "latest": "26.6.4",
+            "deprecated": false
+          },
+          {
+            "name": "tsx",
+            "current": "4.22.4",
+            "wanted": "4.23.15",
+            "latest": "4.23.15",
+            "deprecated": false
+          },
+          {
+            "name": "typescript",
+            "current": "5.9.3",
+            "wanted": "5.9.3",
+            "latest": "7.0.2",
+            "deprecated": false
+          }
+        ]
+      },
+      "analysisMs": 6179
+    },
+    {
+      "name": "@devdigest/evals",
+      "dir": "evals",
+      "manager": "pnpm",
+      "lockfiles": [
+        "pnpm"
+      ],
+      "unreachableBytes": 347903,
+      "strayDirs": [],
+      "lockPackages": 237,
+      "installed": true,
+      "nodeModulesBytes": 330479256,
+      "reachableBytes": 330131353,
+      "reachablePackages": 159,
+      "prodBytes": 265429282,
+      "prodPackages": 101,
+      "sourceFiles": 28,
+      "engines": null,
+      "aliases": [],
+      "deps": [
+        {
+          "name": "@anthropic-ai/claude-agent-sdk",
+          "kind": "prod",
+          "specifier": "^0.3.198",
+          "installedVersion": "0.3.198",
+          "license": "SEE LICENSE IN README.md",
+          "deprecated": null,
+          "category": "ai",
+          "selfBytes": 3691518,
+          "files": 15,
+          "closureBytes": 265429282,
+          "closurePackages": 101,
+          "exclusiveBytes": 265379768,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/runtime/run-claude.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "@types/node",
+          "kind": "dev",
+          "specifier": "^22.0.0",
+          "installedVersion": "22.20.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "types",
+          "selfBytes": 2437976,
+          "files": 74,
+          "closureBytes": 2521656,
+          "closurePackages": 2,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [],
+            "implicit": "types for node"
+          }
+        },
+        {
+          "name": "gray-matter",
+          "kind": "dev",
+          "specifier": "^4.0.3",
+          "installedVersion": "4.0.3",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 38621,
+          "files": 14,
+          "closureBytes": 831648,
+          "closurePackages": 10,
+          "exclusiveBytes": 831648,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/skill-quality.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "tsx",
+          "kind": "dev",
+          "specifier": "^4.19.0",
+          "installedVersion": "4.22.4",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 518418,
+          "files": 50,
+          "closureBytes": 12336416,
+          "closurePackages": 3,
+          "exclusiveBytes": 12336416,
+          "usage": {
+            "prodFiles": 2,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/git.ts",
+              "src/index.ts"
+            ],
+            "scriptBins": [
+              "tsx"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "typescript",
+          "kind": "dev",
+          "specifier": "^5.6.0",
+          "installedVersion": "5.9.3",
+          "license": "Apache-2.0",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 23625066,
+          "files": 132,
+          "closureBytes": 23625066,
+          "closurePackages": 1,
+          "exclusiveBytes": 23625066,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [
+              "tsc"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "vitest",
+          "kind": "dev",
+          "specifier": "^2.1.0",
+          "installedVersion": "2.1.9",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "testing",
+          "selfBytes": 1640576,
+          "files": 105,
+          "closureBytes": 27958455,
+          "closurePackages": 46,
+          "exclusiveBytes": 25387285,
+          "usage": {
+            "prodFiles": 4,
+            "testFiles": 1,
+            "configFiles": 1,
+            "examples": [
+              "src/dsl/case.ts",
+              "src/dsl/describe.ts",
+              "src/records/record.ts"
+            ],
+            "scriptBins": [
+              "vitest"
+            ],
+            "implicit": null
+          }
+        }
+      ],
+      "duplicates": [
+        {
+          "name": "@esbuild/win32-x64",
+          "versions": [
+            "0.21.5",
+            "0.28.1"
+          ],
+          "wasteBytes": 9914373,
+          "inProd": false
+        },
+        {
+          "name": "esbuild",
+          "versions": [
+            "0.21.5",
+            "0.28.1"
+          ],
+          "wasteBytes": 133372,
+          "inProd": false
+        },
+        {
+          "name": "content-type",
+          "versions": [
+            "1.0.5",
+            "2.0.0"
+          ],
+          "wasteBytes": 10471,
+          "inProd": true
+        }
+      ],
+      "audit": {
+        "vulns": [
+          {
+            "name": "proxy-addr",
+            "severity": "critical",
+            "advisories": 1,
+            "direct": false,
+            "inProd": true,
+            "title": "proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet",
+            "fix": ">=2.0.8"
+          },
+          {
+            "name": "vitest",
+            "severity": "critical",
+            "advisories": 2,
+            "direct": true,
+            "inProd": false,
+            "title": "When Vitest UI server is listening, arbitrary file can be read and executed; Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock",
+            "fix": ">=4.1.11"
+          },
+          {
+            "name": "tinypool",
+            "severity": "critical",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution; Tinypool: Prototype Pollution Gadget to RCE in run() options",
+            "fix": ">=2.1.2"
+          },
+          {
+            "name": "fast-uri",
+            "severity": "high",
+            "advisories": 8,
+            "direct": false,
+            "inProd": true,
+            "title": "fast-uri vulnerable to host confusion via literal backslash authority delimiter; fast-uri vulnerable to host confusion via backslash authority introducer; fast-uri vulnerable to host confusion via skipped IDN canonicalization on scheme-relative references",
+            "fix": ">=3.1.8"
+          },
+          {
+            "name": "ip-address",
+            "severity": "high",
+            "advisories": 7,
+            "direct": false,
+            "inProd": true,
+            "title": "ip-address: Address4 decodes leading-zero octets as decimal while resolvers decode them as octal, allowing SSRF and trust-boundary bypass; ip-address: a CIDR suffix on the parsed address suppresses special-use classification and can bypass SSRF and trust-boundary checks; ip-address: misclassification of IPv4-mapped/NAT64 IPv6 addresses can bypass SSRF and trust-boundary checks",
+            "fix": ">=10.7.1"
+          },
+          {
+            "name": "@modelcontextprotocol/sdk",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": true,
+            "title": "MCP TypeScript SDK: OAuth client could send credentials to an authorization server chosen by the MCP server",
+            "fix": ">=1.31.0"
+          },
+          {
+            "name": "vite",
+            "severity": "high",
+            "advisories": 3,
+            "direct": false,
+            "inProd": false,
+            "title": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling; launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows; vite: `server.fs.deny` bypass on Windows alternate paths",
+            "fix": ">=6.4.3"
+          },
+          {
+            "name": "postcss",
+            "severity": "high",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset; PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+            "fix": ">=8.5.23"
+          },
+          {
+            "name": "js-yaml",
+            "severity": "high",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported; js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources",
+            "fix": ">=3.15.2"
+          },
+          {
+            "name": "nanoid",
+            "severity": "high",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "nanoid: non-secure generators can loop indefinitely with negative size; nanoid: custom generators can loop indefinitely when size is zero",
+            "fix": ">=3.3.18"
+          },
+          {
+            "name": "source-map-js",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+            "fix": ">=1.2.2"
+          },
+          {
+            "name": "hono",
+            "severity": "moderate",
+            "advisories": 8,
+            "direct": false,
+            "inProd": true,
+            "title": "Hono: ReDoS in CORS middleware via Access-Control-Request-Headers; Hono: `memo()` retains SSR output across requests, leading to cross-user data disclosure; Hono: Proxy Helper does not remove response headers listed in the `Connection` header",
+            "fix": ">=4.13.7"
+          },
+          {
+            "name": "@hono/node-server",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": true,
+            "title": "Node.js Adapter for Hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)",
+            "fix": ">=1.19.15"
+          },
+          {
+            "name": "qs",
+            "severity": "moderate",
+            "advisories": 2,
+            "direct": false,
+            "inProd": true,
+            "title": "qs array-limit bypass via bracket-key comma parsing; qs: Denial of Service via Attacker Controlled isBuffer",
+            "fix": ">=6.16.0"
+          },
+          {
+            "name": "esbuild",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "esbuild enables any website to send any requests to the development server and read the response",
+            "fix": ">=0.25.0"
+          },
+          {
+            "name": "@vitest/mocker",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock",
+            "fix": ">=4.1.11"
+          },
+          {
+            "name": "sprintf-js",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "sprintf-js vulnerable to denial of service through unbounded precision specifiers",
+            "fix": "none"
+          }
+        ]
+      },
+      "outdated": {
+        "items": [
+          {
+            "name": "@anthropic-ai/claude-agent-sdk",
+            "current": "0.3.198",
+            "wanted": "0.3.198",
+            "latest": "0.3.292",
+            "deprecated": false
+          },
+          {
+            "name": "tsx",
+            "current": "4.22.4",
+            "wanted": "4.22.4",
+            "latest": "4.23.15",
+            "deprecated": false
+          },
+          {
+            "name": "@types/node",
+            "current": "22.20.0",
+            "wanted": "22.20.0",
+            "latest": "26.6.4",
+            "deprecated": false
+          },
+          {
+            "name": "typescript",
+            "current": "5.9.3",
+            "wanted": "5.9.3",
+            "latest": "7.0.2",
+            "deprecated": false
+          },
+          {
+            "name": "vitest",
+            "current": "2.1.9",
+            "wanted": "2.1.9",
+            "latest": "5.0.3",
+            "deprecated": false
+          }
+        ]
+      },
+      "analysisMs": 3194
+    },
+    {
+      "name": "@devdigest/mcp",
+      "dir": "mcp",
+      "manager": "npm",
+      "lockfiles": [
+        "npm"
+      ],
+      "unreachableBytes": 78795729,
+      "strayDirs": [
+        ".ignored_tsx",
+        ".ignored_typescript",
+        ".ignored_vitest",
+        ".ignored_zod",
+        ".pnpm"
+      ],
+      "lockPackages": 214,
+      "installed": true,
+      "nodeModulesBytes": 157188619,
+      "reachableBytes": 78392890,
+      "reachablePackages": 140,
+      "prodBytes": 26625843,
+      "prodPackages": 95,
+      "sourceFiles": 44,
+      "engines": {
+        "node": ">=22"
+      },
+      "aliases": [
+        {
+          "alias": "@devdigest/shared",
+          "target": "../server/src/vendor/shared/index.ts"
+        },
+        {
+          "alias": "@devdigest/shared/*",
+          "target": "../server/src/vendor/shared/*"
+        },
+        {
+          "alias": "zod",
+          "target": "./node_modules/zod"
+        }
+      ],
+      "deps": [
+        {
+          "name": "@modelcontextprotocol/sdk",
+          "kind": "prod",
+          "specifier": "^1.30.1",
+          "installedVersion": "1.30.1",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "framework",
+          "selfBytes": 4343917,
+          "files": 701,
+          "closureBytes": 14386492,
+          "closurePackages": 92,
+          "exclusiveBytes": 10742782,
+          "usage": {
+            "prodFiles": 2,
+            "testFiles": 3,
+            "configFiles": 0,
+            "examples": [
+              "src/architecture.test.ts",
+              "src/index.smoke.test.ts",
+              "src/index.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "tsx",
+          "kind": "prod",
+          "specifier": "^4.23.15",
+          "installedVersion": "4.23.15",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 396881,
+          "files": 30,
+          "closureBytes": 12239351,
+          "closurePackages": 3,
+          "exclusiveBytes": 12239351,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "bin/devdigest-mcp.mjs"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "zod",
+          "kind": "prod",
+          "specifier": "^3.25.76",
+          "installedVersion": "3.25.76",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "validation",
+          "selfBytes": 3594196,
+          "files": 596,
+          "closureBytes": 3594196,
+          "closurePackages": 1,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 3,
+            "testFiles": 1,
+            "configFiles": 1,
+            "examples": [
+              "src/api/http-client.ts",
+              "src/api/schemas.ts",
+              "src/architecture.test.ts"
+            ],
+            "scriptBins": [],
+            "implicit": "peer of @modelcontextprotocol/sdk"
+          },
+          "providedBy": "@modelcontextprotocol/sdk"
+        },
+        {
+          "name": "@types/node",
+          "kind": "dev",
+          "specifier": "^22.20.4",
+          "installedVersion": "22.20.4",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "types",
+          "selfBytes": 2438105,
+          "files": 74,
+          "closureBytes": 2521785,
+          "closurePackages": 2,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [],
+            "implicit": "types for node"
+          }
+        },
+        {
+          "name": "typescript",
+          "kind": "dev",
+          "specifier": "^5.9.3",
+          "installedVersion": "5.9.3",
+          "license": "Apache-2.0",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 23625066,
+          "files": 132,
+          "closureBytes": 23625066,
+          "closurePackages": 1,
+          "exclusiveBytes": 23625066,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [
+              "tsc"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "vitest",
+          "kind": "dev",
+          "specifier": "^2.1.9",
+          "installedVersion": "2.1.9",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "testing",
+          "selfBytes": 1640576,
+          "files": 105,
+          "closureBytes": 28191495,
+          "closurePackages": 46,
+          "exclusiveBytes": 25620196,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 18,
+            "configFiles": 1,
+            "examples": [
+              "src/api/http-client.test.ts",
+              "src/architecture.test.ts",
+              "src/config.test.ts"
+            ],
+            "scriptBins": [
+              "vitest"
+            ],
+            "implicit": null
+          }
+        }
+      ],
+      "duplicates": [
+        {
+          "name": "@esbuild/win32-x64",
+          "versions": [
+            "0.21.5",
+            "0.28.2"
+          ],
+          "wasteBytes": 9914373,
+          "inProd": true
+        },
+        {
+          "name": "esbuild",
+          "versions": [
+            "0.21.5",
+            "0.28.2"
+          ],
+          "wasteBytes": 133372,
+          "inProd": true
+        },
+        {
+          "name": "content-type",
+          "versions": [
+            "1.0.5",
+            "2.1.0"
+          ],
+          "wasteBytes": 10471,
+          "inProd": true
+        }
+      ],
+      "audit": {
+        "vulns": [
+          {
+            "name": "tinypool",
+            "severity": "critical",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution; Tinypool: Prototype Pollution Gadget to RCE in run() options",
+            "fix": "vitest@5.0.3 (major)"
+          },
+          {
+            "name": "vitest",
+            "severity": "critical",
+            "advisories": 1,
+            "direct": true,
+            "inProd": false,
+            "title": "@vitest/mocker; When Vitest UI server is listening, arbitrary file can be read and executed",
+            "fix": "vitest@5.0.3 (major)"
+          },
+          {
+            "name": "@modelcontextprotocol/sdk",
+            "severity": "high",
+            "advisories": 1,
+            "direct": true,
+            "inProd": true,
+            "title": "MCP TypeScript SDK: OAuth client could send credentials to an authorization server chosen by the MCP server",
+            "fix": "available"
+          },
+          {
+            "name": "source-map-js",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+            "fix": "available"
+          },
+          {
+            "name": "vite",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling; launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows",
+            "fix": "vitest@5.0.3 (major)"
+          },
+          {
+            "name": "esbuild",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": true,
+            "title": "esbuild enables any website to send any requests to the development server and read the response",
+            "fix": "vitest@5.0.3 (major)"
+          },
+          {
+            "name": "@vitest/mocker",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock; vite",
+            "fix": "vitest@5.0.3 (major)"
+          },
+          {
+            "name": "vite-node",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "vite",
+            "fix": "vitest@5.0.3 (major)"
+          }
+        ]
+      },
+      "outdated": {
+        "items": [
+          {
+            "name": "@modelcontextprotocol/sdk",
+            "current": "1.30.1",
+            "wanted": "1.32.1",
+            "latest": "1.32.1",
+            "deprecated": false
+          },
+          {
+            "name": "@types/node",
+            "current": "22.20.4",
+            "wanted": "22.20.5",
+            "latest": "26.6.4",
+            "deprecated": false
+          },
+          {
+            "name": "typescript",
+            "current": "5.9.3",
+            "wanted": "5.9.3",
+            "latest": "7.0.2",
+            "deprecated": false
+          },
+          {
+            "name": "vitest",
+            "current": "2.1.9",
+            "wanted": "2.1.9",
+            "latest": "5.0.3",
+            "deprecated": false
+          },
+          {
+            "name": "zod",
+            "current": "3.25.76",
+            "wanted": "3.25.76",
+            "latest": "4.6.5",
+            "deprecated": false
+          }
+        ]
+      },
+      "analysisMs": 8010
+    },
+    {
+      "name": "@devdigest/reviewer-core",
+      "dir": "reviewer-core",
+      "manager": "npm",
+      "lockfiles": [
+        "npm"
+      ],
+      "unreachableBytes": 75864955,
+      "strayDirs": [
+        ".ignored_tsx",
+        ".ignored_typescript",
+        ".ignored_vitest",
+        ".pnpm"
+      ],
+      "lockPackages": 158,
+      "installed": true,
+      "nodeModulesBytes": 151995655,
+      "reachableBytes": 76130700,
+      "reachablePackages": 88,
+      "prodBytes": 14488462,
+      "prodPackages": 40,
+      "sourceFiles": 24,
+      "engines": null,
+      "aliases": [
+        {
+          "alias": "@devdigest/shared",
+          "target": "../server/src/vendor/shared/index.ts"
+        },
+        {
+          "alias": "@devdigest/shared/*",
+          "target": "../server/src/vendor/shared/*"
+        },
+        {
+          "alias": "zod",
+          "target": "./node_modules/zod"
+        },
+        {
+          "alias": "zod/*",
+          "target": "./node_modules/zod/*"
+        }
+      ],
+      "deps": [
+        {
+          "name": "openai",
+          "kind": "prod",
+          "specifier": "^4.77.0",
+          "installedVersion": "4.104.0",
+          "license": "Apache-2.0",
+          "deprecated": null,
+          "category": "ai",
+          "selfBytes": 4222385,
+          "files": 1194,
+          "closureBytes": 14488462,
+          "closurePackages": 40,
+          "exclusiveBytes": 8371889,
+          "usage": {
+            "prodFiles": 2,
+            "testFiles": 1,
+            "configFiles": 0,
+            "examples": [
+              "src/llm/openrouter.ts",
+              "src/llm/structured.ts",
+              "test/run.test.ts"
+            ],
+            "scriptBins": [
+              "openai"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "zod",
+          "kind": "prod",
+          "specifier": "^3.24.1",
+          "installedVersion": "3.25.76",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "validation",
+          "selfBytes": 3594196,
+          "files": 596,
+          "closureBytes": 3594196,
+          "closurePackages": 1,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 2,
+            "testFiles": 0,
+            "configFiles": 1,
+            "examples": [
+              "src/intent/schema.ts",
+              "src/llm/structured.ts",
+              "tsconfig.json"
+            ],
+            "scriptBins": [],
+            "implicit": "peer of openai"
+          }
+        },
+        {
+          "name": "@types/node",
+          "kind": "dev",
+          "specifier": "^22.10.0",
+          "installedVersion": "22.20.3",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "types",
+          "selfBytes": 2438697,
+          "files": 74,
+          "closureBytes": 2522377,
+          "closurePackages": 2,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [],
+            "implicit": "types for node"
+          },
+          "providedBy": "openai"
+        },
+        {
+          "name": "tsx",
+          "kind": "dev",
+          "specifier": "^4.19.2",
+          "installedVersion": "4.23.13",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 532808,
+          "files": 50,
+          "closureBytes": 12375278,
+          "closurePackages": 3,
+          "exclusiveBytes": 12375278,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [
+              "tsx"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "typescript",
+          "kind": "dev",
+          "specifier": "^5.7.2",
+          "installedVersion": "5.9.3",
+          "license": "Apache-2.0",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 23625066,
+          "files": 132,
+          "closureBytes": 23625066,
+          "closurePackages": 1,
+          "exclusiveBytes": 23625066,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [
+              "tsc"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "vitest",
+          "kind": "dev",
+          "specifier": "^2.1.8",
+          "installedVersion": "2.1.9",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "testing",
+          "selfBytes": 1640576,
+          "files": 105,
+          "closureBytes": 28164271,
+          "closurePackages": 46,
+          "exclusiveBytes": 25641894,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 5,
+            "configFiles": 1,
+            "examples": [
+              "test/project-context.test.ts",
+              "test/prompt-hardening.test.ts",
+              "test/prompt.test.ts"
+            ],
+            "scriptBins": [
+              "vitest"
+            ],
+            "implicit": null
+          }
+        }
+      ],
+      "duplicates": [
+        {
+          "name": "@esbuild/win32-x64",
+          "versions": [
+            "0.21.5",
+            "0.28.2"
+          ],
+          "wasteBytes": 9914373,
+          "inProd": false
+        },
+        {
+          "name": "@types/node",
+          "versions": [
+            "18.19.130",
+            "22.20.3"
+          ],
+          "wasteBytes": 2077996,
+          "inProd": true
+        },
+        {
+          "name": "esbuild",
+          "versions": [
+            "0.21.5",
+            "0.28.2"
+          ],
+          "wasteBytes": 133372,
+          "inProd": false
+        },
+        {
+          "name": "undici-types",
+          "versions": [
+            "5.26.5",
+            "6.21.0"
+          ],
+          "wasteBytes": 73053,
+          "inProd": true
+        }
+      ],
+      "audit": {
+        "vulns": [
+          {
+            "name": "tinypool",
+            "severity": "critical",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution; Tinypool: Prototype Pollution Gadget to RCE in run() options",
+            "fix": "vitest@5.0.3 (major)"
+          },
+          {
+            "name": "vitest",
+            "severity": "critical",
+            "advisories": 1,
+            "direct": true,
+            "inProd": false,
+            "title": "@vitest/mocker; When Vitest UI server is listening, arbitrary file can be read and executed",
+            "fix": "vitest@5.0.3 (major)"
+          },
+          {
+            "name": "form-data",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": true,
+            "title": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames",
+            "fix": "available"
+          },
+          {
+            "name": "nanoid",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "nanoid: non-secure generators can loop indefinitely with negative size; nanoid: custom generators can loop indefinitely when size is zero",
+            "fix": "available"
+          },
+          {
+            "name": "postcss",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset; PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+            "fix": "available"
+          },
+          {
+            "name": "source-map-js",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+            "fix": "available"
+          },
+          {
+            "name": "vite",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling; launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows",
+            "fix": "vitest@5.0.3 (major)"
+          },
+          {
+            "name": "@vitest/mocker",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock; vite",
+            "fix": "vitest@5.0.3 (major)"
+          },
+          {
+            "name": "esbuild",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "esbuild enables any website to send any requests to the development server and read the response; esbuild allows arbitrary file read when running the development server on Windows",
+            "fix": "vitest@5.0.3 (major)"
+          },
+          {
+            "name": "vite-node",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "vite",
+            "fix": "vitest@5.0.3 (major)"
+          }
+        ]
+      },
+      "outdated": {
+        "items": [
+          {
+            "name": "@types/node",
+            "current": "22.20.3",
+            "wanted": "22.20.5",
+            "latest": "26.6.4",
+            "deprecated": false
+          },
+          {
+            "name": "openai",
+            "current": "4.104.0",
+            "wanted": "4.104.0",
+            "latest": "7.30.1",
+            "deprecated": false
+          },
+          {
+            "name": "tsx",
+            "current": "4.23.13",
+            "wanted": "4.23.15",
+            "latest": "4.23.15",
+            "deprecated": false
+          },
+          {
+            "name": "typescript",
+            "current": "5.9.3",
+            "wanted": "5.9.3",
+            "latest": "7.0.2",
+            "deprecated": false
+          },
+          {
+            "name": "vitest",
+            "current": "2.1.9",
+            "wanted": "2.1.9",
+            "latest": "5.0.3",
+            "deprecated": false
+          },
+          {
+            "name": "zod",
+            "current": "3.25.76",
+            "wanted": "3.25.76",
+            "latest": "4.6.5",
+            "deprecated": false
+          }
+        ]
+      },
+      "analysisMs": 6528
+    },
+    {
+      "name": "@devdigest/api",
+      "dir": "server",
+      "manager": "pnpm",
+      "lockfiles": [
+        "pnpm"
+      ],
+      "unreachableBytes": 12968575,
+      "strayDirs": [],
+      "lockPackages": 558,
+      "installed": true,
+      "nodeModulesBytes": 236593280,
+      "reachableBytes": 223624705,
+      "reachablePackages": 425,
+      "prodBytes": 89549065,
+      "prodPackages": 215,
+      "sourceFiles": 347,
+      "engines": null,
+      "aliases": [
+        {
+          "alias": "@devdigest/shared",
+          "target": "./src/vendor/shared/index.ts"
+        },
+        {
+          "alias": "@devdigest/shared/*",
+          "target": "./src/vendor/shared/*"
+        },
+        {
+          "alias": "@devdigest/reviewer-core",
+          "target": "../reviewer-core/src/index.ts"
+        },
+        {
+          "alias": "@devdigest/reviewer-core/*",
+          "target": "../reviewer-core/src/*"
+        }
+      ],
+      "deps": [
+        {
+          "name": "@anthropic-ai/sdk",
+          "kind": "prod",
+          "specifier": "^0.33.1",
+          "installedVersion": "0.33.1",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "ai",
+          "selfBytes": 1069738,
+          "files": 299,
+          "closureBytes": 7729944,
+          "closurePackages": 39,
+          "exclusiveBytes": 1069738,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 1,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/adapters/llm/anthropic.ts",
+              "test/resilience.test.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "@ast-grep/napi",
+          "kind": "prod",
+          "specifier": "0.43.0",
+          "installedVersion": "0.43.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "code-analysis",
+          "selfBytes": 360659,
+          "files": 18,
+          "closureBytes": 7528350,
+          "closurePackages": 2,
+          "exclusiveBytes": 7528350,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/adapters/astgrep/index.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "@fastify/autoload",
+          "kind": "prod",
+          "specifier": "^6.0.3",
+          "installedVersion": "6.3.1",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "framework",
+          "selfBytes": 174807,
+          "files": 291,
+          "closureBytes": 174807,
+          "closurePackages": 1,
+          "exclusiveBytes": 174807,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "@fastify/cors",
+          "kind": "prod",
+          "specifier": "^10.0.2",
+          "installedVersion": "10.1.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "framework",
+          "selfBytes": 115221,
+          "files": 20,
+          "closureBytes": 580992,
+          "closurePackages": 4,
+          "exclusiveBytes": 499182,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/app.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "@fastify/helmet",
+          "kind": "prod",
+          "specifier": "^13.0.2",
+          "installedVersion": "13.0.2",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "framework",
+          "selfBytes": 69464,
+          "files": 14,
+          "closureBytes": 215768,
+          "closurePackages": 3,
+          "exclusiveBytes": 173245,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/app.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "@fastify/rate-limit",
+          "kind": "prod",
+          "specifier": "^11.0.0",
+          "installedVersion": "11.0.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "framework",
+          "selfBytes": 207361,
+          "files": 30,
+          "closureBytes": 308746,
+          "closurePackages": 4,
+          "exclusiveBytes": 216748,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/app.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "@vscode/ripgrep",
+          "kind": "prod",
+          "specifier": "^1.15.9",
+          "installedVersion": "1.18.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "code-analysis",
+          "selfBytes": 4377,
+          "files": 5,
+          "closureBytes": 5435825,
+          "closurePackages": 2,
+          "exclusiveBytes": 5435825,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/adapters/codeindex/ripgrep.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "dependency-cruiser",
+          "kind": "prod",
+          "specifier": "^17.4.3",
+          "installedVersion": "17.4.3",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 985829,
+          "files": 241,
+          "closureBytes": 4465991,
+          "closurePackages": 43,
+          "exclusiveBytes": 4173822,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 1,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/adapters/depgraph/index.ts",
+              "test/depgraph.test.ts"
+            ],
+            "scriptBins": [
+              "depcruise"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "dotenv",
+          "kind": "prod",
+          "specifier": "^16.4.7",
+          "installedVersion": "16.6.1",
+          "license": "BSD-2-Clause",
+          "deprecated": null,
+          "category": "utility",
+          "selfBytes": 76591,
+          "files": 12,
+          "closureBytes": 76591,
+          "closurePackages": 1,
+          "exclusiveBytes": 76591,
+          "usage": {
+            "prodFiles": 3,
+            "testFiles": 0,
+            "configFiles": 1,
+            "examples": [
+              "drizzle.config.ts",
+              "src/db/migrate.ts",
+              "src/db/seed.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "drizzle-orm",
+          "kind": "prod",
+          "specifier": "^0.38.3",
+          "installedVersion": "0.38.4",
+          "license": "Apache-2.0",
+          "deprecated": null,
+          "category": "data",
+          "selfBytes": 8170149,
+          "files": 2246,
+          "closureBytes": 8469893,
+          "closurePackages": 2,
+          "exclusiveBytes": 8170149,
+          "usage": {
+            "prodFiles": 41,
+            "testFiles": 12,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/adapters/auth/local.ts",
+              "src/app.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "fastify",
+          "kind": "prod",
+          "specifier": "^5.2.0",
+          "installedVersion": "5.8.5",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "framework",
+          "selfBytes": 2777550,
+          "files": 355,
+          "closureBytes": 7254268,
+          "closurePackages": 48,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 21,
+            "testFiles": 5,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/app.ts",
+              "src/db/seed.ts"
+            ],
+            "scriptBins": [],
+            "implicit": "peer of fastify-sse-v2"
+          }
+        },
+        {
+          "name": "fastify-sse-v2",
+          "kind": "prod",
+          "specifier": "^4.2.1",
+          "installedVersion": "4.2.2",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "framework",
+          "selfBytes": 21581,
+          "files": 19,
+          "closureBytes": 7657148,
+          "closurePackages": 64,
+          "exclusiveBytes": 110171,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/app.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "fastify-type-provider-zod",
+          "kind": "prod",
+          "specifier": "^4.0.2",
+          "installedVersion": "4.0.2",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "framework",
+          "selfBytes": 25204,
+          "files": 13,
+          "closureBytes": 11092932,
+          "closurePackages": 51,
+          "exclusiveBytes": 244468,
+          "usage": {
+            "prodFiles": 17,
+            "testFiles": 0,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/app.ts",
+              "src/modules/agents/routes.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "fflate",
+          "kind": "prod",
+          "specifier": "^0.8.3",
+          "installedVersion": "0.8.3",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "utility",
+          "selfBytes": 796742,
+          "files": 17,
+          "closureBytes": 796742,
+          "closurePackages": 1,
+          "exclusiveBytes": 796742,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 1,
+            "configFiles": 0,
+            "examples": [
+              "src/modules/skills/domain/parse-archive.ts",
+              "test/skills-import.test.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "graphology",
+          "kind": "prod",
+          "specifier": "^0.26.0",
+          "installedVersion": "0.26.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "code-analysis",
+          "selfBytes": 2729833,
+          "files": 30,
+          "closureBytes": 2870678,
+          "closurePackages": 3,
+          "exclusiveBytes": 2729833,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/modules/repo-intel/pipeline/rank.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "graphology-metrics",
+          "kind": "prod",
+          "specifier": "^2.4.0",
+          "installedVersion": "2.4.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "code-analysis",
+          "selfBytes": 126437,
+          "files": 63,
+          "closureBytes": 831803,
+          "closurePackages": 9,
+          "exclusiveBytes": 734449,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/modules/repo-intel/pipeline/rank.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "js-tiktoken",
+          "kind": "prod",
+          "specifier": "^1.0.21",
+          "installedVersion": "1.0.21",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "ai",
+          "selfBytes": 22432828,
+          "files": 32,
+          "closureBytes": 22442452,
+          "closurePackages": 2,
+          "exclusiveBytes": 22432828,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/adapters/tokenizer/index.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "octokit",
+          "kind": "prod",
+          "specifier": "^4.0.3",
+          "installedVersion": "4.1.4",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "api-client",
+          "selfBytes": 51165,
+          "files": 13,
+          "closureBytes": 11094617,
+          "closurePackages": 33,
+          "exclusiveBytes": 11045142,
+          "usage": {
+            "prodFiles": 2,
+            "testFiles": 0,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/adapters/github/octokit.ts",
+              "src/adapters/github/pr-history.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "openai",
+          "kind": "prod",
+          "specifier": "^4.77.0",
+          "installedVersion": "4.104.0",
+          "license": "Apache-2.0",
+          "deprecated": null,
+          "category": "ai",
+          "selfBytes": 4222385,
+          "files": 1194,
+          "closureBytes": 14476787,
+          "closurePackages": 40,
+          "exclusiveBytes": 4222385,
+          "usage": {
+            "prodFiles": 12,
+            "testFiles": 19,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/adapters/llm/openai.ts",
+              "src/adapters/mocks.ts"
+            ],
+            "scriptBins": [
+              "openai"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "p-queue",
+          "kind": "prod",
+          "specifier": "^8.0.1",
+          "installedVersion": "8.1.1",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "utility",
+          "selfBytes": 41044,
+          "files": 13,
+          "closureBytes": 129015,
+          "closurePackages": 3,
+          "exclusiveBytes": 129015,
+          "usage": {
+            "prodFiles": 3,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/adapters/project-docs/index.ts",
+              "src/modules/repo-intel/pipeline/full.ts",
+              "src/platform/jobs.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "postgres",
+          "kind": "prod",
+          "specifier": "^3.4.5",
+          "installedVersion": "3.4.9",
+          "license": "Unlicense",
+          "deprecated": null,
+          "category": "data",
+          "selfBytes": 299744,
+          "files": 37,
+          "closureBytes": 299744,
+          "closurePackages": 1,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 2,
+            "testFiles": 0,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/db/client.ts",
+              "src/db/migrate.ts"
+            ],
+            "scriptBins": [],
+            "implicit": "peer of drizzle-orm"
+          }
+        },
+        {
+          "name": "simple-git",
+          "kind": "prod",
+          "specifier": "^3.27.0",
+          "installedVersion": "3.36.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "api-client",
+          "selfBytes": 951189,
+          "files": 111,
+          "closureBytes": 1130646,
+          "closurePackages": 7,
+          "exclusiveBytes": 1081132,
+          "usage": {
+            "prodFiles": 2,
+            "testFiles": 3,
+            "configFiles": 1,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "src/adapters/git/simple-git.ts",
+              "src/adapters/git/tree.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "zod",
+          "kind": "prod",
+          "specifier": "^3.24.1",
+          "installedVersion": "3.25.76",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "validation",
+          "selfBytes": 3594196,
+          "files": 596,
+          "closureBytes": 3594196,
+          "closurePackages": 1,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 26,
+            "testFiles": 1,
+            "configFiles": 0,
+            "examples": [
+              "src/adapters/mocks.ts",
+              "src/app.ts",
+              "src/modules/agents/routes.ts"
+            ],
+            "scriptBins": [],
+            "implicit": "peer of fastify-type-provider-zod"
+          }
+        },
+        {
+          "name": "@testcontainers/postgresql",
+          "kind": "dev",
+          "specifier": "^10.16.0",
+          "installedVersion": "10.28.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "testing",
+          "selfBytes": 18249,
+          "files": 9,
+          "closureBytes": 47617436,
+          "closurePackages": 158,
+          "exclusiveBytes": 18249,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 1,
+            "configFiles": 0,
+            "examples": [
+              "test/helpers/pg.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "@types/node",
+          "kind": "dev",
+          "specifier": "^22.10.0",
+          "installedVersion": "22.19.19",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "types",
+          "selfBytes": 2427022,
+          "files": 73,
+          "closureBytes": 2510702,
+          "closurePackages": 2,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [],
+            "implicit": "types for node"
+          },
+          "providedBy": "@anthropic-ai/sdk"
+        },
+        {
+          "name": "drizzle-kit",
+          "kind": "dev",
+          "specifier": "^0.30.1",
+          "installedVersion": "0.30.6",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "data",
+          "selfBytes": 7752070,
+          "files": 15,
+          "closureBytes": 30235684,
+          "closurePackages": 23,
+          "exclusiveBytes": 30085956,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 2,
+            "examples": [
+              ".dependency-cruiser.cjs",
+              "drizzle.config.ts"
+            ],
+            "scriptBins": [
+              "drizzle-kit"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "pino-pretty",
+          "kind": "dev",
+          "specifier": "^13.0.0",
+          "installedVersion": "13.1.3",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 245712,
+          "files": 77,
+          "closureBytes": 807306,
+          "closurePackages": 19,
+          "exclusiveBytes": 520592,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/app.ts"
+            ],
+            "scriptBins": [],
+            "implicit": null
+          }
+        },
+        {
+          "name": "testcontainers",
+          "kind": "dev",
+          "specifier": "^10.16.0",
+          "installedVersion": "10.28.0",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "testing",
+          "selfBytes": 387796,
+          "files": 264,
+          "closureBytes": 47599187,
+          "closurePackages": 157,
+          "exclusiveBytes": 0,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [],
+            "implicit": null
+          },
+          "providedBy": "@testcontainers/postgresql"
+        },
+        {
+          "name": "tsx",
+          "kind": "dev",
+          "specifier": "^4.19.2",
+          "installedVersion": "4.22.4",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 518418,
+          "files": 50,
+          "closureBytes": 12301062,
+          "closurePackages": 3,
+          "exclusiveBytes": 12301062,
+          "usage": {
+            "prodFiles": 2,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [
+              "src/modules/conventions/domain/skill-body.ts",
+              "src/platform/prompts.ts"
+            ],
+            "scriptBins": [
+              "tsx"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "typescript",
+          "kind": "dev",
+          "specifier": "^5.7.2",
+          "installedVersion": "5.9.3",
+          "license": "Apache-2.0",
+          "deprecated": null,
+          "category": "build",
+          "selfBytes": 23625066,
+          "files": 132,
+          "closureBytes": 23625066,
+          "closurePackages": 1,
+          "exclusiveBytes": 23625066,
+          "usage": {
+            "prodFiles": 0,
+            "testFiles": 0,
+            "configFiles": 0,
+            "examples": [],
+            "scriptBins": [
+              "tsc"
+            ],
+            "implicit": null
+          }
+        },
+        {
+          "name": "vitest",
+          "kind": "dev",
+          "specifier": "^2.1.8",
+          "installedVersion": "2.1.9",
+          "license": "MIT",
+          "deprecated": null,
+          "category": "testing",
+          "selfBytes": 1640576,
+          "files": 105,
+          "closureBytes": 27921071,
+          "closurePackages": 46,
+          "exclusiveBytes": 25360855,
+          "usage": {
+            "prodFiles": 1,
+            "testFiles": 96,
+            "configFiles": 1,
+            "examples": [
+              "src/db/seed.ts",
+              "test/adapters.test.ts",
+              "test/agents-versions.it.test.ts"
+            ],
+            "scriptBins": [
+              "vitest"
+            ],
+            "implicit": null
+          }
+        }
+      ],
+      "duplicates": [
+        {
+          "name": "@esbuild/win32-x64",
+          "versions": [
+            "0.18.20",
+            "0.19.12",
+            "0.21.5",
+            "0.28.0"
+          ],
+          "wasteBytes": 29273529,
+          "inProd": false
+        },
+        {
+          "name": "@types/node",
+          "versions": [
+            "18.19.130",
+            "22.19.19"
+          ],
+          "wasteBytes": 2077996,
+          "inProd": true
+        },
+        {
+          "name": "esbuild",
+          "versions": [
+            "0.18.20",
+            "0.19.12",
+            "0.21.5",
+            "0.28.0"
+          ],
+          "wasteBytes": 398025,
+          "inProd": false
+        },
+        {
+          "name": "mnemonist",
+          "versions": [
+            "0.39.8",
+            "0.40.0"
+          ],
+          "wasteBytes": 379485,
+          "inProd": true
+        },
+        {
+          "name": "readable-stream",
+          "versions": [
+            "2.3.8",
+            "3.6.2",
+            "4.7.0"
+          ],
+          "wasteBytes": 212086,
+          "inProd": true
+        },
+        {
+          "name": "@grpc/proto-loader",
+          "versions": [
+            "0.7.15",
+            "0.8.1"
+          ],
+          "wasteBytes": 121381,
+          "inProd": false
+        },
+        {
+          "name": "buffer",
+          "versions": [
+            "5.7.1",
+            "6.0.3"
+          ],
+          "wasteBytes": 82527,
+          "inProd": true
+        },
+        {
+          "name": "@types/ssh2",
+          "versions": [
+            "0.5.52",
+            "1.15.5"
+          ],
+          "wasteBytes": 75318,
+          "inProd": false
+        },
+        {
+          "name": "undici-types",
+          "versions": [
+            "5.26.5",
+            "6.21.0"
+          ],
+          "wasteBytes": 73053,
+          "inProd": true
+        },
+        {
+          "name": "emoji-regex",
+          "versions": [
+            "8.0.0",
+            "9.2.2"
+          ],
+          "wasteBytes": 48255,
+          "inProd": false
+        },
+        {
+          "name": "minimatch",
+          "versions": [
+            "5.1.9",
+            "9.0.9"
+          ],
+          "wasteBytes": 42367,
+          "inProd": false
+        },
+        {
+          "name": "fastify-plugin",
+          "versions": [
+            "4.5.1",
+            "5.1.0"
+          ],
+          "wasteBytes": 40252,
+          "inProd": true
+        },
+        {
+          "name": "safe-buffer",
+          "versions": [
+            "5.1.2",
+            "5.2.1"
+          ],
+          "wasteBytes": 31686,
+          "inProd": true
+        },
+        {
+          "name": "tar-stream",
+          "versions": [
+            "2.2.0",
+            "3.2.0"
+          ],
+          "wasteBytes": 27671,
+          "inProd": false
+        },
+        {
+          "name": "process-warning",
+          "versions": [
+            "4.0.1",
+            "5.0.0"
+          ],
+          "wasteBytes": 22979,
+          "inProd": true
+        },
+        {
+          "name": "tar-fs",
+          "versions": [
+            "2.1.4",
+            "3.1.2"
+          ],
+          "wasteBytes": 18167,
+          "inProd": false
+        },
+        {
+          "name": "ansi-styles",
+          "versions": [
+            "4.3.0",
+            "6.2.3"
+          ],
+          "wasteBytes": 16978,
+          "inProd": true
+        },
+        {
+          "name": "string_decoder",
+          "versions": [
+            "1.1.1",
+            "1.3.0"
+          ],
+          "wasteBytes": 14427,
+          "inProd": true
+        },
+        {
+          "name": "isexe",
+          "versions": [
+            "2.0.0",
+            "3.1.5"
+          ],
+          "wasteBytes": 10956,
+          "inProd": false
+        },
+        {
+          "name": "wrap-ansi",
+          "versions": [
+            "7.0.0",
+            "8.1.0"
+          ],
+          "wasteBytes": 10648,
+          "inProd": false
+        },
+        {
+          "name": "signal-exit",
+          "versions": [
+            "3.0.7",
+            "4.1.0"
+          ],
+          "wasteBytes": 9958,
+          "inProd": false
+        },
+        {
+          "name": "which",
+          "versions": [
+            "2.0.2",
+            "4.0.0"
+          ],
+          "wasteBytes": 7505,
+          "inProd": false
+        },
+        {
+          "name": "ansi-regex",
+          "versions": [
+            "5.0.1",
+            "6.2.2"
+          ],
+          "wasteBytes": 5609,
+          "inProd": false
+        },
+        {
+          "name": "string-width",
+          "versions": [
+            "4.2.3",
+            "5.1.2"
+          ],
+          "wasteBytes": 5161,
+          "inProd": false
+        },
+        {
+          "name": "strip-ansi",
+          "versions": [
+            "6.0.1",
+            "7.2.0"
+          ],
+          "wasteBytes": 4029,
+          "inProd": false
+        },
+        {
+          "name": "real-require",
+          "versions": [
+            "0.2.0",
+            "1.0.0"
+          ],
+          "wasteBytes": 3929,
+          "inProd": true
+        }
+      ],
+      "audit": {
+        "vulns": [
+          {
+            "name": "@simple-git/argv-parser",
+            "severity": "critical",
+            "advisories": 1,
+            "direct": false,
+            "inProd": true,
+            "title": "simple-git: `VISUAL` editor environment variable is omitted from unsafe editor detection",
+            "fix": ">=2.0.1"
+          },
+          {
+            "name": "simple-git",
+            "severity": "critical",
+            "advisories": 3,
+            "direct": true,
+            "inProd": true,
+            "title": "simple-git unsafe-operation guard does not block trailer command configuration; simple-git allows command execution through unblocked Git configuration includes; simple-git: unsafe-operations plugin bypass via git long-option abbreviation (--receive-p/--exe) -> command execution (residual of CVE-2026-28291)",
+            "fix": ">=4.0.1"
+          },
+          {
+            "name": "shell-quote",
+            "severity": "critical",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "shell-quote: Quadratic-complexity Denial of Service in `parse()` (CWE-407); shell-quote: `quote()` command injection via a line terminator in a token after a `{ comment }` token",
+            "fix": ">=1.9.0"
+          },
+          {
+            "name": "vitest",
+            "severity": "critical",
+            "advisories": 2,
+            "direct": true,
+            "inProd": false,
+            "title": "When Vitest UI server is listening, arbitrary file can be read and executed; Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock",
+            "fix": ">=4.1.11"
+          },
+          {
+            "name": "tinypool",
+            "severity": "critical",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution; Tinypool: Prototype Pollution Gadget to RCE in run() options",
+            "fix": ">=2.1.2"
+          },
+          {
+            "name": "drizzle-orm",
+            "severity": "high",
+            "advisories": 1,
+            "direct": true,
+            "inProd": true,
+            "title": "Drizzle ORM has SQL injection via improperly escaped SQL identifiers",
+            "fix": ">=0.45.2"
+          },
+          {
+            "name": "form-data",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": true,
+            "title": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames",
+            "fix": ">=4.0.6"
+          },
+          {
+            "name": "fast-uri",
+            "severity": "high",
+            "advisories": 8,
+            "direct": false,
+            "inProd": true,
+            "title": "fast-uri vulnerable to host confusion via literal backslash authority delimiter; fast-uri vulnerable to host confusion via backslash authority introducer; fast-uri vulnerable to server-side request forgery via malformed IPv6 normalization",
+            "fix": ">=3.1.8"
+          },
+          {
+            "name": "find-my-way",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": true,
+            "title": "find-my-way: DDoS with HTTP2",
+            "fix": ">=9.7.0"
+          },
+          {
+            "name": "fastify",
+            "severity": "high",
+            "advisories": 7,
+            "direct": true,
+            "inProd": true,
+            "title": "fastify vulnerable to schema validation bypass via root primitive coercion mismatch; fastify vulnerable to X-Forwarded-* spoofing under trustProxy hop-count; fastify vulnerable to Denial of Service via unhandled exception on HTTP/2 trailer responses",
+            "fix": ">=5.12.5"
+          },
+          {
+            "name": "undici",
+            "severity": "high",
+            "advisories": 13,
+            "direct": false,
+            "inProd": false,
+            "title": "Undici has an unbounded decompression chain in HTTP responses on Node.js Fetch API via Content-Encoding leads to resource exhaustion; Undici has an HTTP Request/Response Smuggling issue; Undici has Unbounded Memory Consumption in WebSocket permessage-deflate Decompression",
+            "fix": ">=6.28.1"
+          },
+          {
+            "name": "vite",
+            "severity": "high",
+            "advisories": 3,
+            "direct": false,
+            "inProd": false,
+            "title": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling; launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows; vite: `server.fs.deny` bypass on Windows alternate paths",
+            "fix": ">=6.4.3"
+          },
+          {
+            "name": "brace-expansion",
+            "severity": "high",
+            "advisories": 6,
+            "direct": false,
+            "inProd": false,
+            "title": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups; brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash; brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+            "fix": ">=2.1.7"
+          },
+          {
+            "name": "postcss",
+            "severity": "high",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset; PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+            "fix": ">=8.5.23"
+          },
+          {
+            "name": "nanoid",
+            "severity": "high",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "nanoid: non-secure generators can loop indefinitely with negative size; nanoid: custom generators can loop indefinitely when size is zero",
+            "fix": ">=3.3.18"
+          },
+          {
+            "name": "@grpc/grpc-js",
+            "severity": "high",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "@grpc/grpc-js: In certain configurations, getAuthContext can return unauthorized certificates as though they were authorized; @grpc/grpc-js: The server transmits some error messages thrown by method handlers to the client in status messages",
+            "fix": ">=1.14.5"
+          },
+          {
+            "name": "@fastify/busboy",
+            "severity": "high",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "@fastify/busboy vulnerable to Denial of Service via prototype-named multipart part header; @fastify/busboy vulnerable to CRLF injection via multipart Content-Disposition filename and name",
+            "fix": ">=3.2.2"
+          },
+          {
+            "name": "source-map-js",
+            "severity": "high",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+            "fix": ">=1.2.2"
+          },
+          {
+            "name": "esbuild",
+            "severity": "moderate",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "esbuild enables any website to send any requests to the development server and read the response; esbuild allows arbitrary file read when running the development server on Windows",
+            "fix": ">=0.28.1"
+          },
+          {
+            "name": "uuid",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "fix": ">=11.1.1"
+          },
+          {
+            "name": "protobufjs",
+            "severity": "moderate",
+            "advisories": 2,
+            "direct": false,
+            "inProd": false,
+            "title": "protobufjs : Schema-derived names can shadow runtime-significant properties; protobufjs: Denial of Service via infinite loop in .proto option parsing",
+            "fix": ">=7.6.5"
+          },
+          {
+            "name": "@vitest/mocker",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock",
+            "fix": ">=4.1.11"
+          },
+          {
+            "name": "fast-copy",
+            "severity": "moderate",
+            "advisories": 1,
+            "direct": false,
+            "inProd": false,
+            "title": "fast-copy: Stack exhaustion in fast-copy when copying deeply-nested values",
+            "fix": ">=4.1.0"
+          }
+        ]
+      },
+      "outdated": {
+        "items": [
+          {
+            "name": "graphology-metrics",
+            "current": "2.4.0",
+            "wanted": "2.4.0",
+            "latest": "2.4.2",
+            "deprecated": false
+          },
+          {
+            "name": "@anthropic-ai/sdk",
+            "current": "0.33.1",
+            "wanted": "0.33.1",
+            "latest": "0.131.0",
+            "deprecated": false
+          },
+          {
+            "name": "@ast-grep/napi",
+            "current": "0.43.0",
+            "wanted": "0.43.0",
+            "latest": "0.45.3",
+            "deprecated": false
+          },
+          {
+            "name": "@fastify/autoload",
+            "current": "6.3.1",
+            "wanted": "6.3.1",
+            "latest": "6.5.0",
+            "deprecated": false
+          },
+          {
+            "name": "@fastify/helmet",
+            "current": "13.0.2",
+            "wanted": "13.0.2",
+            "latest": "13.1.1",
+            "deprecated": false
+          },
+          {
+            "name": "@fastify/rate-limit",
+            "current": "11.0.0",
+            "wanted": "11.0.0",
+            "latest": "11.2.0",
+            "deprecated": false
+          },
+          {
+            "name": "drizzle-kit",
+            "current": "0.30.6",
+            "wanted": "0.30.6",
+            "latest": "0.31.11",
+            "deprecated": false
+          },
+          {
+            "name": "drizzle-orm",
+            "current": "0.38.4",
+            "wanted": "0.38.4",
+            "latest": "0.45.3",
+            "deprecated": false
+          },
+          {
+            "name": "fastify",
+            "current": "5.8.5",
+            "wanted": "5.8.5",
+            "latest": "5.12.5",
+            "deprecated": false
+          },
+          {
+            "name": "pino-pretty",
+            "current": "13.1.3",
+            "wanted": "13.1.3",
+            "latest": "13.2.0",
+            "deprecated": false
+          },
+          {
+            "name": "tsx",
+            "current": "4.22.4",
+            "wanted": "4.22.4",
+            "latest": "4.23.15",
+            "deprecated": false
+          },
+          {
+            "name": "@fastify/cors",
+            "current": "10.1.0",
+            "wanted": "10.1.0",
+            "latest": "11.3.0",
+            "deprecated": false
+          },
+          {
+            "name": "@testcontainers/postgresql",
+            "current": "10.28.0",
+            "wanted": "10.28.0",
+            "latest": "12.2.0",
+            "deprecated": false
+          },
+          {
+            "name": "@types/node",
+            "current": "22.19.19",
+            "wanted": "22.19.19",
+            "latest": "26.6.4",
+            "deprecated": false
+          },
+          {
+            "name": "dependency-cruiser",
+            "current": "17.4.3",
+            "wanted": "17.4.3",
+            "latest": "18.5.0",
+            "deprecated": false
+          },
+          {
+            "name": "dotenv",
+            "current": "16.6.1",
+            "wanted": "16.6.1",
+            "latest": "18.0.6",
+            "deprecated": false
+          },
+          {
+            "name": "fastify-type-provider-zod",
+            "current": "4.0.2",
+            "wanted": "4.0.2",
+            "latest": "7.0.0",
+            "deprecated": false
+          },
+          {
+            "name": "octokit",
+            "current": "4.1.4",
+            "wanted": "4.1.4",
+            "latest": "5.0.5",
+            "deprecated": false
+          },
+          {
+            "name": "openai",
+            "current": "4.104.0",
+            "wanted": "4.104.0",
+            "latest": "7.30.0",
+            "deprecated": false
+          },
+          {
+            "name": "p-queue",
+            "current": "8.1.1",
+            "wanted": "8.1.1",
+            "latest": "9.3.3",
+            "deprecated": false
+          },
+          {
+            "name": "simple-git",
+            "current": "3.36.0",
+            "wanted": "3.36.0",
+            "latest": "4.0.2",
+            "deprecated": false
+          },
+          {
+            "name": "testcontainers",
+            "current": "10.28.0",
+            "wanted": "10.28.0",
+            "latest": "12.2.0",
+            "deprecated": false
+          },
+          {
+            "name": "typescript",
+            "current": "5.9.3",
+            "wanted": "5.9.3",
+            "latest": "7.0.2",
+            "deprecated": false
+          },
+          {
+            "name": "vitest",
+            "current": "2.1.9",
+            "wanted": "2.1.9",
+            "latest": "5.0.3",
+            "deprecated": false
+          },
+          {
+            "name": "zod",
+            "current": "3.25.76",
+            "wanted": "3.25.76",
+            "latest": "4.6.5",
+            "deprecated": false
+          }
+        ]
+      },
+      "analysisMs": 7023
+    }
+  ],
+  "crossPackage": [
+    {
+      "name": "@types/node",
+      "usedBy": [
+        {
+          "package": "client",
+          "kind": "dev",
+          "specifier": "^22.10.0",
+          "installed": "22.19.19"
+        },
+        {
+          "package": "e2e",
+          "kind": "dev",
+          "specifier": "^22.10.0",
+          "installed": "22.19.21"
+        },
+        {
+          "package": "evals",
+          "kind": "dev",
+          "specifier": "^22.0.0",
+          "installed": "22.20.0"
+        },
+        {
+          "package": "mcp",
+          "kind": "dev",
+          "specifier": "^22.20.4",
+          "installed": "22.20.4"
+        },
+        {
+          "package": "reviewer-core",
+          "kind": "dev",
+          "specifier": "^22.10.0",
+          "installed": "22.20.3"
+        },
+        {
+          "package": "server",
+          "kind": "dev",
+          "specifier": "^22.10.0",
+          "installed": "22.19.19"
+        }
+      ],
+      "drift": "minor"
+    },
+    {
+      "name": "typescript",
+      "usedBy": [
+        {
+          "package": "client",
+          "kind": "dev",
+          "specifier": "^5.7.2",
+          "installed": "5.9.3"
+        },
+        {
+          "package": "e2e",
+          "kind": "dev",
+          "specifier": "^5.7.2",
+          "installed": "5.9.3"
+        },
+        {
+          "package": "evals",
+          "kind": "dev",
+          "specifier": "^5.6.0",
+          "installed": "5.9.3"
+        },
+        {
+          "package": "mcp",
+          "kind": "dev",
+          "specifier": "^5.9.3",
+          "installed": "5.9.3"
+        },
+        {
+          "package": "reviewer-core",
+          "kind": "dev",
+          "specifier": "^5.7.2",
+          "installed": "5.9.3"
+        },
+        {
+          "package": "server",
+          "kind": "dev",
+          "specifier": "^5.7.2",
+          "installed": "5.9.3"
+        }
+      ],
+      "drift": "none"
+    },
+    {
+      "name": "tsx",
+      "usedBy": [
+        {
+          "package": "e2e",
+          "kind": "dev",
+          "specifier": "^4.19.2",
+          "installed": "4.22.4"
+        },
+        {
+          "package": "evals",
+          "kind": "dev",
+          "specifier": "^4.19.0",
+          "installed": "4.22.4"
+        },
+        {
+          "package": "mcp",
+          "kind": "prod",
+          "specifier": "^4.23.15",
+          "installed": "4.23.15"
+        },
+        {
+          "package": "reviewer-core",
+          "kind": "dev",
+          "specifier": "^4.19.2",
+          "installed": "4.23.13"
+        },
+        {
+          "package": "server",
+          "kind": "dev",
+          "specifier": "^4.19.2",
+          "installed": "4.22.4"
+        }
+      ],
+      "drift": "minor"
+    },
+    {
+      "name": "vitest",
+      "usedBy": [
+        {
+          "package": "client",
+          "kind": "dev",
+          "specifier": "^2.1.8",
+          "installed": "2.1.9"
+        },
+        {
+          "package": "evals",
+          "kind": "dev",
+          "specifier": "^2.1.0",
+          "installed": "2.1.9"
+        },
+        {
+          "package": "mcp",
+          "kind": "dev",
+          "specifier": "^2.1.9",
+          "installed": "2.1.9"
+        },
+        {
+          "package": "reviewer-core",
+          "kind": "dev",
+          "specifier": "^2.1.8",
+          "installed": "2.1.9"
+        },
+        {
+          "package": "server",
+          "kind": "dev",
+          "specifier": "^2.1.8",
+          "installed": "2.1.9"
+        }
+      ],
+      "drift": "none"
+    },
+    {
+      "name": "zod",
+      "usedBy": [
+        {
+          "package": "client",
+          "kind": "prod",
+          "specifier": "^3.24.1",
+          "installed": "3.25.76"
+        },
+        {
+          "package": "mcp",
+          "kind": "prod",
+          "specifier": "^3.25.76",
+          "installed": "3.25.76"
+        },
+        {
+          "package": "reviewer-core",
+          "kind": "prod",
+          "specifier": "^3.24.1",
+          "installed": "3.25.76"
+        },
+        {
+          "package": "server",
+          "kind": "prod",
+          "specifier": "^3.24.1",
+          "installed": "3.25.76"
+        }
+      ],
+      "drift": "none"
+    },
+    {
+      "name": "openai",
+      "usedBy": [
+        {
+          "package": "reviewer-core",
+          "kind": "prod",
+          "specifier": "^4.77.0",
+          "installed": "4.104.0"
+        },
+        {
+          "package": "server",
+          "kind": "prod",
+          "specifier": "^4.77.0",
+          "installed": "4.104.0"
+        }
+      ],
+      "drift": "none"
+    }
+  ],
+  "internalEdges": [
+    {
+      "from": "client",
+      "to": "client",
+      "alias": "@devdigest/shared",
+      "target": "./src/vendor/shared/index.ts",
+      "kind": "vendored"
+    },
+    {
+      "from": "client",
+      "to": "client",
+      "alias": "@devdigest/ui",
+      "target": "./src/vendor/ui/index.ts",
+      "kind": "vendored"
+    },
+    {
+      "from": "mcp",
+      "to": "server",
+      "alias": "@devdigest/shared",
+      "target": "../server/src/vendor/shared/index.ts",
+      "kind": "source-alias"
+    },
+    {
+      "from": "mcp",
+      "to": null,
+      "alias": "zod",
+      "target": "./node_modules/zod",
+      "kind": "alias-into-node_modules"
+    },
+    {
+      "from": "reviewer-core",
+      "to": "server",
+      "alias": "@devdigest/shared",
+      "target": "../server/src/vendor/shared/index.ts",
+      "kind": "source-alias"
+    },
+    {
+      "from": "reviewer-core",
+      "to": null,
+      "alias": "zod",
+      "target": "./node_modules/zod",
+      "kind": "alias-into-node_modules"
+    },
+    {
+      "from": "reviewer-core",
+      "to": null,
+      "alias": "zod/*",
+      "target": "./node_modules/zod/*",
+      "kind": "alias-into-node_modules"
+    },
+    {
+      "from": "server",
+      "to": "server",
+      "alias": "@devdigest/shared",
+      "target": "./src/vendor/shared/index.ts",
+      "kind": "vendored"
+    },
+    {
+      "from": "server",
+      "to": "reviewer-core",
+      "alias": "@devdigest/reviewer-core",
+      "target": "../reviewer-core/src/index.ts",
+      "kind": "source-alias"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F001",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "next",
+      "evidence": "critical · 12 advisories · direct · prod tree · fix: >=15.5.27",
+      "message": "Next.js: Denial of Service in App Router using Server Actions; Next.js: Server-Side Request Forgery in Server Actions on custom servers; Next.js: Cache confusion of response bodies for requests with bodies"
+    },
+    {
+      "id": "F002",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "postcss",
+      "evidence": "high · 4 advisories · direct · prod tree · fix: >=8.5.23",
+      "message": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output; PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments; PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset"
+    },
+    {
+      "id": "F003",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "sharp",
+      "evidence": "high · 3 advisories · transitive · prod tree · fix: >=0.35.5",
+      "message": "sharp inherited vulnerabilities in libvips: CVE-2026-33327, CVE-2026-33328, CVE-2026-35590, CVE-2026-35591; sharp: Vulnerabilities in libheif: GHSA-g89c-p67h-r497 and GHSA-2jg2-4ch7-h545; sharp : Vulnerability in librsvg dependency CVE-2026-96889"
+    },
+    {
+      "id": "F004",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "nanoid",
+      "evidence": "high · 2 advisories · transitive · prod tree · fix: >=3.3.18",
+      "message": "nanoid: non-secure generators can loop indefinitely with negative size; nanoid: custom generators can loop indefinitely when size is zero"
+    },
+    {
+      "id": "F005",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "source-map-js",
+      "evidence": "high · 1 advisory · transitive · prod tree · fix: >=1.2.2",
+      "message": "source-map-js allows event-loop denial of service through indexed source-map section offsets"
+    },
+    {
+      "id": "F006",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "proxy-addr",
+      "evidence": "critical · 1 advisory · transitive · prod tree · fix: >=2.0.8",
+      "message": "proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet"
+    },
+    {
+      "id": "F007",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "fast-uri",
+      "evidence": "high · 8 advisories · transitive · prod tree · fix: >=3.1.8",
+      "message": "fast-uri vulnerable to host confusion via literal backslash authority delimiter; fast-uri vulnerable to host confusion via backslash authority introducer; fast-uri vulnerable to host confusion via skipped IDN canonicalization on scheme-relative references"
+    },
+    {
+      "id": "F008",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "ip-address",
+      "evidence": "high · 7 advisories · transitive · prod tree · fix: >=10.7.1",
+      "message": "ip-address: Address4 decodes leading-zero octets as decimal while resolvers decode them as octal, allowing SSRF and trust-boundary bypass; ip-address: a CIDR suffix on the parsed address suppresses special-use classification and can bypass SSRF and trust-boundary checks; ip-address: misclassification of IPv4-mapped/NAT64 IPv6 addresses can bypass SSRF and trust-boundary checks"
+    },
+    {
+      "id": "F009",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "@modelcontextprotocol/sdk",
+      "evidence": "high · 1 advisory · transitive · prod tree · fix: >=1.31.0",
+      "message": "MCP TypeScript SDK: OAuth client could send credentials to an authorization server chosen by the MCP server"
+    },
+    {
+      "id": "F010",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "mcp",
+      "dep": "@modelcontextprotocol/sdk",
+      "evidence": "high · 1 advisory · direct · prod tree · fix: available",
+      "message": "MCP TypeScript SDK: OAuth client could send credentials to an authorization server chosen by the MCP server"
+    },
+    {
+      "id": "F011",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "reviewer-core",
+      "dep": "form-data",
+      "evidence": "high · 1 advisory · transitive · prod tree · fix: available",
+      "message": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames"
+    },
+    {
+      "id": "F012",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "@simple-git/argv-parser",
+      "evidence": "critical · 1 advisory · transitive · prod tree · fix: >=2.0.1",
+      "message": "simple-git: `VISUAL` editor environment variable is omitted from unsafe editor detection"
+    },
+    {
+      "id": "F013",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "simple-git",
+      "evidence": "critical · 3 advisories · direct · prod tree · fix: >=4.0.1",
+      "message": "simple-git unsafe-operation guard does not block trailer command configuration; simple-git allows command execution through unblocked Git configuration includes; simple-git: unsafe-operations plugin bypass via git long-option abbreviation (--receive-p/--exe) -> command execution (residual of CVE-2026-28291)"
+    },
+    {
+      "id": "F014",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "drizzle-orm",
+      "evidence": "high · 1 advisory · direct · prod tree · fix: >=0.45.2",
+      "message": "Drizzle ORM has SQL injection via improperly escaped SQL identifiers"
+    },
+    {
+      "id": "F015",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "form-data",
+      "evidence": "high · 1 advisory · transitive · prod tree · fix: >=4.0.6",
+      "message": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames"
+    },
+    {
+      "id": "F016",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "fast-uri",
+      "evidence": "high · 8 advisories · transitive · prod tree · fix: >=3.1.8",
+      "message": "fast-uri vulnerable to host confusion via literal backslash authority delimiter; fast-uri vulnerable to host confusion via backslash authority introducer; fast-uri vulnerable to server-side request forgery via malformed IPv6 normalization"
+    },
+    {
+      "id": "F017",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "find-my-way",
+      "evidence": "high · 1 advisory · transitive · prod tree · fix: >=9.7.0",
+      "message": "find-my-way: DDoS with HTTP2"
+    },
+    {
+      "id": "F018",
+      "priority": "P0",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "fastify",
+      "evidence": "high · 7 advisories · direct · prod tree · fix: >=5.12.5",
+      "message": "fastify vulnerable to schema validation bypass via root primitive coercion mismatch; fastify vulnerable to X-Forwarded-* spoofing under trustProxy hop-count; fastify vulnerable to Denial of Service via unhandled exception on HTTP/2 trailer responses"
+    },
+    {
+      "id": "F019",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "vitest",
+      "evidence": "critical · 2 advisories · direct · dev only · fix: >=4.1.11",
+      "message": "When Vitest UI server is listening, arbitrary file can be read and executed; Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock"
+    },
+    {
+      "id": "F020",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "tinypool",
+      "evidence": "critical · 2 advisories · transitive · dev only · fix: >=2.1.2",
+      "message": "Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution; Tinypool: Prototype Pollution Gadget to RCE in run() options"
+    },
+    {
+      "id": "F021",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "vite",
+      "evidence": "high · 3 advisories · transitive · dev only · fix: >=6.4.3",
+      "message": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling; launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows; vite: `server.fs.deny` bypass on Windows alternate paths"
+    },
+    {
+      "id": "F022",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "form-data",
+      "evidence": "high · 1 advisory · transitive · dev only · fix: >=4.0.6",
+      "message": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames"
+    },
+    {
+      "id": "F023",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "browserslist",
+      "evidence": "high · 2 advisories · transitive · dev only · fix: >=4.28.7",
+      "message": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM; Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)"
+    },
+    {
+      "id": "F024",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "vitest",
+      "evidence": "critical · 2 advisories · direct · dev only · fix: >=4.1.11",
+      "message": "When Vitest UI server is listening, arbitrary file can be read and executed; Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock"
+    },
+    {
+      "id": "F025",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "tinypool",
+      "evidence": "critical · 2 advisories · transitive · dev only · fix: >=2.1.2",
+      "message": "Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution; Tinypool: Prototype Pollution Gadget to RCE in run() options"
+    },
+    {
+      "id": "F026",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "vite",
+      "evidence": "high · 3 advisories · transitive · dev only · fix: >=6.4.3",
+      "message": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling; launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows; vite: `server.fs.deny` bypass on Windows alternate paths"
+    },
+    {
+      "id": "F027",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "postcss",
+      "evidence": "high · 2 advisories · transitive · dev only · fix: >=8.5.23",
+      "message": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset; PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure"
+    },
+    {
+      "id": "F028",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "js-yaml",
+      "evidence": "high · 2 advisories · transitive · dev only · fix: >=3.15.2",
+      "message": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported; js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources"
+    },
+    {
+      "id": "F029",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "nanoid",
+      "evidence": "high · 2 advisories · transitive · dev only · fix: >=3.3.18",
+      "message": "nanoid: non-secure generators can loop indefinitely with negative size; nanoid: custom generators can loop indefinitely when size is zero"
+    },
+    {
+      "id": "F030",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "source-map-js",
+      "evidence": "high · 1 advisory · transitive · dev only · fix: >=1.2.2",
+      "message": "source-map-js allows event-loop denial of service through indexed source-map section offsets"
+    },
+    {
+      "id": "F031",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "mcp",
+      "dep": "tinypool",
+      "evidence": "critical · 1 advisory · transitive · dev only · fix: vitest@5.0.3 (major)",
+      "message": "Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution; Tinypool: Prototype Pollution Gadget to RCE in run() options"
+    },
+    {
+      "id": "F032",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "mcp",
+      "dep": "vitest",
+      "evidence": "critical · 1 advisory · direct · dev only · fix: vitest@5.0.3 (major)",
+      "message": "@vitest/mocker; When Vitest UI server is listening, arbitrary file can be read and executed"
+    },
+    {
+      "id": "F033",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "mcp",
+      "dep": "source-map-js",
+      "evidence": "high · 1 advisory · transitive · dev only · fix: available",
+      "message": "source-map-js allows event-loop denial of service through indexed source-map section offsets"
+    },
+    {
+      "id": "F034",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "mcp",
+      "dep": "vite",
+      "evidence": "high · 1 advisory · transitive · dev only · fix: vitest@5.0.3 (major)",
+      "message": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling; launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows"
+    },
+    {
+      "id": "F035",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "reviewer-core",
+      "dep": "tinypool",
+      "evidence": "critical · 1 advisory · transitive · dev only · fix: vitest@5.0.3 (major)",
+      "message": "Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution; Tinypool: Prototype Pollution Gadget to RCE in run() options"
+    },
+    {
+      "id": "F036",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "reviewer-core",
+      "dep": "vitest",
+      "evidence": "critical · 1 advisory · direct · dev only · fix: vitest@5.0.3 (major)",
+      "message": "@vitest/mocker; When Vitest UI server is listening, arbitrary file can be read and executed"
+    },
+    {
+      "id": "F037",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "reviewer-core",
+      "dep": "nanoid",
+      "evidence": "high · 1 advisory · transitive · dev only · fix: available",
+      "message": "nanoid: non-secure generators can loop indefinitely with negative size; nanoid: custom generators can loop indefinitely when size is zero"
+    },
+    {
+      "id": "F038",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "reviewer-core",
+      "dep": "postcss",
+      "evidence": "high · 1 advisory · transitive · dev only · fix: available",
+      "message": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset; PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure"
+    },
+    {
+      "id": "F039",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "reviewer-core",
+      "dep": "source-map-js",
+      "evidence": "high · 1 advisory · transitive · dev only · fix: available",
+      "message": "source-map-js allows event-loop denial of service through indexed source-map section offsets"
+    },
+    {
+      "id": "F040",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "reviewer-core",
+      "dep": "vite",
+      "evidence": "high · 1 advisory · transitive · dev only · fix: vitest@5.0.3 (major)",
+      "message": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling; launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows"
+    },
+    {
+      "id": "F041",
+      "package": "server",
+      "dep": "@fastify/autoload",
+      "evidence": "no references found",
+      "priority": "P1",
+      "rule": "possibly-unused",
+      "message": "Declared in prod but no import, string reference, config or script usage was found."
+    },
+    {
+      "id": "F042",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "shell-quote",
+      "evidence": "critical · 2 advisories · transitive · dev only · fix: >=1.9.0",
+      "message": "shell-quote: Quadratic-complexity Denial of Service in `parse()` (CWE-407); shell-quote: `quote()` command injection via a line terminator in a token after a `{ comment }` token"
+    },
+    {
+      "id": "F043",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "vitest",
+      "evidence": "critical · 2 advisories · direct · dev only · fix: >=4.1.11",
+      "message": "When Vitest UI server is listening, arbitrary file can be read and executed; Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock"
+    },
+    {
+      "id": "F044",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "tinypool",
+      "evidence": "critical · 2 advisories · transitive · dev only · fix: >=2.1.2",
+      "message": "Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution; Tinypool: Prototype Pollution Gadget to RCE in run() options"
+    },
+    {
+      "id": "F045",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "undici",
+      "evidence": "high · 13 advisories · transitive · dev only · fix: >=6.28.1",
+      "message": "Undici has an unbounded decompression chain in HTTP responses on Node.js Fetch API via Content-Encoding leads to resource exhaustion; Undici has an HTTP Request/Response Smuggling issue; Undici has Unbounded Memory Consumption in WebSocket permessage-deflate Decompression"
+    },
+    {
+      "id": "F046",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "vite",
+      "evidence": "high · 3 advisories · transitive · dev only · fix: >=6.4.3",
+      "message": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling; launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows; vite: `server.fs.deny` bypass on Windows alternate paths"
+    },
+    {
+      "id": "F047",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "brace-expansion",
+      "evidence": "high · 6 advisories · transitive · dev only · fix: >=2.1.7",
+      "message": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups; brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash; brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation"
+    },
+    {
+      "id": "F048",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "postcss",
+      "evidence": "high · 2 advisories · transitive · dev only · fix: >=8.5.23",
+      "message": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset; PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure"
+    },
+    {
+      "id": "F049",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "nanoid",
+      "evidence": "high · 2 advisories · transitive · dev only · fix: >=3.3.18",
+      "message": "nanoid: non-secure generators can loop indefinitely with negative size; nanoid: custom generators can loop indefinitely when size is zero"
+    },
+    {
+      "id": "F050",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "@grpc/grpc-js",
+      "evidence": "high · 2 advisories · transitive · dev only · fix: >=1.14.5",
+      "message": "@grpc/grpc-js: In certain configurations, getAuthContext can return unauthorized certificates as though they were authorized; @grpc/grpc-js: The server transmits some error messages thrown by method handlers to the client in status messages"
+    },
+    {
+      "id": "F051",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "@fastify/busboy",
+      "evidence": "high · 2 advisories · transitive · dev only · fix: >=3.2.2",
+      "message": "@fastify/busboy vulnerable to Denial of Service via prototype-named multipart part header; @fastify/busboy vulnerable to CRLF injection via multipart Content-Disposition filename and name"
+    },
+    {
+      "id": "F052",
+      "priority": "P1",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "source-map-js",
+      "evidence": "high · 1 advisory · transitive · dev only · fix: >=1.2.2",
+      "message": "source-map-js allows event-loop denial of service through indexed source-map section offsets"
+    },
+    {
+      "id": "F053",
+      "package": "client",
+      "dep": "lucide-react",
+      "evidence": "1 prod files",
+      "priority": "P2",
+      "rule": "heavy-prod-dep",
+      "message": "Production dependency pulls 27.4 MB across 2 packages (exclusive 27.3 MB)."
+    },
+    {
+      "id": "F054",
+      "package": "client",
+      "dep": "mermaid",
+      "evidence": "2 prod files · 2 test files",
+      "priority": "P2",
+      "rule": "heavy-prod-dep",
+      "message": "Production dependency pulls 115 MB across 111 packages (exclusive 113 MB)."
+    },
+    {
+      "id": "F055",
+      "package": "client",
+      "dep": "next",
+      "evidence": "26 prod files · 4 test files · 2 config/script/style files · bins: next · peer of next-intl",
+      "priority": "P2",
+      "rule": "heavy-prod-dep",
+      "message": "Production dependency pulls 305 MB across 20 packages (exclusive 0 B)."
+    },
+    {
+      "id": "F056",
+      "package": "client",
+      "dep": "next-intl",
+      "evidence": "102 prod files · 49 test files · 1 config/script/style files",
+      "priority": "P2",
+      "rule": "heavy-prod-dep",
+      "message": "Production dependency pulls 308 MB across 31 packages (exclusive 2.0 MB)."
+    },
+    {
+      "id": "F057",
+      "package": "client",
+      "dep": "postcss",
+      "evidence": "also installed transitively via next",
+      "priority": "P2",
+      "rule": "possibly-unused",
+      "message": "Declared in dev but no import, string reference, config or script usage was found."
+    },
+    {
+      "id": "F058",
+      "priority": "P2",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "next-intl",
+      "evidence": "moderate · 2 advisories · direct · prod tree · fix: >=4.9.2",
+      "message": "next-intl has an open redirect vulnerability; next-intl has prototype pollution with `experimental.messages.precompile` via attacker-controlled translation catalog keys"
+    },
+    {
+      "id": "F059",
+      "priority": "P2",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "dompurify",
+      "evidence": "moderate · 5 advisories · transitive · prod tree · fix: >=3.4.9",
+      "message": "DOMPurify: Permanent `ALLOWED_ATTR` pollution via `setConfig()` bypassing the hook clone-guard (incomplete fix of the 3.4.7 hook-pollution patch); DOMPurify: Trusted Types policy survives `clearConfig()` and can poison later `RETURN_TRUSTED_TYPE` output; DOMPurify: IN_PLACE hook removal leaves a detached subtree executable, causing XSS"
+    },
+    {
+      "id": "F060",
+      "priority": "P2",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "mermaid",
+      "evidence": "moderate · 5 advisories · direct · prod tree · fix: >=11.16.1",
+      "message": "Mermaid configuration APIs allow prototype pollution; Mermaid allows CSS injection applying to sibling elements of the diagram; Mermaid Architecture diagrams are vulnerable to prototype pollution"
+    },
+    {
+      "id": "F061",
+      "package": "evals",
+      "dep": "@anthropic-ai/claude-agent-sdk",
+      "evidence": "1 prod files",
+      "priority": "P2",
+      "rule": "heavy-prod-dep",
+      "message": "Production dependency pulls 253 MB across 101 packages (exclusive 253 MB)."
+    },
+    {
+      "id": "F062",
+      "priority": "P2",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "hono",
+      "evidence": "moderate · 8 advisories · transitive · prod tree · fix: >=4.13.7",
+      "message": "Hono: ReDoS in CORS middleware via Access-Control-Request-Headers; Hono: `memo()` retains SSR output across requests, leading to cross-user data disclosure; Hono: Proxy Helper does not remove response headers listed in the `Connection` header"
+    },
+    {
+      "id": "F063",
+      "priority": "P2",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "@hono/node-server",
+      "evidence": "moderate · 1 advisory · transitive · prod tree · fix: >=1.19.15",
+      "message": "Node.js Adapter for Hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)"
+    },
+    {
+      "id": "F064",
+      "priority": "P2",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "qs",
+      "evidence": "moderate · 2 advisories · transitive · prod tree · fix: >=6.16.0",
+      "message": "qs array-limit bypass via bracket-key comma parsing; qs: Denial of Service via Attacker Controlled isBuffer"
+    },
+    {
+      "id": "F065",
+      "priority": "P2",
+      "rule": "stray-install",
+      "package": "mcp",
+      "evidence": ".ignored_tsx, .ignored_typescript, .ignored_vitest, .ignored_zod, .pnpm",
+      "message": "node_modules holds 75.1 MB that no declared dependency reaches (leftovers of another package manager: .ignored_tsx, .ignored_typescript, .ignored_vitest, .ignored_zod, .pnpm) — reinstall cleanly with npm ci."
+    },
+    {
+      "id": "F066",
+      "priority": "P2",
+      "rule": "duplicate-versions",
+      "package": "mcp",
+      "dep": "@esbuild/win32-x64",
+      "evidence": "0.21.5, 0.28.2",
+      "message": "2 versions installed side by side (9.5 MB redundant, in the production tree)."
+    },
+    {
+      "id": "F067",
+      "priority": "P2",
+      "rule": "vulnerability",
+      "package": "mcp",
+      "dep": "esbuild",
+      "evidence": "moderate · 1 advisory · transitive · prod tree · fix: vitest@5.0.3 (major)",
+      "message": "esbuild enables any website to send any requests to the development server and read the response"
+    },
+    {
+      "id": "F068",
+      "priority": "P2",
+      "rule": "stray-install",
+      "package": "reviewer-core",
+      "evidence": ".ignored_tsx, .ignored_typescript, .ignored_vitest, .pnpm",
+      "message": "node_modules holds 72.4 MB that no declared dependency reaches (leftovers of another package manager: .ignored_tsx, .ignored_typescript, .ignored_vitest, .pnpm) — reinstall cleanly with npm ci."
+    },
+    {
+      "id": "F069",
+      "priority": "P2",
+      "rule": "duplicate-versions",
+      "package": "reviewer-core",
+      "dep": "@types/node",
+      "evidence": "18.19.130, 22.20.3",
+      "message": "2 versions installed side by side (2.0 MB redundant, in the production tree)."
+    },
+    {
+      "id": "F070",
+      "priority": "P2",
+      "rule": "stray-install",
+      "package": "server",
+      "evidence": "unreferenced packages",
+      "message": "node_modules holds 12.4 MB that no declared dependency reaches — reinstall cleanly with pnpm install --frozen-lockfile."
+    },
+    {
+      "id": "F071",
+      "package": "server",
+      "dep": "js-tiktoken",
+      "evidence": "1 prod files · 1 config/script/style files",
+      "priority": "P2",
+      "rule": "heavy-prod-dep",
+      "message": "Production dependency pulls 21.4 MB across 2 packages (exclusive 21.4 MB)."
+    },
+    {
+      "id": "F072",
+      "package": "server",
+      "dep": "testcontainers",
+      "evidence": "also installed transitively via @testcontainers/postgresql",
+      "priority": "P2",
+      "rule": "possibly-unused",
+      "message": "Declared in dev but no import, string reference, config or script usage was found."
+    },
+    {
+      "id": "F073",
+      "priority": "P2",
+      "rule": "duplicate-versions",
+      "package": "server",
+      "dep": "@types/node",
+      "evidence": "18.19.130, 22.19.19",
+      "message": "2 versions installed side by side (2.0 MB redundant, in the production tree)."
+    },
+    {
+      "id": "F074",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "esbuild",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: >=0.25.0",
+      "message": "esbuild enables any website to send any requests to the development server and read the response"
+    },
+    {
+      "id": "F075",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "@vitest/mocker",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: >=4.1.11",
+      "message": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock"
+    },
+    {
+      "id": "F076",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "baseline-browser-mapping",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: >=2.11.0",
+      "message": "baseline-browser-mapping process termination on invalid input causes denial of service"
+    },
+    {
+      "id": "F077",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "client",
+      "dep": "katex",
+      "evidence": "low · 1 advisory · transitive · prod tree · fix: >=0.18.2",
+      "message": "KaTeX: Existing prototype pollution can bypass trust restrictions"
+    },
+    {
+      "id": "F078",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "@testing-library/jest-dom",
+      "evidence": "6.9.1 → 7.0.1",
+      "message": "A new major line is available (7.0.1)."
+    },
+    {
+      "id": "F079",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "@types/node",
+      "evidence": "22.19.19 → 26.6.4",
+      "message": "A new major line is available (26.6.4)."
+    },
+    {
+      "id": "F080",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "@vitejs/plugin-react",
+      "evidence": "4.7.0 → 6.1.2",
+      "message": "A new major line is available (6.1.2)."
+    },
+    {
+      "id": "F081",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "jsdom",
+      "evidence": "25.0.1 → 30.1.2",
+      "message": "A new major line is available (30.1.2)."
+    },
+    {
+      "id": "F082",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "lucide-react",
+      "evidence": "0.469.0 → 1.52.0",
+      "message": "A new major line is available (1.52.0)."
+    },
+    {
+      "id": "F083",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "mermaid",
+      "evidence": "11.15.0 → 12.1.0",
+      "message": "A new major line is available (12.1.0)."
+    },
+    {
+      "id": "F084",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "next",
+      "evidence": "15.5.19 → 16.4.0",
+      "message": "A new major line is available (16.4.0)."
+    },
+    {
+      "id": "F085",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "next-intl",
+      "evidence": "3.26.5 → 4.14.9",
+      "message": "A new major line is available (4.14.9)."
+    },
+    {
+      "id": "F086",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "react-markdown",
+      "evidence": "9.1.0 → 10.1.0",
+      "message": "A new major line is available (10.1.0)."
+    },
+    {
+      "id": "F087",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "recharts",
+      "evidence": "2.15.4 → 3.10.1",
+      "message": "A new major line is available (3.10.1)."
+    },
+    {
+      "id": "F088",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "typescript",
+      "evidence": "5.9.3 → 7.0.2",
+      "message": "A new major line is available (7.0.2)."
+    },
+    {
+      "id": "F089",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "vitest",
+      "evidence": "2.1.9 → 5.0.3",
+      "message": "A new major line is available (5.0.3)."
+    },
+    {
+      "id": "F090",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "client",
+      "dep": "zod",
+      "evidence": "3.25.76 → 4.6.5",
+      "message": "A new major line is available (4.6.5)."
+    },
+    {
+      "id": "F091",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "e2e",
+      "dep": "esbuild",
+      "evidence": "low · 1 advisory · transitive · dev only · fix: available",
+      "message": "esbuild allows arbitrary file read when running the development server on Windows"
+    },
+    {
+      "id": "F092",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "e2e",
+      "dep": "@types/node",
+      "evidence": "22.19.21 → 26.6.4",
+      "message": "A new major line is available (26.6.4)."
+    },
+    {
+      "id": "F093",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "e2e",
+      "dep": "typescript",
+      "evidence": "5.9.3 → 7.0.2",
+      "message": "A new major line is available (7.0.2)."
+    },
+    {
+      "id": "F094",
+      "priority": "P3",
+      "rule": "duplicate-versions",
+      "package": "evals",
+      "dep": "@esbuild/win32-x64",
+      "evidence": "0.21.5, 0.28.1",
+      "message": "2 versions installed side by side (9.5 MB redundant, dev tooling only)."
+    },
+    {
+      "id": "F095",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "esbuild",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: >=0.25.0",
+      "message": "esbuild enables any website to send any requests to the development server and read the response"
+    },
+    {
+      "id": "F096",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "@vitest/mocker",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: >=4.1.11",
+      "message": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock"
+    },
+    {
+      "id": "F097",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "evals",
+      "dep": "sprintf-js",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: none",
+      "message": "sprintf-js vulnerable to denial of service through unbounded precision specifiers"
+    },
+    {
+      "id": "F098",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "evals",
+      "dep": "@types/node",
+      "evidence": "22.20.0 → 26.6.4",
+      "message": "A new major line is available (26.6.4)."
+    },
+    {
+      "id": "F099",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "evals",
+      "dep": "typescript",
+      "evidence": "5.9.3 → 7.0.2",
+      "message": "A new major line is available (7.0.2)."
+    },
+    {
+      "id": "F100",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "evals",
+      "dep": "vitest",
+      "evidence": "2.1.9 → 5.0.3",
+      "message": "A new major line is available (5.0.3)."
+    },
+    {
+      "id": "F101",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "mcp",
+      "dep": "@vitest/mocker",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: vitest@5.0.3 (major)",
+      "message": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock; vite"
+    },
+    {
+      "id": "F102",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "mcp",
+      "dep": "vite-node",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: vitest@5.0.3 (major)",
+      "message": "vite"
+    },
+    {
+      "id": "F103",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "mcp",
+      "dep": "@types/node",
+      "evidence": "22.20.4 → 26.6.4",
+      "message": "A new major line is available (26.6.4)."
+    },
+    {
+      "id": "F104",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "mcp",
+      "dep": "typescript",
+      "evidence": "5.9.3 → 7.0.2",
+      "message": "A new major line is available (7.0.2)."
+    },
+    {
+      "id": "F105",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "mcp",
+      "dep": "vitest",
+      "evidence": "2.1.9 → 5.0.3",
+      "message": "A new major line is available (5.0.3)."
+    },
+    {
+      "id": "F106",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "mcp",
+      "dep": "zod",
+      "evidence": "3.25.76 → 4.6.5",
+      "message": "A new major line is available (4.6.5)."
+    },
+    {
+      "id": "F107",
+      "priority": "P3",
+      "rule": "duplicate-versions",
+      "package": "reviewer-core",
+      "dep": "@esbuild/win32-x64",
+      "evidence": "0.21.5, 0.28.2",
+      "message": "2 versions installed side by side (9.5 MB redundant, dev tooling only)."
+    },
+    {
+      "id": "F108",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "reviewer-core",
+      "dep": "@vitest/mocker",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: vitest@5.0.3 (major)",
+      "message": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock; vite"
+    },
+    {
+      "id": "F109",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "reviewer-core",
+      "dep": "esbuild",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: vitest@5.0.3 (major)",
+      "message": "esbuild enables any website to send any requests to the development server and read the response; esbuild allows arbitrary file read when running the development server on Windows"
+    },
+    {
+      "id": "F110",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "reviewer-core",
+      "dep": "vite-node",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: vitest@5.0.3 (major)",
+      "message": "vite"
+    },
+    {
+      "id": "F111",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "reviewer-core",
+      "dep": "@types/node",
+      "evidence": "22.20.3 → 26.6.4",
+      "message": "A new major line is available (26.6.4)."
+    },
+    {
+      "id": "F112",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "reviewer-core",
+      "dep": "openai",
+      "evidence": "4.104.0 → 7.30.1",
+      "message": "A new major line is available (7.30.1)."
+    },
+    {
+      "id": "F113",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "reviewer-core",
+      "dep": "typescript",
+      "evidence": "5.9.3 → 7.0.2",
+      "message": "A new major line is available (7.0.2)."
+    },
+    {
+      "id": "F114",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "reviewer-core",
+      "dep": "vitest",
+      "evidence": "2.1.9 → 5.0.3",
+      "message": "A new major line is available (5.0.3)."
+    },
+    {
+      "id": "F115",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "reviewer-core",
+      "dep": "zod",
+      "evidence": "3.25.76 → 4.6.5",
+      "message": "A new major line is available (4.6.5)."
+    },
+    {
+      "id": "F116",
+      "priority": "P3",
+      "rule": "duplicate-versions",
+      "package": "server",
+      "dep": "@esbuild/win32-x64",
+      "evidence": "0.18.20, 0.19.12, 0.21.5, 0.28.0",
+      "message": "4 versions installed side by side (27.9 MB redundant, dev tooling only)."
+    },
+    {
+      "id": "F117",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "esbuild",
+      "evidence": "moderate · 2 advisories · transitive · dev only · fix: >=0.28.1",
+      "message": "esbuild enables any website to send any requests to the development server and read the response; esbuild allows arbitrary file read when running the development server on Windows"
+    },
+    {
+      "id": "F118",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "uuid",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: >=11.1.1",
+      "message": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided"
+    },
+    {
+      "id": "F119",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "protobufjs",
+      "evidence": "moderate · 2 advisories · transitive · dev only · fix: >=7.6.5",
+      "message": "protobufjs : Schema-derived names can shadow runtime-significant properties; protobufjs: Denial of Service via infinite loop in .proto option parsing"
+    },
+    {
+      "id": "F120",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "@vitest/mocker",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: >=4.1.11",
+      "message": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock"
+    },
+    {
+      "id": "F121",
+      "priority": "P3",
+      "rule": "vulnerability",
+      "package": "server",
+      "dep": "fast-copy",
+      "evidence": "moderate · 1 advisory · transitive · dev only · fix: >=4.1.0",
+      "message": "fast-copy: Stack exhaustion in fast-copy when copying deeply-nested values"
+    },
+    {
+      "id": "F122",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "@anthropic-ai/sdk",
+      "evidence": "0.33.1 → 0.131.0",
+      "message": "A new major line is available (0.131.0)."
+    },
+    {
+      "id": "F123",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "@ast-grep/napi",
+      "evidence": "0.43.0 → 0.45.3",
+      "message": "A new major line is available (0.45.3)."
+    },
+    {
+      "id": "F124",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "drizzle-kit",
+      "evidence": "0.30.6 → 0.31.11",
+      "message": "A new major line is available (0.31.11)."
+    },
+    {
+      "id": "F125",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "drizzle-orm",
+      "evidence": "0.38.4 → 0.45.3",
+      "message": "A new major line is available (0.45.3)."
+    },
+    {
+      "id": "F126",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "@fastify/cors",
+      "evidence": "10.1.0 → 11.3.0",
+      "message": "A new major line is available (11.3.0)."
+    },
+    {
+      "id": "F127",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "@testcontainers/postgresql",
+      "evidence": "10.28.0 → 12.2.0",
+      "message": "A new major line is available (12.2.0)."
+    },
+    {
+      "id": "F128",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "@types/node",
+      "evidence": "22.19.19 → 26.6.4",
+      "message": "A new major line is available (26.6.4)."
+    },
+    {
+      "id": "F129",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "dependency-cruiser",
+      "evidence": "17.4.3 → 18.5.0",
+      "message": "A new major line is available (18.5.0)."
+    },
+    {
+      "id": "F130",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "dotenv",
+      "evidence": "16.6.1 → 18.0.6",
+      "message": "A new major line is available (18.0.6)."
+    },
+    {
+      "id": "F131",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "fastify-type-provider-zod",
+      "evidence": "4.0.2 → 7.0.0",
+      "message": "A new major line is available (7.0.0)."
+    },
+    {
+      "id": "F132",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "octokit",
+      "evidence": "4.1.4 → 5.0.5",
+      "message": "A new major line is available (5.0.5)."
+    },
+    {
+      "id": "F133",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "openai",
+      "evidence": "4.104.0 → 7.30.0",
+      "message": "A new major line is available (7.30.0)."
+    },
+    {
+      "id": "F134",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "p-queue",
+      "evidence": "8.1.1 → 9.3.3",
+      "message": "A new major line is available (9.3.3)."
+    },
+    {
+      "id": "F135",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "simple-git",
+      "evidence": "3.36.0 → 4.0.2",
+      "message": "A new major line is available (4.0.2)."
+    },
+    {
+      "id": "F136",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "testcontainers",
+      "evidence": "10.28.0 → 12.2.0",
+      "message": "A new major line is available (12.2.0)."
+    },
+    {
+      "id": "F137",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "typescript",
+      "evidence": "5.9.3 → 7.0.2",
+      "message": "A new major line is available (7.0.2)."
+    },
+    {
+      "id": "F138",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "vitest",
+      "evidence": "2.1.9 → 5.0.3",
+      "message": "A new major line is available (5.0.3)."
+    },
+    {
+      "id": "F139",
+      "priority": "P3",
+      "rule": "outdated-major",
+      "package": "server",
+      "dep": "zod",
+      "evidence": "3.25.76 → 4.6.5",
+      "message": "A new major line is available (4.6.5)."
+    },
+    {
+      "id": "F140",
+      "priority": "P3",
+      "rule": "version-drift",
+      "dep": "@types/node",
+      "evidence": "client: ^22.10.0 (22.19.19) · e2e: ^22.10.0 (22.19.21) · evals: ^22.0.0 (22.20.0) · mcp: ^22.20.4 (22.20.4) · reviewer-core: ^22.10.0 (22.20.3) · server: ^22.10.0 (22.19.19)",
+      "message": "minor version drift across packages."
+    },
+    {
+      "id": "F141",
+      "priority": "P3",
+      "rule": "version-drift",
+      "dep": "tsx",
+      "evidence": "e2e: ^4.19.2 (4.22.4) · evals: ^4.19.0 (4.22.4) · mcp: ^4.23.15 (4.23.15) · reviewer-core: ^4.19.2 (4.23.13) · server: ^4.19.2 (4.22.4)",
+      "message": "minor version drift across packages."
+    },
+    {
+      "id": "F142",
+      "priority": "P3",
+      "rule": "alias-pins-node_modules",
+      "package": "mcp",
+      "dep": "zod",
+      "evidence": "zod → ./node_modules/zod",
+      "message": "tsconfig path alias points into node_modules to force a single copy — a symptom of duplicate instances; keep versions aligned with the alias owner."
+    },
+    {
+      "id": "F143",
+      "priority": "P3",
+      "rule": "alias-pins-node_modules",
+      "package": "reviewer-core",
+      "dep": "zod",
+      "evidence": "zod → ./node_modules/zod",
+      "message": "tsconfig path alias points into node_modules to force a single copy — a symptom of duplicate instances; keep versions aligned with the alias owner."
+    },
+    {
+      "id": "F144",
+      "priority": "P3",
+      "rule": "alias-pins-node_modules",
+      "package": "reviewer-core",
+      "dep": "zod/*",
+      "evidence": "zod/* → ./node_modules/zod/*",
+      "message": "tsconfig path alias points into node_modules to force a single copy — a symptom of duplicate instances; keep versions aligned with the alias owner."
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { createDb, type Db } from './client.js';
 import * as t from './schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { parseSkillMarkdown } from '../modules/skills/domain/parse-markdown.js';
@@ -15,6 +15,7 @@ import {
   TEST_QUALITY_REVIEWER_PROMPT,
 } from './seed-prompts.js';
 import { SEED_PR_482_BRIEF } from './seed-brief.js';
+import { seedEvalCases } from './seed-eval-cases.js';
 
 /**
  * SPEC-01 (U7) — demo text for the Security Reviewer's seeded run trace
@@ -396,10 +397,153 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
   }
 
   // ---- PR #482 (rate limiting) ----
+  const pr482Files = [
+      {
+        path: 'src/middleware/ratelimit.ts',
+        additions: 84,
+        deletions: 0,
+        patch: `@@ -0,0 +1,10 @@
++import type { FastifyPluginAsync } from 'fastify';
++
++const buckets = new Map<string, number>();
++
++export function tokenBucketRateLimit(key: string, max: number, refillMs: number): boolean {
++  const tokens = buckets.get(key) ?? max;
++  if (tokens <= 0) return false;
++  buckets.set(key, tokens - 1);
++  return true;
++}`,
+      },
+      {
+        path: 'src/api/public/webhooks.ts',
+        additions: 31,
+        deletions: 6,
+        patch: `@@ -3,8 +3,13 @@
++import { tokenBucketRateLimit } from '../../middleware/ratelimit.js';
++
+ export async function handleWebhook(req, reply) {
+-  if (!verifySignature(req)) {
+-    return reply.code(401).send({ error: 'invalid signature' });
+-  }
++  if (!tokenBucketRateLimit(req.ip, 50, 60_000)) {
++    return reply.code(429).send({ error: 'rate limit exceeded' });
++  }
++  if (!verifySignature(req)) {
++    return reply.code(401).send({ error: 'invalid signature' });
++  }
+   const event = req.body;
+   await processEvent(event);
+   return reply.code(202).send();
+ }`,
+      },
+      {
+        path: 'src/config.ts',
+        additions: 4,
+        deletions: 0,
+        patch: `@@ -1,9 +1,13 @@
+ export const config = {
+   port: process.env.PORT ?? 3000,
+   env: process.env.NODE_ENV ?? 'development',
++  rateLimitWindowMs: 60_000,
++  rateLimitMax: 100,
++  rateLimitEnabled: true,
+   database: {
+     url: process.env.DATABASE_URL,
+   },
+   webhookSecret: process.env.WEBHOOK_SECRET,
+   apiVersion: 'v1',
++  stripeKey: STRIPE_LIVE_KEY,
+ };`,
+      },
+      {
+        path: 'src/api/users.ts',
+        additions: 7,
+        deletions: 2,
+        patch: `@@ -40,3 +40,8 @@
+-  const users = await db.select().from(usersTable).where(inArray(usersTable.id, ids));
+-  return users;
++  const users = await db.select().from(usersTable).where(inArray(usersTable.id, ids));
++  const withOrders = [];
++  for (const user of users) {
++    const orders = await db.select().from(ordersTable).where(eq(ordersTable.userId, user.id));
++    withOrders.push({ ...user, orders });
++  }
++  return withOrders;
+ }`,
+      },
+      {
+        path: 'src/middleware/ratelimit.test.ts',
+        additions: 8,
+        deletions: 0,
+        patch: `@@ -0,0 +1,8 @@
++import { describe, it, expect } from 'vitest';
++import { tokenBucketRateLimit } from './ratelimit.js';
++
++describe('tokenBucketRateLimit', () => {
++  it('allows a request under the limit', () => {
++    expect(tokenBucketRateLimit('ip-1', 5, 60_000)).toBe(true);
++  });
++});`,
+      },
+      {
+        path: 'src/index.ts',
+        additions: 2,
+        deletions: 0,
+        patch: `@@ -1,1 +1,2 @@
+ import Fastify from 'fastify';
++import { registerRateLimit } from './middleware/ratelimit.js';
+@@ -3,2 +4,3 @@
+ const app = Fastify();
++registerRateLimit(app);
+ export default app;`,
+      },
+      {
+        path: 'README.md',
+        additions: 3,
+        deletions: 0,
+        patch: `@@ -1,3 +1,6 @@
+ # payments-api
+
+ Internal payments service.
++
++## Rate limiting
++Public endpoints are now protected by a token-bucket rate limiter.`,
+      },
+      {
+        path: 'pnpm-lock.yaml',
+        additions: 4,
+        deletions: 0,
+        patch: `@@ -120,3 +120,7 @@
+   safe-regex-test:
+     resolution: {integrity: sha512-abc123==}
+     dev: false
++
++  token-bucket:
++    resolution: {integrity: sha512-def456==}
++    dev: false`,
+      },
+  ];
+
   let [pr] = await db
     .select()
     .from(t.pullRequests)
     .where(and(eq(t.pullRequests.repoId, repoId), eq(t.pullRequests.number, 482)));
+  if (pr) {
+    // Older dev databases seeded PR #482 before pr_files carried real patches (or with fewer rows).
+    // Fill missing patches / rows from the canonical fixture; never overwrite an existing patch.
+    const existing = await db.select({ path: t.prFiles.path, patch: t.prFiles.patch }).from(t.prFiles).where(eq(t.prFiles.prId, pr.id));
+    const byPath = new Map(existing.map((f) => [f.path, f.patch]));
+    for (const f of pr482Files) {
+      if (!byPath.has(f.path)) {
+        await db.insert(t.prFiles).values({ ...f, prId: pr.id });
+      } else if (byPath.get(f.path) == null) {
+        await db
+          .update(t.prFiles)
+          .set({ patch: f.patch })
+          .where(and(eq(t.prFiles.prId, pr.id), eq(t.prFiles.path, f.path), isNull(t.prFiles.patch)));
+      }
+    }
+  }
   if (!pr) {
     [pr] = await db
       .insert(t.pullRequests)
@@ -428,140 +572,7 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     // line the seeded CRITICAL finding below points at (docs/plans/smart-diff.md U5).
     // Four extra rows (test/wiring/docs/boilerplate) so every Smart Diff role
     // group has at least one file — see docs/plans/smart-diff.md §3.3.
-    await db.insert(t.prFiles).values([
-      {
-        prId: pr!.id,
-        path: 'src/middleware/ratelimit.ts',
-        additions: 84,
-        deletions: 0,
-        patch: `@@ -0,0 +1,10 @@
-+import type { FastifyPluginAsync } from 'fastify';
-+
-+const buckets = new Map<string, number>();
-+
-+export function tokenBucketRateLimit(key: string, max: number, refillMs: number): boolean {
-+  const tokens = buckets.get(key) ?? max;
-+  if (tokens <= 0) return false;
-+  buckets.set(key, tokens - 1);
-+  return true;
-+}`,
-      },
-      {
-        prId: pr!.id,
-        path: 'src/api/public/webhooks.ts',
-        additions: 31,
-        deletions: 6,
-        patch: `@@ -3,8 +3,13 @@
-+import { tokenBucketRateLimit } from '../../middleware/ratelimit.js';
-+
- export async function handleWebhook(req, reply) {
--  if (!verifySignature(req)) {
--    return reply.code(401).send({ error: 'invalid signature' });
--  }
-+  if (!tokenBucketRateLimit(req.ip, 50, 60_000)) {
-+    return reply.code(429).send({ error: 'rate limit exceeded' });
-+  }
-+  if (!verifySignature(req)) {
-+    return reply.code(401).send({ error: 'invalid signature' });
-+  }
-   const event = req.body;
-   await processEvent(event);
-   return reply.code(202).send();
- }`,
-      },
-      {
-        prId: pr!.id,
-        path: 'src/config.ts',
-        additions: 4,
-        deletions: 0,
-        patch: `@@ -1,9 +1,13 @@
- export const config = {
-   port: process.env.PORT ?? 3000,
-   env: process.env.NODE_ENV ?? 'development',
-+  rateLimitWindowMs: 60_000,
-+  rateLimitMax: 100,
-+  rateLimitEnabled: true,
-   database: {
-     url: process.env.DATABASE_URL,
-   },
-   webhookSecret: process.env.WEBHOOK_SECRET,
-   apiVersion: 'v1',
-+  stripeKey: STRIPE_LIVE_KEY,
- };`,
-      },
-      {
-        prId: pr!.id,
-        path: 'src/api/users.ts',
-        additions: 7,
-        deletions: 2,
-        patch: `@@ -40,3 +40,8 @@
--  const users = await db.select().from(usersTable).where(inArray(usersTable.id, ids));
--  return users;
-+  const users = await db.select().from(usersTable).where(inArray(usersTable.id, ids));
-+  const withOrders = [];
-+  for (const user of users) {
-+    const orders = await db.select().from(ordersTable).where(eq(ordersTable.userId, user.id));
-+    withOrders.push({ ...user, orders });
-+  }
-+  return withOrders;
- }`,
-      },
-      {
-        prId: pr!.id,
-        path: 'src/middleware/ratelimit.test.ts',
-        additions: 8,
-        deletions: 0,
-        patch: `@@ -0,0 +1,8 @@
-+import { describe, it, expect } from 'vitest';
-+import { tokenBucketRateLimit } from './ratelimit.js';
-+
-+describe('tokenBucketRateLimit', () => {
-+  it('allows a request under the limit', () => {
-+    expect(tokenBucketRateLimit('ip-1', 5, 60_000)).toBe(true);
-+  });
-+});`,
-      },
-      {
-        prId: pr!.id,
-        path: 'src/index.ts',
-        additions: 2,
-        deletions: 0,
-        patch: `@@ -1,1 +1,2 @@
- import Fastify from 'fastify';
-+import { registerRateLimit } from './middleware/ratelimit.js';
-@@ -3,2 +4,3 @@
- const app = Fastify();
-+registerRateLimit(app);
- export default app;`,
-      },
-      {
-        prId: pr!.id,
-        path: 'README.md',
-        additions: 3,
-        deletions: 0,
-        patch: `@@ -1,3 +1,6 @@
- # payments-api
-
- Internal payments service.
-+
-+## Rate limiting
-+Public endpoints are now protected by a token-bucket rate limiter.`,
-      },
-      {
-        prId: pr!.id,
-        path: 'pnpm-lock.yaml',
-        additions: 4,
-        deletions: 0,
-        patch: `@@ -120,3 +120,7 @@
-   safe-regex-test:
-     resolution: {integrity: sha512-abc123==}
-     dev: false
-+
-+  token-bucket:
-+    resolution: {integrity: sha512-def456==}
-+    dev: false`,
-      },
-    ]);
+    await db.insert(t.prFiles).values(pr482Files.map((f) => ({ ...f, prId: pr!.id })));
 
     // pr_commits
     await db.insert(t.prCommits).values({
@@ -1262,6 +1273,9 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       createdAt: scannedAt,
     });
   }
+
+  // ---- SPEC-05: the Security Reviewer's 7 demo eval cases (own guard, see seed-eval-cases.ts) ----
+  await seedEvalCases(db, workspaceId);
 
   return { workspaceId, userId };
 }

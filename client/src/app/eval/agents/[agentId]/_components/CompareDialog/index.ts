@@ -1,0 +1,1 @@
+export { CompareDialog } from "./CompareDialog";
