@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Button, Dropdown, EmptyState, Icon, Skeleton, type DropdownItemDef } from "@devdigest/ui";
+import { Button, Dropdown, EmptyState, ErrorState, Icon, Skeleton, type DropdownItemDef } from "@devdigest/ui";
 import { AppShell } from "@/components/app-shell";
 import { formatCost } from "@/lib/format-cost";
 import { formatSeconds } from "@/lib/multi-agent-selection";
@@ -14,6 +14,7 @@ import { useConfigureRun } from "./useConfigureRun";
 
 export function ConfigureRun() {
   const t = useTranslations("multiAgent");
+  const tc = useTranslations("common");
   const c = useConfigureRun();
 
   const prItems: DropdownItemDef[] = c.prOptions.map((p) => ({
@@ -23,7 +24,9 @@ export function ConfigureRun() {
   }));
   const duration = c.estimate.maxDurationMs == null ? "—" : formatSeconds(c.estimate.maxDurationMs);
   // AC-14: with no enabled agent the empty state replaces the agent list AND the run action.
-  const noAgents = !c.agentsLoading && c.enabled.length === 0;
+  const noAgents = !c.agentsLoading && !c.agentsError && c.enabled.length === 0;
+  // A failed agents load is an error with retry — never the "no enabled agents" state.
+  const agentsUnavailable = !c.agentsLoading && c.agentsError;
 
   return (
     <AppShell crumb={[{ label: t("title") }, { label: t("crumbConfigure") }]}>
@@ -66,7 +69,8 @@ export function ConfigureRun() {
           {t("configure.stepAgents")}
         </StepHeader>
         <div style={s.stepBody}>
-          {!noAgents && !c.prId && (
+          {agentsUnavailable && <ErrorState title={tc("states.error")} onRetry={c.retryAgents} />}
+          {!noAgents && !agentsUnavailable && !c.prId && (
             <div style={s.placeholder}>
               <div style={s.placeholderIcon}>
                 <Icon.GitPullRequest size={21} />
@@ -94,7 +98,7 @@ export function ConfigureRun() {
           )}
         </div>
 
-        {!noAgents && (
+        {!noAgents && !agentsUnavailable && (
           <div style={s.runBar}>
             <Button kind="primary" icon="Users" loading={c.isStarting} disabled={!c.canRun} onClick={c.run}>
               {t("picker.run", { count: c.selected.length })}
@@ -110,7 +114,7 @@ export function ConfigureRun() {
           <div role="alert" style={s.error}>
             {c.inFlightId ? t("configure.inFlight") : c.errorMessage}
             {c.inFlightId && (
-              <button type="button" style={s.errorLink} onClick={() => c.openResults(c.inFlightId ?? undefined)}>
+              <button type="button" style={s.errorLink} onClick={c.openInFlight}>
                 {t("configure.inFlightLink")}
               </button>
             )}

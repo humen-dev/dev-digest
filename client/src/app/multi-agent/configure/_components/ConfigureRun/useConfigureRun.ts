@@ -16,7 +16,7 @@ export function useConfigureRun() {
   const router = useRouter();
   const params = useSearchParams();
   const { repoId } = useActiveRepo();
-  const { data: agents, isLoading: agentsLoading } = useAgents();
+  const { data: agents, isLoading: agentsLoading, isError: agentsError, refetch: refetchAgents } = useAgents();
   const { data: pulls } = usePulls(repoId);
   const start = useStartMultiAgentRun();
 
@@ -40,6 +40,15 @@ export function useConfigureRun() {
     setPicked(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
   const setAll = (on: boolean) => setPicked(on ? enabled.map((a) => a.id) : []);
 
+  // A start error (incl. a 409 in-flight link) belongs to the PR it was raised for:
+  // switching PR clears it.
+  const choosePr = (id: string) => {
+    setPrId(id);
+    start.reset();
+  };
+  const inFlightId = inFlightRunId(start.error);
+  const inFlightPrId = start.variables?.prId ?? null;
+
   const run = async () => {
     if (!prId || selected.length === 0) return;
     try {
@@ -54,8 +63,10 @@ export function useConfigureRun() {
     prId,
     pr,
     prOptions,
-    setPrId,
+    setPrId: choosePr,
     agentsLoading,
+    agentsError,
+    retryAgents: () => void refetchAgents(),
     enabled,
     selected,
     estimate,
@@ -66,7 +77,9 @@ export function useConfigureRun() {
     canRun: !!prId && selected.length > 0 && !start.isPending,
     isStarting: start.isPending,
     errorMessage: start.error ? start.error.message : null,
-    inFlightId: inFlightRunId(start.error),
+    inFlightId,
+    // The in-flight run lives on the PR the failed start was for, not the PR shown now.
+    openInFlight: () => inFlightId && inFlightPrId && router.push(multiAgentResultsUrl(inFlightPrId, inFlightId)),
     latest: latest ?? null,
     openResults: (multiRunId?: string) => prId && router.push(multiAgentResultsUrl(prId, multiRunId)),
     goToAgents: () => router.push("/agents"),
