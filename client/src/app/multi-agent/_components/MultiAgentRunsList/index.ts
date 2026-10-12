@@ -1,1 +1,1 @@
-export { MultiAgentEntry } from "./MultiAgentRunsList";
+export { MultiAgentRunsList } from "./MultiAgentRunsList";

@@ -2,10 +2,15 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../api";
 import { rememberSelection } from "../multi-agent-selection";
-import type { MultiAgentRun, MultiAgentRunRef, MultiAgentRunTriggerResult } from "@devdigest/shared";
+import type {
+  MultiAgentRun,
+  MultiAgentRunRef,
+  MultiAgentRunTriggerResult,
+  MultiAgentRunsPage,
+} from "@devdigest/shared";
 
 const POLL_MS = 4000;
 
@@ -26,7 +31,7 @@ export function useStartMultiAgentRun() {
     onSuccess: (_d, { prId, agentIds }) => {
       rememberSelection(agentIds);
       qc.invalidateQueries({ queryKey: ["multi-agent-latest", prId] });
-      qc.invalidateQueries({ queryKey: ["multi-agent-latest", "workspace"] });
+      qc.invalidateQueries({ queryKey: ["multi-agent-runs"] });
     },
   });
 }
@@ -70,10 +75,18 @@ export function useLatestMultiAgentRunForPr(prId: string | null) {
   });
 }
 
-/** Latest multi-agent run in the workspace, or null. */
-export function useLatestMultiAgentRun() {
-  return useQuery({
-    queryKey: ["multi-agent-latest", "workspace"],
-    queryFn: () => api.get<MultiAgentRunRef | null>("/multi-agent/latest"),
+/** Paged list of the workspace's multi-agent runs, newest first. Polls while
+    any loaded run is still running. */
+export function useMultiAgentRunsList() {
+  return useInfiniteQuery({
+    queryKey: ["multi-agent-runs"],
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) =>
+      api.get<MultiAgentRunsPage>(
+        `/multi-agent/runs${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+      ),
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    refetchInterval: (query) =>
+      query.state.data?.pages.some((p) => p.items.some((i) => i.state === "running")) ? POLL_MS : false,
   });
 }

@@ -58,6 +58,31 @@
     "unknownAgent": "Unknown agent",
     "chip": "+{count} agents"
   },
+  "list": {
+    "configureRun": "Configure run",
+    "emptyTitle": "No multi-agent runs yet",
+    "emptyCta": "Configure run",
+    "errorTitle": "Couldn't load multi-agent runs",
+    "retry": "Retry",
+    "loadMore": "Load more",
+    "loadMoreError": "Couldn't load more runs",
+    "moreAgents": "+{count} more",
+    "state": {
+      "running": "running",
+      "done": "done",
+      "failed": "{count} failed"
+    },
+    "rowLabel": "#{number} {title} · {repo} · {state}",
+    "col": {
+      "pr": "Pull request",
+      "repo": "Repository",
+      "started": "Started",
+      "agents": "Agents",
+      "time": "Time",
+      "cost": "Cost",
+      "state": "State"
+    }
+  },
   "finding": {
     "learn": "Learn",
     "reply": "Reply to author",

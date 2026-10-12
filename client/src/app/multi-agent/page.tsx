@@ -1,6 +1,6 @@
-import { MultiAgentEntry } from "./_components/MultiAgentRunsList";
+import { MultiAgentRunsList } from "./_components/MultiAgentRunsList";
 
-/* Route: /multi-agent. Thin entry — redirects to the latest run or Configure run. */
+/* Route: /multi-agent. Thin entry — the paged list of multi-agent runs. */
 export default function MultiAgentPage() {
-  return <MultiAgentEntry />;
+  return <MultiAgentRunsList />;
 }
