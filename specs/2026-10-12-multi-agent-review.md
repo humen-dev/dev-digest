@@ -1,7 +1,7 @@
 # Spec: Multi-Agent Review (agent picker, Configure run, Columns / Tabs results, Where agents disagree)
 
 Spec ID: SPEC-07
-Status: approved
+Status: implemented
 Created: 2026-10-12
 Approved: 2026-10-12 by user
 Modules: client · server
@@ -74,6 +74,8 @@ Today:
 
 ## Acceptance criteria (EARS)
 
+**Deferred:** AC-57, AC-64, AC-65, AC-66 and AC-71 are not implemented in this release (user decision 2026-10-12). They stay here as follow-up requirements and are marked in their Priority cell; a follow-up spec or plan picks them up.
+
 Terms defined once:
 - A **multi-agent run** is one grouping identity over the agent runs started together on one PR.
 - A **participating agent** is an agent of that multi-agent run whose agent run has status `done`.
@@ -110,7 +112,7 @@ Terms defined once:
 | AC-16 | Ubiquitous | The API shall return with every agent in `GET /agents` an estimated duration equal to the mean `duration_ms` of that agent's `done` agent runs, and an estimated cost equal to the mean `cost_usd` of its `done` agent runs whose cost is not null. | US-3 | Must | integration (`*.it.test.ts`) — seed 3 done runs (8 s/$0.06, 6 s/$0.04, 7 s/null) → assert 7000 ms and $0.05 |
 | AC-17 | Unwanted behaviour | IF an agent has no `done` agent run, THEN the API shall return its estimated duration and cost as null with `has_history: false`. | US-3 | Must | integration — agent with only failed runs → nulls and `has_history: false` |
 | AC-18 | Unwanted behaviour | IF an agent has `done` runs but none with a known cost, THEN the API shall return a duration estimate and a null cost estimate for it. | US-3 | Should | integration — only unpriced done runs → duration present, cost null |
-| AC-19 | Event-driven | WHEN the agent selection changes in the picker or Configure run, the web app shall show the summary "≈ <max of selected duration estimates> · $<sum of selected cost estimates> · parallel fan-out". | US-3 | Must | unit — select 8.2 s/$0.06 and 3.1 s/$0.04 → "≈ 8.2s · $0.10 · parallel fan-out" |
+| AC-19 | Event-driven | WHEN the agent selection changes in the picker or Configure run, the web app shall show the summary "≈ <max of selected duration estimates> · $<sum of selected cost estimates> · parallel fan-out". | US-3 | Must | unit — select 8.2 s/$0.06 and 3.1 s/$0.04 → "≈ 8.2s · $0.100 · parallel fan-out" (cost in the repo's shared cost format, `client/src/lib/format-cost.ts:12-15`: 3 decimals from $0.01) |
 | AC-20 | Unwanted behaviour | IF a selected agent has a null estimate, THEN the web app shall show "no history" in its row and leave that value out of the summary. | US-3 | Must | unit — one agent without history → its row reads "no history" and the summary ignores it |
 
 **Grouped, concurrent execution (US-4)**
@@ -119,13 +121,13 @@ Terms defined once:
 | AC-21 | Event-driven | WHEN the user opens Configure run, selects a PR or changes the agent selection, the web app shall send only `GET` requests to the API. | US-3 | Should | unit — the fetch mock records only `GET` calls during the configure flow (NFR-3 covers the 0 LLM calls server-side) |
 | AC-22 | Event-driven | WHEN the API receives `POST /pulls/:id/multi-agent-run` with a list of agent ids, the API shall create one multi-agent run and one agent run per distinct listed agent, each linked to that multi-agent run. | US-4 | Must | integration — post 3 ids → 1 multi-agent run row and 3 linked agent runs |
 | AC-23 | Event-driven | WHEN the API has created a multi-agent run, the API shall respond with its id and one `{run_id, agent_id, agent_name}` entry per agent run before any agent review completes. | US-4 | Must | integration — stub LLM blocked → response arrives while every run is still `running` |
-| AC-24 | Event-driven | WHEN the API executes a batch of agent runs from any review trigger, the API shall start every agent's review within 1 s after shared pre-work completes. | US-4 | Must | integration — 3 agents with a stub LLM delaying 3 s each → batch completes in < 6 s, and the per-agent start timestamps are within 1 s of each other |
+| AC-24 | Event-driven | WHEN the API executes a batch of agent runs from any review trigger, the API shall start every agent's review within 1 s after shared pre-work completes. | US-4 | Must | integration — event ordering, no timers: 3 agents with a stub LLM that blocks until released → every agent's review has started (all 3 stub calls observed) before the first one is released |
 | AC-25 | Unwanted behaviour | IF one agent run of a batch fails or is cancelled, THEN the API shall complete every other agent run of that batch with its own outcome. | US-4 | Must | integration — stub provider throws for agent B → A and C reach `done` with persisted findings |
 | AC-26 | State-driven | WHILE agent runs of a batch execute concurrently, the API shall deliver each agent-specific event only to the event stream of the agent run that produced it. | US-4 | Must | integration — subscribe to 2 runs → each stream holds the shared pre-work events plus only its own agent's events |
 | AC-27 | Ubiquitous | The API shall load the PR diff and derive the PR intent once per batch, before any agent review starts. | US-4 | Should | integration — a 3-agent batch emits one "Loading PR diff" step per run buffer and makes 1 diff load |
 | AC-28 | Unwanted behaviour | IF the agent id list contains an id that is unknown or belongs to another workspace, THEN the API shall reject the whole request with HTTP 404 and create no multi-agent run and no agent run. | US-4 | Must | integration — one valid id plus one foreign id → 404, 0 new rows |
 | AC-29 | Unwanted behaviour | IF the agent id list is empty, THEN the API shall reject the request with HTTP 422. | US-4 | Must | integration — `[]` → 422 |
-| AC-30 | State-driven | WHILE a multi-agent run of a PR has an agent run with status `running`, the API shall answer a new `POST /pulls/:id/multi-agent-run` for that PR with HTTP 409 carrying the in-flight multi-agent run id. | US-4 | Should | integration — two quick posts → 1 multi-agent run, the second answer is 409 with the first id |
+| AC-30 | State-driven | WHILE a multi-agent run of a PR has an agent run with status `running`, the API shall answer a new `POST /pulls/:id/multi-agent-run` for that PR with HTTP 409 carrying the in-flight multi-agent run id. | US-4 | Should | integration — sequential posts: the second post, sent while the first run's agent run is `running`, → 409 with the first id and 1 multi-agent run. Plain check-then-insert without a lock: two truly simultaneous posts can create two multi-agent runs — an accepted race for a local-first, single-user app (plan Decision 5) |
 
 **Results page, common (US-5, US-6)**
 | ID | Pattern | Requirement | Story | Priority | Verify by |
@@ -169,7 +171,7 @@ Terms defined once:
 | AC-74 | State-driven | WHILE "Show only conflicts" is off, which is its initial state, the web app shall show every match group. | US-7 | Must | unit — same fixture on first render → 3 groups; toggle on then off → 3 groups |
 | AC-55 | Unwanted behaviour | IF fewer than two agents of the multi-agent run are participating, THEN the web app shall show "Comparing agents needs at least two successful runs" in place of the conflict filter result. | US-7 | Should | unit — 1-agent run fixture |
 | AC-56 | Optional feature | WHERE "Show only conflicts" is on and no match group is a conflict, the web app shall show "No conflicts — the agents agree on every flagged location." | US-7 | Should | unit — unanimous fixture with the toggle on |
-| AC-57 | Event-driven | WHEN the user clicks an agent's take in a disagreement row, the web app shall switch to Tabs mode with that agent's tab active and its finding of the group expanded. | US-7 | Could | unit — click → active tab and expanded card |
+| AC-57 | Event-driven | WHEN the user clicks an agent's take in a disagreement row, the web app shall switch to Tabs mode with that agent's tab active and its finding of the group expanded. | US-7 | Could · **deferred** (user decision 2026-10-12, follow-up) | unit — click → active tab and expanded card |
 
 **Trace (US-8)**
 | ID | Pattern | Requirement | Story | Priority | Verify by |
@@ -181,12 +183,12 @@ Terms defined once:
 **Totals and honest cost (US-9)**
 | ID | Pattern | Requirement | Story | Priority | Verify by |
 |---|---|---|---|---|---|
-| AC-61 | Ubiquitous | The API shall report a multi-agent run's total duration as the wall-clock time from the multi-agent run's creation to the last of its agent runs reaching a terminal status. | US-9 | Must | integration — stub delays (pre-work 1 s, agents 2 s and 3 s) → total ≥ 4 s and < 5 s, not the max of agent durations |
+| AC-61 | Ubiquitous | The API shall report a multi-agent run's total duration as the wall-clock time from the multi-agent run's creation to the last of its agent runs reaching a terminal status. | US-9 | Must | deterministic: unit — the totals computation over stored timestamps (creation t0, agent runs finished at t0+4 s and t0+3 s, agent durations 2 s and 3 s) → 4000 ms, not the max of agent durations; integration — a terminal agent run has its finish timestamp stored |
 | AC-62 | Ubiquitous | The API shall report a multi-agent run's total cost as the sum of its agent runs' known `cost_usd`, plus the count of its agent runs whose cost is null. | US-9 | Must | integration — costs 0.06, null, 0.04 → total 0.10 and 1 unpriced |
-| AC-63 | Optional feature | WHERE a multi-agent run has unpriced agent runs, the web app shall show the total cost as "$<sum> + <n> unpriced". | US-9 | Must | unit — fixture with 1 unpriced run |
-| AC-64 | Event-driven | WHEN the shared pre-work of a multi-agent run makes an intent classifier call, the API shall report that call's tokens and cost as a separate shared pre-work item of that multi-agent run. | US-9 | Should | integration — no stored intent → item with tokens > 0; its cost equals the classifier's reported cost |
-| AC-65 | Event-driven | WHEN the shared pre-work of a multi-agent run reuses a stored intent, the API shall report the shared pre-work item as 0 LLM calls. | US-9 | Should | integration — fresh stored intent → item reports 0 calls |
-| AC-66 | Optional feature | WHERE a multi-agent run has a shared pre-work item with an LLM call, the web app shall show "incl. $<cost> shared pre-work" next to the total cost. | US-9 | Should | unit — fixture with a classifier item |
+| AC-63 | Optional feature | WHERE a multi-agent run has unpriced agent runs, the web app shall show the total cost as "$<sum> + <n> unpriced". | US-9 | Must | unit — costs 0.06 and 0.04 plus 1 unpriced run → "$0.100 + 1 unpriced"; no run with a known cost and 2 unpriced → "$0.00 + 2 unpriced" (the shared cost format renders 0 as "$0.00", `client/src/lib/format-cost.ts:14`), never "—" |
+| AC-64 | Event-driven | WHEN the shared pre-work of a multi-agent run makes an intent classifier call, the API shall report that call's tokens and cost as a separate shared pre-work item of that multi-agent run. | US-9 | Should · **deferred** (user decision 2026-10-12, follow-up) | integration — no stored intent → item with tokens > 0; its cost equals the classifier's reported cost |
+| AC-65 | Event-driven | WHEN the shared pre-work of a multi-agent run reuses a stored intent, the API shall report the shared pre-work item as 0 LLM calls. | US-9 | Should · **deferred** (user decision 2026-10-12, follow-up) | integration — fresh stored intent → item reports 0 calls |
+| AC-66 | Optional feature | WHERE a multi-agent run has a shared pre-work item with an LLM call, the web app shall show "incl. $<cost> shared pre-work" next to the total cost. | US-9 | Should · **deferred** (user decision 2026-10-12, follow-up) | unit — fixture with a classifier item |
 
 **Navigation, resume and cancel (US-10)**
 | ID | Pattern | Requirement | Story | Priority | Verify by |
@@ -195,7 +197,7 @@ Terms defined once:
 | AC-68 | Event-driven | WHEN the user activates the Multi-Agent Review sidebar item and the workspace has no multi-agent run, the web app shall open Configure run. | US-10 | Should | unit — latest is null → Configure run |
 | AC-69 | Ubiquitous | The web app shall carry the multi-agent run id in the results page URL, so that a reload or a shared link opens the same run. | US-10 | Should | unit — render with `?multiRunId=X` → the request names X |
 | AC-70 | Event-driven | WHEN the user clicks "Configure run" on the results page, the web app shall open Configure run with the same PR and agent set preselected. | US-10 | Should | unit — click → preselected PR and agents |
-| AC-71 | Optional feature | WHERE a PR has a multi-agent run, the web app shall show on the PR page a link to that PR's latest multi-agent results that starts no run. | US-10 | Could | unit — link present; clicking it sends no POST |
+| AC-71 | Optional feature | WHERE a PR has a multi-agent run, the web app shall show on the PR page a link to that PR's latest multi-agent results that starts no run. | US-10 | Could · **deferred** (user decision 2026-10-12, follow-up) | unit — link present; clicking it sends no POST |
 | AC-72 | State-driven | WHILE at least one agent run of the shown multi-agent run is `running`, the web app shall show a "Cancel all" button in the results header. | US-5 | Should | unit — running fixture → button present; all-terminal fixture → absent |
 | AC-73 | Event-driven | WHEN the user clicks "Cancel all", the web app shall send the existing `POST /runs/:id/cancel` for every agent run of that multi-agent run that is `running`. | US-5 | Should | unit — 2 running + 1 done → 2 cancel calls |
 
@@ -261,8 +263,8 @@ sequenceDiagram
 ## Data and state
 - **Multi-agent run** (existing `multi_agent_runs` stub): owned by the API, scoped to the workspace and the PR. It gains:
   - the set of agent runs it groups, as a link from each agent run to its multi-agent run;
-  - its shared pre-work item: whether an intent classifier call was made during the run, with its tokens and cost (AC-64, AC-65);
   - the data needed for wall-clock duration: creation time plus the agent runs' terminal times (AC-61).
+  - *(deferred with AC-64 / AC-65)* its shared pre-work item — whether an intent classifier call was made during the run, with its tokens and cost — is not stored in this release.
 
   The schema change ships as a new append-only migration with the next free number after `0019_eval_reshape_drop.sql`. The upstream reference's `0012`/`0013` numbers are taken here and are not reused.
 - **Existing agent runs** have no multi-agent run. They belong to none and are never shown in multi-agent results. No backfill.
@@ -274,10 +276,14 @@ sequenceDiagram
 - **`POST /pulls/:id/review`** keeps its contract and response (`routes.ts:27-44`). Its batch now executes concurrently (AC-24), so the existing single-agent and run-all paths are also concurrent. They must produce the same persisted rows and per-run events as before (NFR-6).
 - **PR-page Run Review control:** the picker replaces the run-all and single-agent items (AC-1). It is no longer possible to run a **disabled** agent from the PR page. That stays possible through the API's `agentId` form, which remains unchanged.
 - **Vendored contracts:** both copies are changed identically (`server/src/vendor/shared`, `client/src/vendor/shared`). The changes are additive:
-  - `AgentColumn.status` gains `cancelled` and the column gains an error text;
-  - `MultiAgentRun` gains the unpriced count and the shared pre-work item;
-  - the trigger body is new;
-  - the agent list gains the estimate fields.
+  - `AgentColumn`: `status` gains `cancelled`; the column gains `agent_description` and `error` (secret-masked); `agent_id` is nullable (EC-4) (`server/src/vendor/shared/contracts/observability.ts:41-64`);
+  - `AgentColumnFinding` is now the full persisted `FindingRecord` plus `group_id` (`observability.ts:38`);
+  - `ConflictTake` gains `run_id` and `run_status`; `agent_id` is nullable (`observability.ts:68-79`);
+  - `Conflict` (one match group) gains `id`, `is_conflict` and `finding_ids` (`observability.ts:90-100`);
+  - `MultiAgentRun` gains `pr_title` and `unpriced_count` (`observability.ts:104-121`); the shared pre-work item is deferred with AC-64 – AC-66;
+  - new `MultiAgentRunRequest` (trigger body), `MultiAgentRunTriggerResult` (trigger response) and `MultiAgentRunRef` (latest-run pointer) (`observability.ts:24-35`, `:125-130`);
+  - `Agent` (the `GET /agents` items) gains optional `est_duration_ms`, `est_cost_usd` and `has_history` (`server/src/vendor/shared/contracts/knowledge.ts:328-330`);
+  - database: `agent_runs.multi_run_id` (nullable link to `multi_agent_runs`, set null on delete) and `agent_runs.finished_at`, plus indexes, via append-only migration `server/src/db/migrations/0020_multi_agent_review.sql:1-6`. Existing rows keep both columns null.
 
   `ConflictTake.verdict` keeps `'ignored'` as the wire value for "did not flag". A non-participating status is carried as its own value. The `conflicts` array of `MultiAgentRun` carries **every** match group, as in the L07 reference; "conflict" filtering happens in the web app (AC-54). Its doc comment (`observability.ts:61-64`) is updated to say so.
 - **PR-page finding cards** keep today's action set: Accept, Dismiss, Turn into eval case (`FindingCard.tsx:92-114`). Learn and Reply placeholders appear only in Multi-Agent Review Tabs mode.
@@ -350,14 +356,14 @@ sequenceDiagram
 ## Non-functional requirements
 | ID | Category | Requirement | Verify by |
 |---|---|---|---|
-| NFR-1 | Performance | WHEN the web app requests `GET /agents` on the seeded dataset plus 1 000 extra agent runs, the API shall respond within 500 ms at p95 over 20 requests. | integration — timed loop on the seeded DB |
-| NFR-2 | Performance | WHEN the web app requests `GET /pulls/:id/multi-agent` for a run of 8 agents with 50 findings each, the API shall respond within 1 s at p95 over 20 requests. | integration — timed loop on a fixture |
+| NFR-1 | Performance | WHEN the web app requests `GET /agents` on the seeded dataset plus 1 000 extra agent runs, the API shall respond within 500 ms at p95 over 20 requests. | manual — timed curl loop on the seeded DB plus extra runs (no wall-clock thresholds in automated suites) |
+| NFR-2 | Performance | WHEN the web app requests `GET /pulls/:id/multi-agent` for a run of 8 agents with 50 findings each, the API shall respond within 1 s at p95 over 20 requests. | manual — timed curl loop against a large stored run |
 | NFR-3 | Cost (LLM calls) | WHEN the API serves `GET /agents` or `GET /pulls/:id/multi-agent`, the API shall make 0 LLM calls. | integration — stub LLM call counter = 0 after the reads |
 | NFR-4 | Cost (LLM calls) | WHEN a multi-agent run of N agents executes, the API shall make exactly N review executions and at most 1 intent classifier call. | integration — stub counters for N = 3 |
 | NFR-5 | Determinism | The API shall return identical match groups, in identical order (file, then line), for identical stored findings, without any LLM or embedding call. | unit — property test over shuffled input order |
 | NFR-6 | Reliability | WHEN a review is triggered through `POST /pulls/:id/review` with `agentId` or `all`, the API shall persist the same rows and emit the same per-run events as before this feature, apart from start timing. | integration — the existing review `*.it.test.ts` suite passes unchanged |
 | NFR-7 | Security (abuse) | IF a client sends more than 10 `POST /pulls/:id/multi-agent-run` requests within 1 minute, THEN the API shall answer the excess with HTTP 429. | integration — 11 posts → the 11th gets 429 |
-| NFR-8 | A11y | The web app shall make the agent checkboxes, Select all / Clear, the run action, the Columns/Tabs switch, the tabs, the conflicts toggle and every View trace link operable from the keyboard. | manual — keyboard walk-through of the full flow; axe check with 0 serious violations |
+| NFR-8 | A11y | The web app shall make the agent checkboxes, Select all / Clear, the run action, the Columns/Tabs switch, the tabs, the conflicts toggle and every View trace link operable from the keyboard. | manual (main session, plan §7 Phase 5) — keyboard walk-through of the full flow; axe check with 0 serious violations |
 | NFR-9 | A11y | The web app shall show a text label for every agent run status, finding severity and take verdict, in addition to its colour. | unit — the status, severity and verdict text is present in the fixtures |
 | NFR-10 | A11y | WHEN an agent run's status changes on the results page, the web app shall announce the new status in a polite live region. | unit — status flip → live region text updated |
 | NFR-11 | I18n | The web app shall take every new user-facing string of this feature from `next-intl` messages. | inspection + unit — grep the new components for literal strings; grep the message files for "worktrees" / "p-queue" = 0 hits |
@@ -365,7 +371,7 @@ sequenceDiagram
 **Verification procedure (non-EARS process obligation from the user's acceptance scenario)**
 - **VP-1 — "1 vs 3" measurement.** Before `implemented`, the verifier records a table in the implementation PR description for seeded PR #482: one agent (Security Reviewer) vs three agents (Security, Performance, General Reviewer).
   - Cold runs and warm runs are recorded separately. The provider prompt cache lasts 5–30 min (R-2), so back-to-back runs contaminate each other.
-  - Each run records the wall-clock total (AC-61), per-agent duration, tokens in and out, cost or "unpriced" (AC-62), the shared pre-work item (AC-64), and provider-reported cached-token fields where available.
+  - Each run records the wall-clock total (AC-61), per-agent duration, tokens in and out, cost or "unpriced" (AC-62), the shared pre-work item (AC-64 — deferred, so omitted until it ships), and provider-reported cached-token fields where available.
   - The 3-vs-1 ratio is reported as measured, with no adjustment toward 3×. Shared diff preparation, the single intent call, caching and differing response lengths are named as possible causes of a ratio other than 3×.
   - Verify by: manual. The table is present and its numbers match the stored agent runs.
 
@@ -441,6 +447,8 @@ sequenceDiagram
 | 2026-10-12 | created (draft) after round 1 review and round 2 reference-based decisions (Q2–Q9) | spec-creator |
 | 2026-10-12 | revised (draft): Non-goals state why Learn and Reply to author stay disabled stubs (design `findings.jsx:19-26`; FF D24 out of scope) | spec-creator |
 | 2026-10-12 | status → approved (user decision) | spec-creator |
+| 2026-10-12 | status → implemented (user decision, same PR). Commits 2dcb43b (wave 0), fa03fa3 (wave 1), 6191c98 (wave 2), dfcc812 (review fixes), da9829e (completeness fixes); plan `docs/plans/multi-agent-review.md`. Per user decision no new automated tests were written; verification was by code inspection plus the existing suites, so the Verify-by test shapes below describe the intended tests, not tests that exist | spec-creator |
+| 2026-10-12 | closure annotations from plan §9 follow-ups (user-approved, no behaviour added): AC-57, AC-64, AC-65, AC-66, AC-71 marked deferred and the shared pre-work item dropped from Data and state; Verify by of AC-24 (event ordering, no timers), AC-30 (sequential posts; check-then-insert race accepted), AC-61 (deterministic totals unit + stored timestamps), NFR-1 / NFR-2 / NFR-8 (manual); AC-19 / AC-63 cost examples aligned with the shared cost format ("$0.100", "$0.00 + N unpriced"); Compatibility lists every additive contract and schema change | spec-creator |
 
 ## Self-check
 - [x] every AC / EC / NFR / UT rule: one EARS pattern, one `shall`, observable response, no vague words (VP-1 is a deliberately non-EARS process obligation, labelled as such)
