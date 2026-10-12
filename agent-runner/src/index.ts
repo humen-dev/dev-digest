@@ -19,6 +19,7 @@
  */
 import path from 'node:path';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { OpenRouterProvider } from '@devdigest/reviewer-core';
 import { runCi, type PostAs } from './run.js';
 import { redactKey } from './redact.js';
@@ -72,10 +73,12 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<number
 
 // Only run when executed directly (CI), never on import (tests import `main`
 // / `runCi` directly and drive them with injected fixtures).
+// `pathToFileURL` (not a `file://` string concat) so Windows drive paths and
+// URL-escaped characters (spaces) in the checkout path still match.
 const isDirectRun =
   typeof process !== 'undefined' &&
   process.argv[1] != null &&
-  import.meta.url === `file://${process.argv[1]}`;
+  import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isDirectRun) {
   main().then(
