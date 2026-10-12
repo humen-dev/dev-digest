@@ -32,7 +32,10 @@ export function useConfigureRun() {
 
   const enabled = (agents ?? []).filter((a) => a.enabled);
   const fromUrl = parseAgentsParam(params.get("agents"));
-  const selected = picked ?? preselect(enabled, fromUrl.length > 0 ? fromUrl : remembered);
+  // An explicit pick is narrowed to agents that are still enabled after a refetch.
+  const selected = picked
+    ? picked.filter((id) => enabled.some((a) => a.id === id))
+    : preselect(enabled, fromUrl.length > 0 ? fromUrl : remembered);
   const estimate = summariseEstimate(enabled, selected);
   const allSelected = enabled.length > 0 && selected.length === enabled.length;
 
@@ -44,7 +47,8 @@ export function useConfigureRun() {
   // switching PR clears it.
   const choosePr = (id: string) => {
     setPrId(id);
-    start.reset();
+    // Never detach a start that is still in flight: its outcome must not be lost.
+    if (!start.isPending) start.reset();
   };
   const inFlightId = inFlightRunId(start.error);
   const inFlightPrId = start.variables?.prId ?? null;
@@ -65,7 +69,8 @@ export function useConfigureRun() {
     prOptions,
     setPrId: choosePr,
     agentsLoading,
-    agentsError,
+    // Only a load that never succeeded is an error; cached agents stay usable on a failed refetch.
+    agentsError: agentsError && !agents,
     retryAgents: () => void refetchAgents(),
     enabled,
     selected,
