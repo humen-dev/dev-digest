@@ -5,14 +5,13 @@
 import React from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useQueryClient } from "@tanstack/react-query";
 import { Button, EmptyState, ErrorState, Skeleton } from "@devdigest/ui";
 import type { FindingActionKind } from "@devdigest/shared";
 import { AppShell } from "@/components/app-shell";
 import RunTraceDrawer from "@/components/review/RunTraceDrawer";
 import { ApiError } from "@/lib/api";
 import { useCancelRun, useFindingAction } from "@/lib/hooks/reviews";
-import { useMultiAgentRun } from "@/lib/hooks/multi-agent";
+import { useMultiAgentRun, useMultiAgentRunCache } from "@/lib/hooks/multi-agent";
 import { multiAgentConfigureUrl, multiAgentResultsUrl } from "@/lib/multi-agent-urls";
 import { ColumnsView } from "../ColumnsView";
 import { ConflictsSection } from "../ConflictsSection";
@@ -35,7 +34,7 @@ export function MultiAgentResults() {
   const params = useParams<{ prId: string }>();
   const search = useSearchParams();
   const router = useRouter();
-  const qc = useQueryClient();
+  const runCache = useMultiAgentRunCache();
   const prId = params.prId;
   const multiRunId = search.get("multiRunId");
   const traceRunId = search.get("trace");
@@ -50,9 +49,9 @@ export function MultiAgentResults() {
   // first so the swap does not flash a skeleton or refetch.
   React.useEffect(() => {
     if (!data || multiRunId) return;
-    qc.setQueryData(["multi-agent-run", prId, data.id], data);
+    runCache.seed(prId, data);
     router.replace(multiAgentResultsUrl(prId, data.id));
-  }, [data, multiRunId, prId, qc, router]);
+  }, [data, multiRunId, prId, runCache, router]);
 
   const groups = React.useMemo(() => buildGroupIndex(data?.columns ?? []), [data]);
 
@@ -67,7 +66,7 @@ export function MultiAgentResults() {
   const onFindingAction = (findingId: string, action: TriageAction) =>
     findingAction.mutate(
       { findingId, action, prId },
-      { onSuccess: () => qc.invalidateQueries({ queryKey: ["multi-agent-run", prId] }) },
+      { onSuccess: () => runCache.invalidate(prId) },
     );
 
   const crumb = [

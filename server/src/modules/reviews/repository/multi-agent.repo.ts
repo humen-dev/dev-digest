@@ -38,29 +38,35 @@ export class MultiAgentRepository implements MultiAgentRepositoryPort {
     return row?.multiRunId ? { multiRunId: row.multiRunId } : undefined;
   }
 
-  async createMultiRun(workspaceId: string, prId: string): Promise<MultiRunRecord> {
-    const [row] = await this.db
-      .insert(t.multiAgentRuns)
-      .values({ workspaceId, prId })
-      .returning({ id: t.multiAgentRuns.id, prId: t.multiAgentRuns.prId, ranAt: t.multiAgentRuns.ranAt });
-    return row!;
-  }
-
-  async createLinkedRun(input: LinkedRunInput): Promise<string> {
-    const [row] = await this.db
-      .insert(t.agentRuns)
-      .values({
-        workspaceId: input.workspaceId,
-        agentId: input.agentId,
-        prId: input.prId,
-        provider: input.provider,
-        model: input.model,
-        status: 'running',
-        source: 'local',
-        multiRunId: input.multiRunId,
-      })
-      .returning({ id: t.agentRuns.id });
-    return row!.id;
+  async createMultiRunWithRuns(
+    workspaceId: string,
+    prId: string,
+    runs: Omit<LinkedRunInput, 'workspaceId' | 'prId' | 'multiRunId'>[],
+  ): Promise<{ multiRun: MultiRunRecord; runIds: string[] }> {
+    return this.db.transaction(async (tx) => {
+      const [multiRun] = await tx
+        .insert(t.multiAgentRuns)
+        .values({ workspaceId, prId })
+        .returning({ id: t.multiAgentRuns.id, prId: t.multiAgentRuns.prId, ranAt: t.multiAgentRuns.ranAt });
+      const runIds: string[] = [];
+      for (const run of runs) {
+        const [row] = await tx
+          .insert(t.agentRuns)
+          .values({
+            workspaceId,
+            agentId: run.agentId,
+            prId,
+            provider: run.provider,
+            model: run.model,
+            status: 'running',
+            source: 'local',
+            multiRunId: multiRun!.id,
+          })
+          .returning({ id: t.agentRuns.id });
+        runIds.push(row!.id);
+      }
+      return { multiRun: multiRun!, runIds };
+    });
   }
 
   async getRun(workspaceId: string, multiRunId: string): Promise<MultiRunRecord | undefined> {

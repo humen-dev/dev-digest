@@ -163,12 +163,34 @@ export class ReviewService {
         })
         .catch(() => undefined);
 
-    const pull = await this.repo.getPull(workspaceId, prId);
-    const repo = pull ? await this.repo.getRepo(pull.repoId) : undefined;
-    if (!pull || !repo) {
-      await Promise.all(jobs.map((j) => failRun(j.runId, pull ? 'Repo not found' : 'Pull request not found')));
-      throw new NotFoundError(pull ? 'Repo not found' : 'Pull request not found');
+    // Any failure while resolving (not just "not found") must close EVERY run, so
+    // none stays `running` and blocks the PR with a 409.
+    let loaded;
+    try {
+      loaded = await this.resolveBatch(workspaceId, prId, jobs, failRun);
+    } catch (err) {
+      logger?.error({ prId, err: (err as Error).message }, 'review: batch start failed');
+      await Promise.all(jobs.map((j) => failRun(j.runId, err instanceof NotFoundError ? err.message : 'Failed to start review')));
+      throw err;
     }
+
+    const { pull, repo, resolved } = loaded;
+    if (resolved.length === 0) return;
+    void this.executor.executeRuns(workspaceId, pull, repo, resolved, logger).catch((err) => {
+      logger?.error({ prId, err: (err as Error).message }, 'review: background batch execution crashed');
+    });
+  }
+
+  private async resolveBatch(
+    workspaceId: string,
+    prId: string,
+    jobs: { agentId: string; runId: string }[],
+    failRun: (runId: string, error: string) => Promise<unknown>,
+  ) {
+    const pull = await this.repo.getPull(workspaceId, prId);
+    if (!pull) throw new NotFoundError('Pull request not found');
+    const repo = await this.repo.getRepo(pull.repoId);
+    if (!repo) throw new NotFoundError('Repo not found');
 
     const resolved: { agent: AgentRow; runId: string }[] = [];
     for (const { agentId, runId } of jobs) {
@@ -176,11 +198,7 @@ export class ReviewService {
       if (agent) resolved.push({ agent, runId });
       else await failRun(runId, 'Agent not found');
     }
-
-    if (resolved.length === 0) return;
-    void this.executor.executeRuns(workspaceId, pull, repo, resolved, logger).catch((err) => {
-      logger?.error({ prId, err: (err as Error).message }, 'review: background batch execution crashed');
-    });
+    return { pull, repo, resolved };
   }
 
   private publish(runId: string, kind: RunEventKind, msg: string, data?: unknown) {

@@ -64,19 +64,17 @@ export class MultiAgentService {
       });
     }
 
-    const multiRun = await repo.createMultiRun(workspaceId, prId);
-    const targets: MultiAgentRunTriggerResult['targets'] = [];
-    for (const agent of resolved) {
-      const runId = await repo.createLinkedRun({
-        workspaceId,
-        agentId: agent.id,
-        prId,
-        provider: agent.provider,
-        model: agent.model,
-        multiRunId: multiRun.id,
-      });
-      targets.push({ run_id: runId, agent_id: agent.id, agent_name: agent.name });
-    }
+    // One transaction: the multi-run and all its agent runs, or nothing.
+    const { multiRun, runIds } = await repo.createMultiRunWithRuns(
+      workspaceId,
+      prId,
+      resolved.map((a) => ({ agentId: a.id, provider: a.provider, model: a.model })),
+    );
+    const targets: MultiAgentRunTriggerResult['targets'] = resolved.map((agent, i) => ({
+      run_id: runIds[i]!,
+      agent_id: agent.id,
+      agent_name: agent.name,
+    }));
 
     await batch.start(
       workspaceId,

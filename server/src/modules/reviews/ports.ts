@@ -58,9 +58,15 @@ export interface MultiAgentRepositoryPort {
   getPull(workspaceId: string, prId: string): Promise<PullSummary | undefined>;
   /** A `running` agent run of the PR that belongs to a multi-run. */
   findInFlight(prId: string): Promise<{ multiRunId: string } | undefined>;
-  createMultiRun(workspaceId: string, prId: string): Promise<MultiRunRecord>;
-  /** Insert a `running` agent run linked to the multi-run; returns its id. */
-  createLinkedRun(input: LinkedRunInput): Promise<string>;
+  /**
+   * Atomically insert the multi-run and one `running` agent run per entry, all
+   * linked to it (one transaction). `runIds` are in the order of `runs`.
+   */
+  createMultiRunWithRuns(
+    workspaceId: string,
+    prId: string,
+    runs: Omit<LinkedRunInput, 'workspaceId' | 'prId' | 'multiRunId'>[],
+  ): Promise<{ multiRun: MultiRunRecord; runIds: string[] }>;
   getRun(workspaceId: string, multiRunId: string): Promise<MultiRunRecord | undefined>;
   latestRunForPr(workspaceId: string, prId: string): Promise<MultiRunRecord | undefined>;
   latestRunForWorkspace(workspaceId: string): Promise<MultiRunRefRecord | undefined>;

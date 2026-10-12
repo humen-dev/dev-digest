@@ -1,6 +1,7 @@
 /* hooks/multi-agent.ts — React Query hooks for SPEC-07 Multi-Agent Review. */
 "use client";
 
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../api";
 import { rememberSelection } from "../multi-agent-selection";
@@ -43,6 +44,21 @@ export function useMultiAgentRun(prId: string | null, multiRunId: string | null)
     refetchInterval: (query) =>
       query.state.data?.columns.some((c) => c.status === "running") ? POLL_MS : false,
   });
+}
+
+/** Cache helpers for `useMultiAgentRun`, so callers never spell its query key. */
+export function useMultiAgentRunCache() {
+  const qc = useQueryClient();
+  return useMemo(
+    () => ({
+      /** Store a loaded run under its pinned `multiRunId` key (no refetch on URL pin). */
+      seed: (prId: string, run: MultiAgentRun) =>
+        qc.setQueryData(["multi-agent-run", prId, run.id], run),
+      /** Refetch every cached run of the PR (e.g. after a finding action). */
+      invalidate: (prId: string) => qc.invalidateQueries({ queryKey: ["multi-agent-run", prId] }),
+    }),
+    [qc],
+  );
 }
 
 /** Latest multi-agent run of a PR, or null when it has none. */
