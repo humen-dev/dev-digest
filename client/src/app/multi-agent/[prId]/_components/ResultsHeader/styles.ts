@@ -1,0 +1,48 @@
+import type { CSSProperties } from "react";
+
+export const s = {
+  wrap: { display: "flex", flexDirection: "column", gap: 10 } satisfies CSSProperties,
+  titleRow: { display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" } satisfies CSSProperties,
+  h1: { fontSize: 20, fontWeight: 700, color: "var(--text-primary)", margin: 0 } satisfies CSSProperties,
+  selected: { fontSize: 13, color: "var(--text-muted)" } satisfies CSSProperties,
+  right: { marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 } satisfies CSSProperties,
+  toggle: {
+    display: "inline-flex",
+    padding: 3,
+    borderRadius: 8,
+    border: "1px solid var(--border)",
+    background: "var(--bg-hover)",
+    gap: 2,
+  } satisfies CSSProperties,
+  segment: (active: boolean): CSSProperties => ({
+    padding: "5px 12px",
+    borderRadius: 6,
+    border: "none",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+    background: active ? "var(--bg-elevated)" : "transparent",
+    color: active ? "var(--text-primary)" : "var(--text-secondary)",
+  }),
+  metaRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+    flexWrap: "wrap",
+    paddingTop: 10,
+    borderTop: "1px solid var(--border)",
+  } satisfies CSSProperties,
+  pr: { display: "flex", alignItems: "baseline", gap: 10, fontSize: 13, color: "var(--text-muted)" } satisfies CSSProperties,
+  prTitle: { fontSize: 14, fontWeight: 600, color: "var(--text-primary)" } satisfies CSSProperties,
+  meta: { fontSize: 12.5, color: "var(--text-secondary)" } satisfies CSSProperties,
+  legend: { fontSize: 12, color: "var(--text-muted)" } satisfies CSSProperties,
+  srOnly: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    overflow: "hidden",
+    clip: "rect(0 0 0 0)",
+    whiteSpace: "nowrap",
+  } satisfies CSSProperties,
+} as const;

@@ -2,8 +2,8 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import evalMessages from "../../../../../../../../../../messages/en/eval.json";
-import commonMessages from "../../../../../../../../../../messages/en/common.json";
+import evalMessages from "../../../../../../messages/en/eval.json";
+import commonMessages from "../../../../../../messages/en/common.json";
 import { api, ApiError } from "@/lib/api";
 import { EvalCaseAction } from "./EvalCaseAction";
 

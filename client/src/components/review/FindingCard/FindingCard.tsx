@@ -20,7 +20,7 @@ import {
 import type { FindingRecord, FindingActionKind } from "@devdigest/shared";
 import { SEV_COLOR, SEV_COLOR_FALLBACK } from "./constants";
 import { lineLabel } from "./helpers";
-import { githubBlobUrl } from "../../../../../../../lib/github-urls";
+import { githubBlobUrl } from "@/lib/github-urls";
 import { EvalCaseAction } from "./_components/EvalCaseAction";
 import { s } from "./styles";
 
@@ -32,6 +32,8 @@ export function FindingCard({
   pending,
   repoFullName,
   headSha,
+  showComingSoonActions,
+  badge,
 }: {
   f: FindingRecord;
   focused?: boolean;
@@ -40,8 +42,13 @@ export function FindingCard({
   pending?: boolean;
   repoFullName?: string | null;
   headSha?: string | null;
+  /** Adds the not-yet-built Learn and Reply actions as disabled "Coming soon" buttons. */
+  showComingSoonActions?: boolean;
+  /** Extra element next to the title (e.g. the "+N agents" chip). */
+  badge?: React.ReactNode;
 }) {
   const t = useTranslations("prReview");
+  const tMulti = useTranslations("multiAgent.finding");
   const [expanded, setExpanded] = React.useState(defaultExpanded ?? false);
   const sevColor = SEV_COLOR[f.severity] ?? SEV_COLOR_FALLBACK;
   const fileHref =
@@ -64,6 +71,7 @@ export function FindingCard({
             <CategoryTag category={f.category as Category} />
             {accepted && <span style={s.acceptedTag}>{t("finding.accepted")}</span>}
             {dismissed && <span style={s.dismissedTag}>{t("finding.dismissed")}</span>}
+            {badge}
           </div>
           <div style={s.metaRow}>
             <MonoLink href={fileHref}>
@@ -110,6 +118,16 @@ export function FindingCard({
             >
               {t("finding.dismiss")}
             </Button>
+            {showComingSoonActions && (
+              <>
+                <Button kind="ghost" size="sm" icon="Brain" disabled title={tMulti("comingSoon")}>
+                  {tMulti("learn")}
+                </Button>
+                <Button kind="ghost" size="sm" icon="MessageSquare" disabled title={tMulti("comingSoon")}>
+                  {tMulti("reply")}
+                </Button>
+              </>
+            )}
             <EvalCaseAction findingId={f.id} triaged={muted} />
           </div>
         </div>
