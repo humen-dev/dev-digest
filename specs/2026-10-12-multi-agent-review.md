@@ -1,7 +1,7 @@
 # Spec: Multi-Agent Review (agent picker, Configure run, Columns / Tabs results, Where agents disagree)
 
 Spec ID: SPEC-07
-Status: implemented
+Status: approved
 Created: 2026-10-12
 Approved: 2026-10-12 by user
 Modules: client · server
@@ -35,6 +35,16 @@ Today:
 - Nothing groups findings across agents, and runs carry no pre-run time or cost
   estimate.
 
+Today, after the first release (input to revision 2026-10-12 "runs list"):
+- The sidebar item redirects to the workspace's latest multi-agent run, or to
+  Configure run when there is none or the lookup fails
+  (`client/src/app/multi-agent/_components/MultiAgentEntry/MultiAgentEntry.tsx:13-20`).
+  An earlier run can be reached only through Back, "View latest results" or a
+  saved link.
+- The API exposes only a pointer to the latest run (`GET /multi-agent/latest`,
+  `server/src/modules/reviews/routes.ts:82-85`). It has no list endpoint and no
+  paginated endpoint at all.
+
 ## Goals / Non-goals
 **Goals**
 | ID | Goal | Success measure |
@@ -46,6 +56,7 @@ Today:
 | G-5 | Cost and time are shown honestly, before and after the run | Pre-run estimate (AC-19). Wall-clock total and cost total with unpriced runs counted (AC-61 – AC-63). Shared pre-work cost reported separately (AC-64) |
 | G-6 | Live per-agent status and trace | Each column changes status within 5 s of the API recording it (AC-35). View trace opens the existing drawer (AC-58) |
 | G-7 | The "1 agent vs 3 agents" measurement is recorded with real numbers | VP-1 table filled in the implementation PR |
+| G-8 | Any earlier multi-agent run of the workspace can be opened at any time | From the sidebar, any run is 1 click away on the first page, or reachable through "Load more" (AC-75, AC-83, AC-87) |
 
 **Non-goals**
 - Any change to `ci/`, `agent-runner/` or `reviewer-core/`. The grounding gate and untrusted-input wrapping stay as they are.
@@ -53,7 +64,7 @@ Today:
 - A working **Reply to author** action, for the same reason: `findings.jsx:26` renders it with no handler. It is also an outbound GitHub side effect. It is shown visible but disabled with "Coming soon" (AC-43) and sends no request. No AC of this spec requires a working Learn or Reply.
 - Predicting each agent's findings before the run. The Configure run card shows the agent's stored description instead (AC-11).
 - Semantic or embedding-based similarity between findings (AC-46).
-- A history browser over all multi-agent runs. Only the latest run, or the run named in the URL, is shown (AC-32, AC-69).
+- Deleting multi-agent runs from the runs list, filtering or searching the runs list, and a per-PR runs list (revision 2026-10-12).
 - Storing computed groups or conflicts: they are computed on read.
 - Agent colour and icon fields in the schema. Visual identity is derived from the agent's identity (EC-12).
 - Per-agent stats and the Agent Performance page (`AgentStats`, `observability.ts:96-119`).
@@ -71,6 +82,7 @@ Today:
 - **US-8** — As a reviewer, I want each agent's trace, so that I can explain its tokens, cost and grounding-gate decisions.
 - **US-9** — As a reviewer, I want truthful totals and a recorded "1 vs 3 agents" measurement, so that the product does not hide or fudge cost.
 - **US-10** — As a reviewer who left a run, I want to get back to it from the sidebar, the URL or the PR page, so that I never re-run agents just to see results again.
+- **US-11** — As a reviewer, I want the sidebar item to open a list of my workspace's multi-agent runs with their state, time and cost, so that I can open any run's results, or configure a new run, at any time.
 
 ## Acceptance criteria (EARS)
 
@@ -193,13 +205,41 @@ Terms defined once:
 **Navigation, resume and cancel (US-10)**
 | ID | Pattern | Requirement | Story | Priority | Verify by |
 |---|---|---|---|---|---|
-| AC-67 | Event-driven | WHEN the user activates the Multi-Agent Review sidebar item and the workspace has at least one multi-agent run, the web app shall open the results page of the workspace's latest multi-agent run. | US-10 | Should | unit — latest exists → navigation target is its results URL; browser Back returns to the previous page |
-| AC-68 | Event-driven | WHEN the user activates the Multi-Agent Review sidebar item and the workspace has no multi-agent run, the web app shall open Configure run. | US-10 | Should | unit — latest is null → Configure run |
+| AC-67 | — | *Removed in revision 2026-10-12 (user decision). It required a redirect to the latest run; replaced by AC-75 and AC-83.* | US-10 | — | — |
+| AC-68 | — | *Removed in revision 2026-10-12 (user decision). It required a redirect to Configure run when there was no run; replaced by AC-86 and AC-85.* | US-10 | — | — |
 | AC-69 | Ubiquitous | The web app shall carry the multi-agent run id in the results page URL, so that a reload or a shared link opens the same run. | US-10 | Should | unit — render with `?multiRunId=X` → the request names X |
 | AC-70 | Event-driven | WHEN the user clicks "Configure run" on the results page, the web app shall open Configure run with the same PR and agent set preselected. | US-10 | Should | unit — click → preselected PR and agents |
 | AC-71 | Optional feature | WHERE a PR has a multi-agent run, the web app shall show on the PR page a link to that PR's latest multi-agent results that starts no run. | US-10 | Could · **deferred** (user decision 2026-10-12, follow-up) | unit — link present; clicking it sends no POST |
 | AC-72 | State-driven | WHILE at least one agent run of the shown multi-agent run is `running`, the web app shall show a "Cancel all" button in the results header. | US-5 | Should | unit — running fixture → button present; all-terminal fixture → absent |
 | AC-73 | Event-driven | WHEN the user clicks "Cancel all", the web app shall send the existing `POST /runs/:id/cancel` for every agent run of that multi-agent run that is `running`. | US-5 | Should | unit — 2 running + 1 done → 2 cancel calls |
+
+**Multi-agent runs list (US-11, revision 2026-10-12)**
+
+Terms defined once:
+- The **runs list** is the page the "Multi-Agent Review" sidebar item opens (`/multi-agent`).
+- A run's **overall state** is `running` when at least one of its agent runs is `running`, `done` when every one of its agent runs is `done`, and `failed` otherwise. A `failed` state carries the count of the run's agent runs that are `failed` or `cancelled`.
+- A **page** is one response of `GET /multi-agent/runs`: up to `limit` list items plus an opaque cursor for the next page, or null when no older run exists.
+
+| ID | Pattern | Requirement | Story | Priority | Verify by |
+|---|---|---|---|---|---|
+| AC-75 | Event-driven | WHEN the user activates the Multi-Agent Review sidebar item, the web app shall show the runs list at `/multi-agent` without navigating to another page. | US-11 | Must | unit — render the entry with a workspace that has runs and with one that has none → the router receives no `replace`/`push`; the list heading is present |
+| AC-76 | Event-driven | WHEN the API receives `GET /multi-agent/runs`, the API shall return a page of the caller's workspace's multi-agent runs ordered by start time newest first, ties ordered by id descending, holding at most `limit` items (default 20). | US-11 | Must | integration (`*.it.test.ts`) — 25 runs → first page holds the 20 newest and a cursor; the page fetched with that cursor holds the other 5 and a null cursor; no run repeats or is missing |
+| AC-77 | Ubiquitous | The API shall return with each list item the multi-agent run id, PR id, PR number, PR title, repository name, start time, overall state, failed count, agent count, total duration, total cost, unpriced count and one `{agent name, status}` entry per agent run in the column order of `GET /pulls/:id/multi-agent`. | US-11 | Must | integration — seeded run of 3 agents (done, failed, running) → every field present with the expected values and order |
+| AC-78 | Ubiquitous | The API shall compute each list item's total duration, total cost and unpriced count by the rules of AC-61 and AC-62, so that for a run whose agent runs are all terminal they equal the values `GET /pulls/:id/multi-agent` returns for that run. | US-11 | Must | integration — the same finished run read through both endpoints → equal totals |
+| AC-79 | Ubiquitous | The API shall derive each list item's overall state and failed count as defined for the runs list. | US-11 | Must | unit — table over status sets: {running, done} → running; {done, done} → done; {done, failed, cancelled} → failed with count 2 |
+| AC-80 | Event-driven | WHEN the runs list renders a run, the web app shall show one row with "#<PR number> <PR title>", the repository name, the start time, the agents with a text status each, the total time, the total cost and the overall state. | US-11 | Must | unit (RTL) — page fixture → each value present in its row |
+| AC-81 | Optional feature | WHERE a listed run has more than 5 agent runs, the web app shall show its first 5 agents with their statuses followed by "+<K> more". | US-11 | Should | unit — 7-agent fixture → 5 agent labels and "+2 more" |
+| AC-82 | Optional feature | WHERE a listed run has unpriced agent runs, the web app shall show its total cost as "$<sum> + <n> unpriced" in the shared cost format. | US-11 | Must | unit — costs 0.06 and 0.04 plus 1 unpriced → "$0.100 + 1 unpriced"; 2 unpriced only → "$0.00 + 2 unpriced" |
+| AC-83 | Event-driven | WHEN the user activates a row of the runs list, the web app shall open that run's results page `/multi-agent/<prId>?multiRunId=<id>` in the current tab. | US-11 | Must | unit — click a row → the navigation target is the row's results URL |
+| AC-84 | Ubiquitous | The web app shall render each row of the runs list as a link whose target is the run's results URL and whose accessible name contains the PR number, the PR title and the overall state. | US-11 | Should | unit — `getByRole('link', { name: /#482 .*running/ })` has the results URL as `href` |
+| AC-85 | Event-driven | WHEN the user clicks "Configure run" on the runs list, the web app shall open Configure run with no PR preselected. | US-11 | Must | unit — click → navigation target is `/multi-agent/configure` without a PR parameter |
+| AC-86 | State-driven | WHILE the workspace has no multi-agent run, the web app shall show "No multi-agent runs yet" with a "Configure run" action in place of the runs list. | US-11 | Must | unit — empty page fixture → the empty state and its action; a one-run fixture → no empty state |
+| AC-87 | Event-driven | WHEN the user clicks "Load more", the web app shall append the next page's runs below the rows already shown. | US-11 | Should | unit — pages of 20 and 5 → 25 rows in order after the click, the first 20 unchanged |
+| AC-88 | State-driven | WHILE the last loaded page has a null cursor, the web app shall hide "Load more". | US-11 | Should | unit — single page with a null cursor → no button; page with a cursor → button present |
+| AC-89 | State-driven | WHILE at least one shown run has overall state `running`, the web app shall re-request the shown runs every 4 s. | US-11 | Should | unit (fake timers) — running fixture → a second request after 4 s; the fixture turns `done` → no further request after another 8 s |
+| AC-90 | Event-driven | WHEN the user opens the runs list after starting a multi-agent run, the web app shall show that run as the first row. | US-11 | Should | unit — the list was cached, a start succeeds → the next render of the list refetches and the new run is the first row |
+| AC-91 | State-driven | WHILE the runs list is shown, the web app shall show the breadcrumbs "Global › Multi-Agent Review". | US-11 | Should | unit — crumb labels on the list page |
+| AC-92 | Ubiquitous | The web app shall link the "Multi-Agent Review" breadcrumb on Configure run and on the results page to the runs list. | US-11 | Should | unit — crumb `href` is `/multi-agent` on both pages (behaviour already present: `ConfigureRun.tsx:32`, `MultiAgentResults.tsx:72-75`) |
 
 ## Edge cases
 | ID | Case | Expected behaviour (EARS, or "→ AC-n") | Verify by |
@@ -219,6 +259,14 @@ Terms defined once:
 | EC-13 | Remembered selection names an agent that is now disabled or deleted | IF the remembered selection contains an agent that is not in the enabled agent list, THEN the web app shall leave that agent out of the preselection. | unit — stale id dropped |
 | EC-14 | Only one agent selected | → AC-55 (results render; the comparison message replaces the conflict list) | unit |
 | EC-15 | A second multi-agent run on the same PR after the first finished | WHEN a new multi-agent run is created for a PR, the API shall keep the earlier multi-agent run and its agent runs readable by `multiRunId`. | integration |
+| EC-16 | Every agent run of a multi-agent run was deleted (`agent_runs.multi_run_id` is set null on delete, `server/src/db/migrations/0020_multi_agent_review.sql:3`) | IF a listed multi-agent run has no agent run left, THEN the API shall list it with agent count 0, overall state `done`, total duration 0 and a null total cost. | integration — delete both agent runs of a run → the item as stated |
+| EC-17 | Agent deleted after the run | IF an agent of a listed run no longer exists, THEN the API shall return "Unknown agent" as that entry's agent name (same rule as EC-4). | integration — delete the agent, read the list |
+| EC-18 | The runs list request fails | IF the first page of the runs list fails to load, THEN the web app shall show an error state with a Retry action while the "Configure run" action stays enabled. | unit — fetch mock returns 500 → error state, Retry refetches, Configure run is enabled |
+| EC-19 | "Load more" fails | IF a "Load more" request fails, THEN the web app shall keep the rows already shown and show an inline error with a Retry action. | unit — second page returns 500 → 20 rows remain, the inline error and Retry are present |
+| EC-20 | A new run starts while the user pages | WHEN a multi-agent run is created after a page was returned, the API shall return the page for that page's cursor with no run repeated and no older run skipped. | integration — read page 1, create a run, read page 2 → page 2 equals the page computed before the insert |
+| EC-21 | Long PR title or repository name | WHILE a row's PR title is wider than its column, the web app shall truncate it with an ellipsis and show the full title as the row's tooltip. | unit — 300-character title → full title in the `title` attribute |
+| EC-22 | Back from results opened from the list | WHEN the user goes browser-Back from a results page opened from the runs list, the web app shall show the runs list. | manual — open a row, press Back → the list is shown (no redirect sits in the history) |
+| EC-23 | A run started on another tab or through the PR picker while the list is open and nothing runs | → AC-90 (shown on the next visit); no polling while no shown run is `running` (AC-89) | unit |
 
 ## Module interactions
 ```mermaid
@@ -228,6 +276,10 @@ sequenceDiagram
   participant A as API
   participant E as review engine
   participant L as LLM provider
+  U->>W: open sidebar "Multi-Agent Review"
+  W->>A: GET /multi-agent/runs[?cursor&limit] (re-requested every 4 s while a shown run is running)
+  A-->>W: page {items[], next_cursor} · 422 bad cursor or limit
+  U->>W: open a row (results page) or "Configure run"
   U->>W: open picker / Configure run
   W->>A: GET /agents (existing, + estimates)
   A-->>W: agents + est_duration_ms / est_cost_usd / has_history
@@ -258,7 +310,9 @@ sequenceDiagram
 | web app → API | `GET /pulls/:id/multi-agent` (new; reserved at `observability.ts:74`) | `MultiAgentRun` | Postgres; groups computed on read | 404 → not-found state (EC-6); stale while running → refetched when any run settles |
 | web app → API | `GET /runs/:id/trace` (existing, `routes.ts:121-126`) | `RunTrace` | `run_traces` | 404 while running → drawer shows the live log (`client/messages/en/runs.json:85`) |
 | web app → API | `POST /findings/:id/(accept\|dismiss)`, `POST /runs/:id/cancel` (existing, `routes.ts:114-118`, `:143-149`) | action | Postgres | Error → toast; card state unchanged |
-| web app → API | latest multi-agent run for the workspace and for a PR (new reads) | `{id, pr_id, pr_number} \| null` | Postgres | Error → sidebar opens Configure run; PR-page link hidden |
+| web app → API | `GET /pulls/:id/multi-agent/latest` (existing, `server/src/modules/reviews/routes.ts:77-80`) | `{id, pr_id, pr_number} \| null` | Postgres | Error → no "View latest results" link on Configure run (AC-15) |
+| web app → API | `GET /multi-agent/latest` (existing, `server/src/modules/reviews/routes.ts:82-85`) | `{id, pr_id, pr_number} \| null` | Postgres | No longer called by the web app after revision 2026-10-12; kept unchanged for compatibility |
+| web app → API | `GET /multi-agent/runs?cursor=&limit=` (new, revision 2026-10-12) | page of list items (AC-77) + next cursor | Postgres (`multi_agent_runs`, `agent_runs`, `pull_requests`, `repos`, `agents`); totals and state computed on read | 422 for a malformed cursor or limit (UT-11, UT-12); error → list error state (EC-18) or inline "Load more" error (EC-19); stale while running → re-requested every 4 s (AC-89) |
 
 ## Data and state
 - **Multi-agent run** (existing `multi_agent_runs` stub): owned by the API, scoped to the workspace and the PR. It gains:
@@ -269,6 +323,7 @@ sequenceDiagram
   The schema change ships as a new append-only migration with the next free number after `0019_eval_reshape_drop.sql`. The upstream reference's `0012`/`0013` numbers are taken here and are not reused.
 - **Existing agent runs** have no multi-agent run. They belong to none and are never shown in multi-agent results. No backfill.
 - **Groups and conflicts** are computed on read from persisted findings and never stored.
+- **Runs list items** (revision 2026-10-12) are computed on read from existing rows. No new table, column or migration. The existing indexes `multi_agent_runs_ws_ran_at_idx (workspace_id, ran_at DESC)` and `agent_runs_multi_run_id_idx` (`server/src/db/migrations/0020_multi_agent_review.sql:4-5`) cover the page read and the per-run agent aggregation. The cursor is opaque to the web app and encodes only a position in the list order; it never widens the workspace scope (UT-13).
 - **Remembered agent selection** (AC-2) is kept on the client per workspace. It is not persisted on the server.
 - **Deletion:** deleting an agent run through the existing `DELETE /runs/:id` removes it from its multi-agent run's columns. Deleting the PR cascades to the multi-agent run (`runs.ts:48-50`). Deleting an agent leaves its runs with "Unknown agent" (EC-4).
 
@@ -288,6 +343,11 @@ sequenceDiagram
   `ConflictTake.verdict` keeps `'ignored'` as the wire value for "did not flag". A non-participating status is carried as its own value. The `conflicts` array of `MultiAgentRun` carries **every** match group, as in the L07 reference; "conflict" filtering happens in the web app (AC-54). Its doc comment (`observability.ts:61-64`) is updated to say so.
 - **PR-page finding cards** keep today's action set: Accept, Dismiss, Turn into eval case (`FindingCard.tsx:92-114`). Learn and Reply placeholders appear only in Multi-Agent Review Tabs mode.
 - **Existing copy keys** `page.meta` ("fan-out via p-queue") and `page.subtitle` / `noRun.bodyReady` ("every enabled agent") (`client/messages/en/runs.json:124`, `:133`, `:141`) are reworded to match AC-31 and AC-19.
+- **Revision 2026-10-12 (runs list):**
+  - the sidebar item no longer redirects (AC-67 and AC-68 removed). It shows the runs list (AC-75), and the `g m` shortcut (`client/src/vendor/ui/nav.ts:78`) leads there too;
+  - new additive vendored contracts for the runs list page and its item, changed identically in `server/src/vendor/shared` and `client/src/vendor/shared`. Existing contracts are unchanged;
+  - `GET /multi-agent/latest` stays, unused by the web app. `GET /pulls/:id/multi-agent/latest`, the start flow (AC-6, AC-13), AC-15, AC-69 and AC-70 are unchanged;
+  - no migration.
 - No feature flag. Users who never open the picker or the page see only the concurrent execution change.
 - `ci/`, `agent-runner/`, `reviewer-core/` and `mcp/` are unchanged.
 
@@ -335,7 +395,7 @@ sequenceDiagram
 | F-13 | Gap | Learn and Reply have no routes (`routes.ts:18`) | AC-43, Non-goals |
 | F-14 | Compatibility | The dropdown can run single and disabled agents today | AC-1, Compatibility |
 | F-15 | Module interaction | Live status per column; the trace exists only after completion | AC-35, AC-59, EC-8 |
-| F-16 | Gap | Missing states: no agents, 0 selected, repeat run, reload, nav target | AC-4, AC-10, AC-14, AC-30, AC-67 – AC-69, EC-5, EC-7 |
+| F-16 | Gap | Missing states: no agents, 0 selected, repeat run, reload, nav target | AC-4, AC-10, AC-14, AC-30, AC-69, AC-75, AC-86 (AC-67/AC-68 removed in revision 2026-10-12), EC-5, EC-7 |
 | F-17 | Conflict | "fan-out via worktrees" / "p-queue" copy is untrue | AC-31, NFR-11 |
 | F-18 | Gap | No agent colour or icon in the schema; seeded agents differ from the design | Non-goals (derived identity), VP-1 (seeded agents used) |
 | F-19 | NFR | Grounding decisions in the trace | AC-60 |
@@ -352,6 +412,36 @@ sequenceDiagram
 | UX-5 | Click a disagreement take → that agent's tab | accepted → AC-57 |
 | UX-6 | "Cancel all" while running | accepted → AC-72, AC-73 |
 | UX-7 | Results URL bound to one multi-agent run | accepted → AC-69 |
+| UX-8 | Repository name in each runs list row (PR numbers repeat across repos, `server/src/db/schema/pulls.ts:12`) | accepted (revision 2026-10-12) → AC-77, AC-80 |
+| UX-9 | At most 5 agent labels per row, then "+K more" (up to 50 agents per run, `observability.ts:25`) | accepted (revision 2026-10-12) → AC-81 |
+| UX-10 | Whole row is a real link: new tab, keyboard, an accessible name with PR and state | accepted (revision 2026-10-12) → AC-83, AC-84 |
+
+**Revision 2026-10-12 — runs list**
+
+Sources: the user's request relayed by the main session (the sidebar item opens a runs list with "Configure run" instead of the deployed design's redirect/Configure run screen); code cited inline. No design frames exist for the list; the existing multi-agent screens set its visual language.
+
+| Q | Decision | Source |
+|---|---|---|
+| Q10 spec mechanics | Revise SPEC-07 in place (back to draft for re-approval) instead of a new spec; AC-67/AC-68 removed, history-browser Non-goal removed | user decision 2026-10-12, overriding the default "implemented specs are immutable" |
+| Q11 overall state | `running` / `done` / `failed` with the count of `failed` + `cancelled` | user answer (a) → AC-79 |
+| Q12 paging | 20 per page, "Load more", keyset cursor; `limit` 1–50 | user answer (a) → AC-76, AC-87, AC-88, UT-12 |
+| Q13 performance bound | ≤ 3 DB queries per page, no findings read | user answer (a) → NFR-12, NFR-13 |
+
+| ID | Lens | Gap | Resolution |
+|---|---|---|---|
+| F-22 | Conflict | AC-67/AC-68 and the history-browser Non-goal contradict the runs list | Q10; AC-67/AC-68 removed; Non-goals |
+| F-23 | Module interaction | No list or paginated endpoint exists (`routes.ts:82-85`) | AC-76, AC-77, UT-11, UT-12 |
+| F-24 | NFR | Reading a run loads every finding (`multi-agent.repo.ts:101-145`); a list must not | NFR-12, NFR-13, Data and state |
+| F-25 | Gap | Overall state undefined for mixed and cancelled runs | AC-79 |
+| F-26 | Gap | Row totals must match the results header | AC-78, AC-82 |
+| F-27 | Gap | "#N" is ambiguous across repositories | UX-8 → AC-77, AC-80 |
+| F-28 | Gap | Up to 50 agents per row | UX-9 → AC-81 |
+| F-29 | Corner case | Deleted agents and runs with no agent run left | EC-16, EC-17 |
+| F-30 | Corner case | Live refresh and new runs while paging | AC-89, AC-90, EC-20, EC-23 |
+| F-31 | Gap | Loading, empty, error, "Load more" error, long titles | AC-86, EC-18, EC-19, EC-21 |
+| F-32 | Gap | Breadcrumbs of the list and links back to it | AC-91, AC-92 |
+| F-33 | Compatibility | Existing pointers, shortcut and start flow | Compatibility, AC-75, EC-22 |
+| F-34 | Security | Cursor, limit, workspace scope, rendered PR and repository names | UT-11 – UT-14 |
 
 ## Non-functional requirements
 | ID | Category | Requirement | Verify by |
@@ -367,6 +457,10 @@ sequenceDiagram
 | NFR-9 | A11y | The web app shall show a text label for every agent run status, finding severity and take verdict, in addition to its colour. | unit — the status, severity and verdict text is present in the fixtures |
 | NFR-10 | A11y | WHEN an agent run's status changes on the results page, the web app shall announce the new status in a polite live region. | unit — status flip → live region text updated |
 | NFR-11 | I18n | The web app shall take every new user-facing string of this feature from `next-intl` messages. | inspection + unit — grep the new components for literal strings; grep the message files for "worktrees" / "p-queue" = 0 hits |
+| NFR-12 | Performance | WHEN the API serves one page of `GET /multi-agent/runs` holding up to 50 items, the API shall issue at most 3 database queries. | integration — query counter around reads of pages holding 1, 20 and 50 items → ≤ 3 each |
+| NFR-13 | Performance | WHEN the API serves `GET /multi-agent/runs`, the API shall read no row of the `findings` table. | integration — query log of a page read contains no `findings` access |
+| NFR-14 | Cost (LLM calls) | WHEN the API serves `GET /multi-agent/runs`, the API shall make 0 LLM calls. | integration — stub LLM call counter = 0 after the read |
+| NFR-15 | A11y | The web app shall make every runs list row, "Load more", Retry and "Configure run" operable from the keyboard. | manual — keyboard walk-through of the list; axe check with 0 serious violations |
 
 **Verification procedure (non-EARS process obligation from the user's acceptance scenario)**
 - **VP-1 — "1 vs 3" measurement.** Before `implemented`, the verifier records a table in the implementation PR description for seeded PR #482: one agent (Security Reviewer) vs three agents (Security, Performance, General Reviewer).
@@ -385,7 +479,9 @@ sequenceDiagram
 | PR diff, title, body, file paths | GitHub / clone | untrusted |
 | Finding title, rationale, suggestion, file, lines; review verdict and summary | LLM output (grounded) | untrusted |
 | Agent run error text | provider and adapter errors (DB) | untrusted for rendering |
-| Estimates, totals, groups | computed by the API from DB rows | trusted (derived) |
+| `cursor` and `limit` query parameters of `GET /multi-agent/runs` | URL | untrusted |
+| Repository name in runs list rows | GitHub / import (DB) | untrusted for rendering |
+| Estimates, totals, groups, overall state | computed by the API from DB rows | trusted (derived) |
 
 ## Untrusted inputs
 | ID | Input | Threat | Requirement | Verify by |
@@ -400,6 +496,10 @@ sequenceDiagram
 | UT-8 | Agent run error text | secret leakage | IF a recorded error text contains a secret-shaped token (API key or GitHub token pattern), THEN the API shall return it masked in the column error. | unit — fixture built at runtime (`server/INSIGHTS.md:70`) → masked |
 | UT-9 | Agent id list | oversized payload | IF the agent id list has more than 50 entries, THEN the API shall reject the request with HTTP 422. | integration — 51 ids → 422 |
 | UT-10 | Remembered selection | tampered storage | IF the remembered selection is malformed or names unknown ids, THEN the web app shall ignore those entries and use the enabled-agent default. | unit — garbage value → default set |
+| UT-11 | `cursor` | tampered input | IF the `cursor` parameter cannot be decoded into a list position, THEN the API shall answer HTTP 422. | integration — `cursor=garbage` and a truncated cursor → 422 |
+| UT-12 | `limit` | oversized payload | IF the `limit` parameter is not an integer from 1 to 50, THEN the API shall answer HTTP 422. | integration — `limit=0`, `51`, `abc` → 422; `50` → 200 |
+| UT-13 | `cursor` | broken access control (IDOR) | IF a request carries a cursor obtained from another workspace's list, THEN the API shall return only multi-agent runs of the caller's workspace. | integration — cursor from workspace B used in workspace A → every item belongs to A |
+| UT-14 | PR title, repository name and agent names in runs list rows | HTML injection | IF a PR title, repository name or agent name shown in the runs list contains markup, THEN the web app shall render it as plain text. | unit — `<img onerror>` title and agent name fixture → literal text, no element |
 
 ## Assumptions and dependencies
 - The diff loader, intent derivation and grounding gate stay as they are. Concurrency safety was confirmed by R-1: per-run loggers, a run bus keyed per run, method-local cost accumulators.
@@ -422,9 +522,15 @@ sequenceDiagram
 | US-7 | AC-45 – AC-57, AC-74, EC-10, EC-11, EC-14, NFR-5 |
 | US-8 | AC-58 – AC-60 |
 | US-9 | AC-61 – AC-66, NFR-3, VP-1 |
-| US-10 | AC-15, AC-67 – AC-71, EC-5, EC-6, EC-7, EC-15 |
+| US-10 | AC-15, AC-69 – AC-71, EC-5, EC-6, EC-7, EC-15 (AC-67/AC-68 removed → AC-75, AC-83, AC-85, AC-86) |
+| US-11 | AC-75 – AC-92, EC-16 – EC-23, NFR-12 – NFR-15, UT-11 – UT-14 |
 | F-1 – F-21 | see Gaps found |
-| UX-1 – UX-7 | see UX improvements |
+| F-22 – F-34 | see Revision 2026-10-12 — runs list |
+| UX-1 – UX-10 | see UX improvements |
+| Q10 | Revision history; AC-67, AC-68 (removed); Non-goals |
+| Q11 | AC-79 |
+| Q12 | AC-76, AC-87, AC-88, UT-12 |
+| Q13 | NFR-12, NFR-13 |
 | Q1 | Design review → Sources analysed |
 | Q2 | AC-24 – AC-26, NFR-6 |
 | Q3 | AC-51, AC-52 |
@@ -449,6 +555,8 @@ sequenceDiagram
 | 2026-10-12 | status → approved (user decision) | spec-creator |
 | 2026-10-12 | status → implemented (user decision, same PR). Commits 2dcb43b (wave 0), fa03fa3 (wave 1), 6191c98 (wave 2), dfcc812 (review fixes), da9829e (completeness fixes); plan `docs/plans/multi-agent-review.md`. Per user decision no new automated tests were written; verification was by code inspection plus the existing suites, so the Verify-by test shapes below describe the intended tests, not tests that exist | spec-creator |
 | 2026-10-12 | closure annotations from plan §9 follow-ups (user-approved, no behaviour added): AC-57, AC-64, AC-65, AC-66, AC-71 marked deferred and the shared pre-work item dropped from Data and state; Verify by of AC-24 (event ordering, no timers), AC-30 (sequential posts; check-then-insert race accepted), AC-61 (deterministic totals unit + stored timestamps), NFR-1 / NFR-2 / NFR-8 (manual); AC-19 / AC-63 cost examples aligned with the shared cost format ("$0.100", "$0.00 + N unpriced"); Compatibility lists every additive contract and schema change | spec-creator |
+| 2026-10-12 | revision "runs list" — status implemented → draft (pending re-approval) by explicit user decision to revise in place instead of a new spec. Added US-11, G-8, AC-75 – AC-92, EC-16 – EC-23, NFR-12 – NFR-15, UT-11 – UT-14, UX-8 – UX-10, F-22 – F-34, Q10 – Q13; removed AC-67, AC-68 (ids retired, not reused) and the history-browser Non-goal; updated Module interactions, Data and state, Compatibility, Traceability. Every requirement not listed here is unchanged and remains implemented | spec-creator |
+| 2026-10-12 | status → approved (user decision "approve SPEC-07", revision "runs list") | spec-creator |
 
 ## Self-check
 - [x] every AC / EC / NFR / UT rule: one EARS pattern, one `shall`, observable response, no vague words (VP-1 is a deliberately non-EARS process obligation, labelled as such)
