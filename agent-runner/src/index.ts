@@ -21,6 +21,7 @@ import path from 'node:path';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { OpenRouterProvider } from '@devdigest/reviewer-core';
 import { runCi, type PostAs } from './run.js';
+import { redactKey } from './redact.js';
 
 function resolvePostAs(value: string | undefined): PostAs {
   if (value === 'github_review' || value === 'pr_comment' || value === 'none') return value;
@@ -32,11 +33,16 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<number
   const resultPath = env.DEVDIGEST_RESULT_PATH ?? path.join(process.cwd(), 'devdigest-result.json');
   const postAs = resolvePostAs(env.DEVDIGEST_POST_AS);
 
-  // No global LLM client — always injected (reviewer-core invariant). An empty
-  // key still constructs the provider; the first `completeStructured` call
-  // will fail (and be caught by `runCi`'s hard-fail path) rather than the
-  // runner crashing before it can report a clear error.
-  const llm = new OpenRouterProvider(env.OPENROUTER_API_KEY ?? '');
+  // SPEC-07 EC-24 / AC-51 — fail fast and clearly on a missing key, BEFORE any
+  // read, fetch or write (no post, no artifact).
+  const apiKey = env.OPENROUTER_API_KEY ?? '';
+  if (apiKey.trim().length === 0) {
+    console.error('[agent-runner] FAILED: OPENROUTER_API_KEY is not set');
+    return 1;
+  }
+
+  // No global LLM client — always injected (reviewer-core invariant).
+  const llm = new OpenRouterProvider(apiKey);
 
   const result = await runCi({
     devdigestDir,
@@ -49,12 +55,16 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<number
     writeFile: writeFileSync,
   });
 
+  // Every message is scrubbed of the key before it reaches the CI log (UT-10).
   if (result.artifact === null) {
-    console.error(`[agent-runner] FAILED: ${result.error}`);
+    console.error(redactKey(`[agent-runner] FAILED: ${result.error}`, apiKey));
   } else {
+    if (result.posted.error) {
+      console.error(redactKey(`[agent-runner] posting failed: ${result.posted.error}`, apiKey));
+    }
     console.log(
       `[agent-runner] findings=${result.artifact.findings_count} blockers=${result.blockers} ` +
-        `gateTriggered=${result.gateTriggered} posted=${result.posted.kind}`,
+        `gateTriggered=${result.gateTriggered} posted=${result.posted.kind}:${result.posted.outcome}`,
     );
   }
   return result.exitCode;
@@ -73,7 +83,8 @@ if (isDirectRun) {
       process.exitCode = code;
     },
     (err) => {
-      console.error('[agent-runner] fatal error:', err);
+      const message = err instanceof Error ? (err.stack ?? err.message) : String(err);
+      console.error(redactKey(`[agent-runner] fatal error: ${message}`, process.env.OPENROUTER_API_KEY));
       process.exitCode = 1;
     },
   );
