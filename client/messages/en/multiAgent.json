@@ -1,5 +1,6 @@
 {
   "title": "Multi-Agent Review",
+  "crumbGlobal": "Global",
   "crumbConfigure": "Configure run",
   "picker": {
     "heading": "Pick agents to run",

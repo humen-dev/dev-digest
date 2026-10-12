@@ -70,6 +70,7 @@ export function MultiAgentResults() {
     );
 
   const crumb = [
+    { label: t("crumbGlobal") },
     { label: t("title"), href: "/multi-agent" },
     ...(data?.pr_number != null ? [{ label: `#${data.pr_number}`, mono: true }] : []),
   ];

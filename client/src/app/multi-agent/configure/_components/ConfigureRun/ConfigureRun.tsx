@@ -29,7 +29,7 @@ export function ConfigureRun() {
   const agentsUnavailable = !c.agentsLoading && c.agentsError;
 
   return (
-    <AppShell crumb={[{ label: t("title") }, { label: t("crumbConfigure") }]}>
+    <AppShell crumb={[{ label: t("crumbGlobal") }, { label: t("title"), href: "/multi-agent" }, { label: t("crumbConfigure") }]}>
       <div style={s.page}>
         <h1 style={s.h1}>{t("configure.heading")}</h1>
         <p style={s.subtitle}>{t("configure.subtitle")}</p>
