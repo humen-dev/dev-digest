@@ -22,6 +22,8 @@ export function ConfigureRun() {
     onClick: () => c.setPrId(p.id),
   }));
   const duration = c.estimate.maxDurationMs == null ? "—" : formatSeconds(c.estimate.maxDurationMs);
+  // AC-14: with no enabled agent the empty state replaces the agent list AND the run action.
+  const noAgents = !c.agentsLoading && c.enabled.length === 0;
 
   return (
     <AppShell crumb={[{ label: t("title") }, { label: t("crumbConfigure") }]}>
@@ -64,7 +66,7 @@ export function ConfigureRun() {
           {t("configure.stepAgents")}
         </StepHeader>
         <div style={s.stepBody}>
-          {!c.prId && (
+          {!noAgents && !c.prId && (
             <div style={s.placeholder}>
               <div style={s.placeholderIcon}>
                 <Icon.GitPullRequest size={21} />
@@ -74,7 +76,7 @@ export function ConfigureRun() {
             </div>
           )}
           {c.prId && c.agentsLoading && <Skeleton height={64} />}
-          {c.prId && !c.agentsLoading && c.enabled.length === 0 && (
+          {noAgents && (
             <EmptyState
               icon="Cpu"
               title={t("configure.noAgentsTitle")}
@@ -92,16 +94,18 @@ export function ConfigureRun() {
           )}
         </div>
 
-        <div style={s.runBar}>
-          <Button kind="primary" icon="Users" loading={c.isStarting} disabled={!c.canRun} onClick={c.run}>
-            {t("picker.run", { count: c.selected.length })}
-          </Button>
-          {c.prId && c.selected.length > 0 && (
-            <span className="mono" style={s.summary}>
-              {t("picker.summary", { duration, cost: formatCost(c.estimate.costUsd) })}
-            </span>
-          )}
-        </div>
+        {!noAgents && (
+          <div style={s.runBar}>
+            <Button kind="primary" icon="Users" loading={c.isStarting} disabled={!c.canRun} onClick={c.run}>
+              {t("picker.run", { count: c.selected.length })}
+            </Button>
+            {c.prId && c.selected.length > 0 && (
+              <span className="mono" style={s.summary}>
+                {t("picker.summary", { duration, cost: formatCost(c.estimate.costUsd) })}
+              </span>
+            )}
+          </div>
+        )}
         {c.errorMessage && (
           <div role="alert" style={s.error}>
             {c.inFlightId ? t("configure.inFlight") : c.errorMessage}

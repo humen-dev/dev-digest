@@ -32,11 +32,11 @@ export function ResultsHeader({
 }) {
   const t = useTranslations("multiAgent");
 
-  const sum = formatCost(run.total_cost_usd);
+  // AC-63: unpriced runs are always counted, even when no run has a known cost.
   const cost =
-    run.unpriced_count > 0 && run.total_cost_usd != null
-      ? t("results.unpriced", { cost: sum, count: run.unpriced_count })
-      : sum;
+    run.unpriced_count > 0
+      ? t("results.unpriced", { cost: formatCost(run.total_cost_usd ?? 0), count: run.unpriced_count })
+      : formatCost(run.total_cost_usd);
 
   return (
     <header style={s.wrap}>
