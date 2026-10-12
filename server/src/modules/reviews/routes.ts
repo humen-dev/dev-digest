@@ -8,14 +8,15 @@ import { NotFoundError } from '../../platform/errors.js';
 import { ReviewService } from './service.js';
 import { MultiAgentService } from './multi-agent-service.js';
 import { MultiAgentRepository } from './repository/multi-agent.repo.js';
-import { MultiAgentReadQuery } from './types.js';
+import { MultiAgentReadQuery, MultiAgentRunsQuery } from './types.js';
 
 /**
  * reviews module.
  *   POST   /pulls/:id/review  {agentId} | {all:true}  → run review(s); returns runs
  *   GET    /runs/:id/events                            → SSE stream of RunEvent (replay-first)
  *   GET    /runs/:id/trace                             → the single-document RunTrace
- *   GET    /pulls/:id/reviews                          → persisted reviews + findings for a PR
+ *   GET    /multi-agent/runs?cursor&limit              → keyset page of the workspace's multi-agent runs
+ *   GET    /pulls/:id/reviews                       → persisted reviews + findings for a PR
  *   POST   /findings/:id/(accept|dismiss)              → finding actions
  */
 const FINDING_ACTIONS = ['accept', 'dismiss'] as const;
@@ -82,6 +83,11 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
   app.get('/multi-agent/latest', async (req) => {
     const { workspaceId } = await getContext(container, req);
     return multiAgent.latest(workspaceId);
+  });
+
+  app.get('/multi-agent/runs', { schema: { querystring: MultiAgentRunsQuery } }, async (req) => {
+    const { workspaceId } = await getContext(container, req);
+    return multiAgent.list(workspaceId, req.query.cursor, req.query.limit);
   });
 
   // ---- SSE: live run events (replay buffer first, then live; ends on done) -

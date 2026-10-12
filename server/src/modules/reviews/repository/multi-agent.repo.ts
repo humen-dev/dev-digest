@@ -1,13 +1,16 @@
-import { and, asc, desc, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../../../db/client.js';
 import * as t from '../../../db/schema.js';
 import type { FindingRecord } from '@devdigest/shared';
 import { findingRowToDto } from '../helpers.js';
 import { getPull } from './pull.repo.js';
+import type { RunsCursor } from '../domain/runs-cursor.js';
 import type {
   LinkedRunInput,
   MultiAgentRepositoryPort,
+  MultiRunAgentRecord,
   MultiRunColumnRecord,
+  MultiRunListRecord,
   MultiRunRecord,
   MultiRunRefRecord,
   PullSummary,
@@ -96,6 +99,48 @@ export class MultiAgentRepository implements MultiAgentRepositoryPort {
       .orderBy(desc(t.multiAgentRuns.ranAt), desc(t.multiAgentRuns.id))
       .limit(1);
     return row;
+  }
+
+  async listRunsPage(workspaceId: string, after: RunsCursor | null, take: number): Promise<MultiRunListRecord[]> {
+    const ranAt = t.multiAgentRuns.ranAt;
+    // Strict keyset on (ran_at, id). ran_at has µs precision, so the cursor value is a
+    // µs-exact UTC text bound as a parameter (never sql.raw) and cast back to timestamptz.
+    const keyset = after
+      ? sql`(${ranAt}, ${t.multiAgentRuns.id}) < (${after.ranAt}::timestamptz, ${after.id}::uuid)`
+      : undefined;
+    return this.db
+      .select({
+        id: t.multiAgentRuns.id,
+        prId: t.multiAgentRuns.prId,
+        prNumber: t.pullRequests.number,
+        prTitle: t.pullRequests.title,
+        repoName: t.repos.fullName,
+        ranAt,
+        ranAtCursor: sql<string>`to_char(${ranAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+      })
+      .from(t.multiAgentRuns)
+      .innerJoin(t.pullRequests, eq(t.pullRequests.id, t.multiAgentRuns.prId))
+      .innerJoin(t.repos, eq(t.repos.id, t.pullRequests.repoId))
+      .where(and(eq(t.multiAgentRuns.workspaceId, workspaceId), keyset))
+      .orderBy(desc(ranAt), desc(t.multiAgentRuns.id))
+      .limit(take);
+  }
+
+  async agentRunsOf(multiRunIds: string[]): Promise<MultiRunAgentRecord[]> {
+    if (multiRunIds.length === 0) return [];
+    const rows = await this.db
+      .select({
+        multiRunId: t.agentRuns.multiRunId,
+        agentName: t.agents.name,
+        status: t.agentRuns.status,
+        finishedAt: t.agentRuns.finishedAt,
+        costUsd: t.agentRuns.costUsd,
+      })
+      .from(t.agentRuns)
+      .leftJoin(t.agents, eq(t.agents.id, t.agentRuns.agentId))
+      .where(inArray(t.agentRuns.multiRunId, multiRunIds))
+      .orderBy(asc(t.agentRuns.ranAt), asc(t.agentRuns.id));
+    return rows.flatMap((r) => (r.multiRunId ? [{ ...r, multiRunId: r.multiRunId }] : []));
   }
 
   async columns(multiRunId: string): Promise<MultiRunColumnRecord[]> {

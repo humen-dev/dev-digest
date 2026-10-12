@@ -1,4 +1,5 @@
 import type { FindingRecord } from '@devdigest/shared';
+import type { RunsCursor } from './domain/runs-cursor.js';
 
 /**
  * Ports of the multi-agent use case (application ring). Plain interfaces only —
@@ -48,6 +49,29 @@ export interface MultiRunColumnRecord {
   findings: FindingRecord[];
 }
 
+/** One multi-run of the runs list, with its PR and repository. */
+export interface MultiRunListRecord {
+  id: string;
+  prId: string;
+  prNumber: number;
+  prTitle: string;
+  /** repos.full_name ("owner/name"). */
+  repoName: string;
+  ranAt: Date;
+  /** ran_at as UTC text with microsecond precision — the keyset cursor value. */
+  ranAtCursor: string;
+}
+
+/** One agent run of a listed multi-run (no findings, no review). */
+export interface MultiRunAgentRecord {
+  multiRunId: string;
+  /** null when the agent was deleted. */
+  agentName: string | null;
+  status: string | null;
+  finishedAt: Date | null;
+  costUsd: number | null;
+}
+
 export interface PullSummary {
   id: string;
   number: number;
@@ -72,6 +96,10 @@ export interface MultiAgentRepositoryPort {
   latestRunForWorkspace(workspaceId: string): Promise<MultiRunRefRecord | undefined>;
   /** Ordered by agent_runs.ran_at, id. */
   columns(multiRunId: string): Promise<MultiRunColumnRecord[]>;
+  /** Workspace multi-runs, `ran_at DESC, id DESC`, strictly older than `after` (keyset), at most `take`. */
+  listRunsPage(workspaceId: string, after: RunsCursor | null, take: number): Promise<MultiRunListRecord[]>;
+  /** Agent runs of the given multi-runs, ordered by agent_runs.ran_at, id. */
+  agentRunsOf(multiRunIds: string[]): Promise<MultiRunAgentRecord[]>;
 }
 
 export interface MultiAgentAgentsPort {

@@ -3,9 +3,13 @@ import type {
   AgentRunStatus,
   MultiAgentRun,
   MultiAgentRunRef,
+  MultiAgentRunsListItem,
+  MultiAgentRunsPage,
   MultiAgentRunTriggerResult,
 } from '@devdigest/shared';
-import { AppError, NotFoundError } from '../../platform/errors.js';
+import { AppError, NotFoundError, ValidationError } from '../../platform/errors.js';
+import { decodeRunsCursor, encodeRunsCursor } from './domain/runs-cursor.js';
+import { deriveOverallState } from './domain/run-overall-state.js';
 import { buildMatchGroups, type GroupInputRun } from './domain/match-groups.js';
 import { computeTotals } from './domain/multi-agent-totals.js';
 import { maskColumnError } from './domain/column-error.js';
@@ -14,6 +18,7 @@ import type {
   MultiAgentAgentsPort,
   MultiAgentBatchPort,
   MultiAgentRepositoryPort,
+  MultiRunAgentRecord,
   MultiRunColumnRecord,
 } from './ports.js';
 
@@ -134,6 +139,61 @@ export class MultiAgentService {
       unpriced_count: totals.unpricedCount,
       columns,
       conflicts,
+    };
+  }
+
+  /**
+   * Keyset page of the workspace's multi-runs, newest first. Two SQL reads, no
+   * findings and no LLM; totals use the same inputs as `read()`.
+   */
+  async list(workspaceId: string, cursor: string | undefined, limit: number): Promise<MultiAgentRunsPage> {
+    const { repo } = this.deps;
+    const after = cursor === undefined ? null : decodeRunsCursor(cursor);
+    if (cursor !== undefined && !after) throw new ValidationError('Invalid cursor');
+
+    const fetched = await repo.listRunsPage(workspaceId, after, limit + 1);
+    const hasMore = fetched.length > limit;
+    const page = fetched.slice(0, limit);
+
+    const agentRuns = await repo.agentRunsOf(page.map((r) => r.id));
+    const byRun = new Map<string, MultiRunAgentRecord[]>();
+    for (const a of agentRuns) {
+      const list = byRun.get(a.multiRunId) ?? [];
+      list.push(a);
+      byRun.set(a.multiRunId, list);
+    }
+
+    const now = new Date();
+    const items: MultiAgentRunsListItem[] = page.map((run) => {
+      const runs = (byRun.get(run.id) ?? []).map((a) => ({
+        name: a.agentName ?? UNKNOWN_AGENT_NAME,
+        status: toRunStatus(a.status),
+        finishedAt: a.finishedAt,
+        costUsd: a.costUsd,
+      }));
+      const { state, failedCount } = deriveOverallState(runs.map((r) => r.status));
+      const totals = computeTotals({ createdAt: run.ranAt, now, runs });
+      return {
+        id: run.id,
+        pr_id: run.prId,
+        pr_number: run.prNumber,
+        pr_title: run.prTitle,
+        repo_name: run.repoName,
+        ran_at: run.ranAt.toISOString(),
+        state,
+        failed_count: failedCount,
+        agent_count: runs.length,
+        total_duration_ms: totals.totalDurationMs,
+        total_cost_usd: totals.totalCostUsd,
+        unpriced_count: totals.unpricedCount,
+        agents: runs.map((r) => ({ agent_name: r.name, status: r.status })),
+      };
+    });
+
+    const last = hasMore ? page[page.length - 1] : undefined;
+    return {
+      items,
+      next_cursor: last ? encodeRunsCursor({ ranAt: last.ranAtCursor, id: last.id }) : null,
     };
   }
 
