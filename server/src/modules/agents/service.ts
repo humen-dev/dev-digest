@@ -56,8 +56,16 @@ export class AgentsService {
   }
 
   async list(workspaceId: string): Promise<Agent[]> {
-    const rows = await this.repo.list(workspaceId);
-    return rows.map(toAgentDto);
+    const [rows, estimates] = await Promise.all([this.repo.list(workspaceId), this.repo.runEstimates(workspaceId)]);
+    return rows.map((row) => {
+      const est = estimates.get(row.id);
+      return {
+        ...toAgentDto(row),
+        est_duration_ms: est?.avgDurationMs == null ? null : Math.round(est.avgDurationMs),
+        est_cost_usd: est?.avgCostUsd ?? null,
+        has_history: est != null && est.doneCount > 0,
+      };
+    });
   }
 
   async get(workspaceId: string, id: string): Promise<Agent | undefined> {

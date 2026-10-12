@@ -1,11 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { RunRequest } from '@devdigest/shared';
+import { MultiAgentRunRequest, RunRequest } from '@devdigest/shared';
 import type { RunEvent } from '@devdigest/shared';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { NotFoundError } from '../../platform/errors.js';
 import { ReviewService } from './service.js';
+import { MultiAgentService } from './multi-agent-service.js';
+import { MultiAgentRepository } from './repository/multi-agent.repo.js';
+import { MultiAgentReadQuery } from './types.js';
 
 /**
  * reviews module.
@@ -41,6 +44,44 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
       req.log,
     );
     return { pr_id: req.params.id, runs, reviews };
+  });
+
+  // ---- Multi-agent review (SPEC-07) ----------------------------------------
+  const multiAgent = new MultiAgentService({
+    repo: new MultiAgentRepository(container.db),
+    agents: container.agentsRepo,
+    batch: { start: (workspaceId, prId, jobs, logger) => service.startBatch(workspaceId, prId, jobs, logger) },
+  });
+
+  app.post(
+    '/pulls/:id/multi-agent-run',
+    {
+      schema: { params: IdParams, body: MultiAgentRunRequest },
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return multiAgent.trigger(workspaceId, req.params.id, req.body.agentIds, req.log);
+    },
+  );
+
+  app.get(
+    '/pulls/:id/multi-agent',
+    { schema: { params: IdParams, querystring: MultiAgentReadQuery } },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return multiAgent.read(workspaceId, req.params.id, req.query.multiRunId);
+    },
+  );
+
+  app.get('/pulls/:id/multi-agent/latest', { schema: { params: IdParams } }, async (req) => {
+    const { workspaceId } = await getContext(container, req);
+    return multiAgent.latestForPr(workspaceId, req.params.id);
+  });
+
+  app.get('/multi-agent/latest', async (req) => {
+    const { workspaceId } = await getContext(container, req);
+    return multiAgent.latest(workspaceId);
   });
 
   // ---- SSE: live run events (replay buffer first, then live; ends on done) -

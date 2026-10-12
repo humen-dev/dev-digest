@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import type { CiFailOn, Provider, ReviewStrategy } from '@devdigest/shared';
@@ -48,11 +48,48 @@ export interface LinkedSkillRow {
   order: number;
 }
 
+/** Mean duration / cost over an agent's finished runs (see `runEstimates`). */
+export interface AgentRunEstimate {
+  avgDurationMs: number | null;
+  avgCostUsd: number | null;
+  doneCount: number;
+}
+
 export class AgentsRepository {
   constructor(private db: Db) {}
 
   async list(workspaceId: string): Promise<AgentRow[]> {
     return this.db.select().from(t.agents).where(eq(t.agents.workspaceId, workspaceId));
+  }
+
+  /**
+   * SPEC-07 — per-agent run estimates from history: ONE grouped read-only query
+   * over finished (`done`) runs of the workspace. Cost averages only the runs with
+   * a known cost; an agent with no `done` run has no entry.
+   */
+  async runEstimates(workspaceId: string): Promise<Map<string, AgentRunEstimate>> {
+    const rows = await this.db
+      .select({
+        agentId: t.agentRuns.agentId,
+        avgDurationMs: sql<string | null>`avg(${t.agentRuns.durationMs})`,
+        avgCostUsd: sql<string | null>`avg(${t.agentRuns.costUsd}) filter (where ${t.agentRuns.costUsd} is not null)`,
+        doneCount: sql<string>`count(*)`,
+      })
+      .from(t.agentRuns)
+      .where(
+        and(eq(t.agentRuns.workspaceId, workspaceId), eq(t.agentRuns.status, 'done'), isNotNull(t.agentRuns.agentId)),
+      )
+      .groupBy(t.agentRuns.agentId);
+    const out = new Map<string, AgentRunEstimate>();
+    for (const r of rows) {
+      if (!r.agentId) continue;
+      out.set(r.agentId, {
+        avgDurationMs: r.avgDurationMs == null ? null : Number(r.avgDurationMs),
+        avgCostUsd: r.avgCostUsd == null ? null : Number(r.avgCostUsd),
+        doneCount: Number(r.doneCount),
+      });
+    }
+    return out;
   }
 
   async listEnabled(workspaceId: string): Promise<AgentRow[]> {
