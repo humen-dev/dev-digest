@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, EmptyState, ErrorState, Skeleton } from "@devdigest/ui";
 import { useCiRuns, useRefreshCiRuns } from "@/lib/hooks/ci";
-import { buildRunsQuery, filtersToSearch, hasActiveFilters, parseFilters } from "./helpers";
+import { buildRunsQuery, filtersToSearch, parseFilters } from "./helpers";
 import { useAutoRefresh } from "./useAutoRefresh";
 import { s } from "./styles";
 import type { CiRunsFilterState } from "./types";
@@ -39,7 +39,6 @@ export function CiRunsView() {
   };
 
   const degradedReason = refresh.data?.degraded ? (refresh.data.reason ?? "") : null;
-  const filtered = hasActiveFilters(filters);
 
   let content: React.ReactNode;
   if (isLoading) {
@@ -47,13 +46,15 @@ export function CiRunsView() {
   } else if (!data) {
     content = <ErrorState body={t("runs.loadError")} onRetry={() => refetch()} />;
   } else {
+    // agents/repos cover every stored run, so both empty = nothing ever ingested.
+    const workspaceEmpty = data.runs.length === 0 && data.agents.length === 0 && data.repos.length === 0;
     content = (
       <>
-        {(data.runs.length > 0 || filtered) && (
+        {!workspaceEmpty && (
           <CiRunsFilters filters={filters} agents={data.agents} repos={data.repos} onChange={setFilters} />
         )}
         {data.runs.length === 0 ? (
-          filtered ? (
+          !workspaceEmpty ? (
             <p style={s.hint}>{t("runs.noMatches")}</p>
           ) : (
             <EmptyState

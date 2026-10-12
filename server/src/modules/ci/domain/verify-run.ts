@@ -25,6 +25,18 @@ function parseJson(text: string): unknown {
   }
 }
 
+const INT32_MAX = 2_147_483_647;
+const COUNT_FIELDS = ['findings_count', 'critical', 'warning', 'suggestion', 'blockers', 'duration_ms'] as const;
+
+/** DB columns are int32; an out-of-range value would make the INSERT throw (B-1). */
+function withinDbRange(a: CiResultArtifact): boolean {
+  for (const f of COUNT_FIELDS) {
+    const v = a[f];
+    if (v !== null && v !== undefined && (v < 0 || v > INT32_MAX)) return false;
+  }
+  return a.cost_usd === null || (Number.isFinite(a.cost_usd) && a.cost_usd >= 0);
+}
+
 /** The run's `path` may carry an `@ref` suffix (`<path>@refs/heads/main`). */
 function stripRef(path: string): string {
   const at = path.indexOf('@');
@@ -42,7 +54,9 @@ export function verifyRun(input: VerifyRunInput): VerifyRunResult {
   if (resultText === undefined) return { accepted: false, reason: 'noResult' };
 
   const resultParsed = CiResultArtifact.safeParse(parseJson(resultText));
-  if (!resultParsed.success) return { accepted: false, reason: 'resultSchema' };
+  if (!resultParsed.success || !withinDbRange(resultParsed.data)) {
+    return { accepted: false, reason: 'resultSchema' };
+  }
   if (metaText === undefined) return { accepted: false, reason: 'metaSchema' };
   const metaParsed = CiRunMeta.safeParse(parseJson(metaText));
   if (!metaParsed.success) return { accepted: false, reason: 'metaSchema' };

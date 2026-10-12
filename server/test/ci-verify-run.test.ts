@@ -62,6 +62,15 @@ describe('verifyRun (AC-75, AC-77, UT-6, EC-19)', () => {
     expect(verifyRun(input({ resultText: 'not json' }))).toMatchObject({ reason: 'resultSchema' });
   });
 
+  it('resultSchema for out-of-range numbers (B-1)', () => {
+    const bad = (o: object) => verifyRun(input({ resultText: JSON.stringify({ ...result, ...o }) }));
+    expect(bad({ findings_count: 5_000_000_000 })).toMatchObject({ reason: 'resultSchema' });
+    expect(bad({ findings_count: -1 })).toMatchObject({ reason: 'resultSchema' });
+    expect(bad({ duration_ms: 3_000_000_000 })).toMatchObject({ reason: 'resultSchema' });
+    expect(bad({ cost_usd: -0.5 })).toMatchObject({ reason: 'resultSchema' });
+    expect(bad({ findings_count: 2_147_483_647 })).toMatchObject({ accepted: true });
+  });
+
   it('metaSchema for invalid or missing sidecar', () => {
     expect(verifyRun(input({ metaText: '{}' }))).toMatchObject({ reason: 'metaSchema' });
     expect(verifyRun(input({ metaText: undefined }))).toMatchObject({ reason: 'metaSchema' });

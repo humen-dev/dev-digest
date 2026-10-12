@@ -321,8 +321,12 @@ export class CiRefreshService {
         trace: this.traceFor(artifact, prNumber, a.agent?.model ?? ''),
       });
       await deps.repo.linkAgentRun(ciRunId, agentRunId);
-    } catch {
-      log?.warn({ run_id: run.id, reason: 'agent run mirror failed' }, 'ci run mirror failed');
+    } catch (err) {
+      // Message only: never the artifact text or any secret value.
+      log?.warn(
+        { run_id: run.id, ci_run_id: ciRunId, reason: err instanceof Error ? err.message : 'unknown error' },
+        'ci run mirror failed',
+      );
     }
 
     if (status.status === 'failed') {

@@ -10,6 +10,8 @@ const AGENT_B = "22222222-2222-4222-8222-222222222222";
 
 let RUNS: CiRun[] = [];
 let SEARCH = "";
+/** Server dictionaries (agents/repos) cover every stored run, not just the filtered page. */
+let WORKSPACE_HAS_RUNS = true;
 let refreshState: { isPending: boolean; data?: { degraded: boolean; reason: string | null } } = { isPending: false };
 const refreshMutate = vi.fn();
 const routerReplace = vi.fn();
@@ -29,11 +31,13 @@ function serve(q: Partial<CiRunsQuery>) {
   );
   return {
     runs,
-    agents: [
-      { id: AGENT_A, name: "Security" },
-      { id: AGENT_B, name: "Style" },
-    ],
-    repos: ["acme/api", "acme/web"],
+    agents: WORKSPACE_HAS_RUNS
+      ? [
+          { id: AGENT_A, name: "Security" },
+          { id: AGENT_B, name: "Style" },
+        ]
+      : [],
+    repos: WORKSPACE_HAS_RUNS ? ["acme/api", "acme/web"] : [],
   };
 }
 
@@ -96,6 +100,7 @@ function renderView() {
 beforeEach(() => {
   RUNS = [];
   SEARCH = "";
+  WORKSPACE_HAS_RUNS = true;
   refreshState = { isPending: false };
 });
 afterEach(() => {
@@ -176,13 +181,24 @@ describe("CiRunsView", () => {
     expect(routerReplace).toHaveBeenCalledWith("/ci-runs?range=30d");
   });
 
-  it("shows the empty state with a link to /agents, and a no-match note when filters are active", () => {
+  it("shows the empty state only when the workspace has no CI runs at all", () => {
+    // Runs exist but all are older than the default 7-day window: filters + noMatches, not the empty state.
+    RUNS = [run({ ran_at: new Date(Date.now() - 20 * 86_400_000).toISOString() })];
+    renderView();
+    expect(screen.getByText(ciMessages.runs.noMatches)).toBeInTheDocument();
+    expect(screen.getByDisplayValue(ciMessages.runs.filters.last7Days)).toBeInTheDocument();
+    expect(screen.queryByText(ciMessages.runs.emptyTitle)).not.toBeInTheDocument();
+    cleanup();
+
+    WORKSPACE_HAS_RUNS = false;
+    RUNS = [];
     renderView();
     expect(screen.getByText(ciMessages.runs.emptyTitle)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: ciMessages.runs.emptyCta })).toHaveAttribute("href", "/agents");
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     cleanup();
 
+    WORKSPACE_HAS_RUNS = true;
     SEARCH = "status=failed";
     renderView();
     expect(screen.getByText(ciMessages.runs.noMatches)).toBeInTheDocument();

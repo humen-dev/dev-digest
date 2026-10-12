@@ -41,10 +41,6 @@ export function filtersToSearch(f: CiRunsFilterState): string {
   return p.toString();
 }
 
-export function hasActiveFilters(f: CiRunsFilterState): boolean {
-  return filtersToSearch(f) !== "";
-}
-
 /** Map the page filters onto the `GET /ci/runs` query. */
 export function buildRunsQuery(f: CiRunsFilterState, now: Date): Partial<CiRunsQuery> {
   const days = RANGE_DAYS[f.range];

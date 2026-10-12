@@ -228,7 +228,7 @@ describe("CiTab", () => {
     installationsState = { data: [inst({})], isLoading: false };
     runsState = { data: { runs: Array.from({ length: 12 }, (_, i) => run(i + 1)) } };
     renderTab();
-    expect(runsQuerySpy).toHaveBeenCalledWith({ agent_id: "ag1", limit: 10 });
+    expect(runsQuerySpy).toHaveBeenCalledWith({ agent_id: "ag1", from: "1970-01-01T00:00:00.000Z", limit: 10 });
     const list = screen.getByRole("list", { name: "Recent runs" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(10);
     expect(screen.getByRole("link", { name: "View all CI runs" })).toHaveAttribute("href", "/ci-runs?agent=ag1");

@@ -14,7 +14,7 @@ import { FailOnControl } from "./_components/FailOnControl";
 import { InstallationPicker } from "./_components/InstallationPicker";
 import { InstallationRow } from "./_components/InstallationRow";
 import { RecentRuns } from "./_components/RecentRuns";
-import { COPIED_RESET_MS, RECENT_RUNS_LIMIT, REQUIRED_CHECK_NAME } from "./constants";
+import { ALL_TIME_FROM, COPIED_RESET_MS, RECENT_RUNS_LIMIT, REQUIRED_CHECK_NAME } from "./constants";
 import { countActive, updateInitial } from "./helpers";
 import { s } from "./styles";
 
@@ -24,7 +24,7 @@ export function CiTab({ agent }: { agent: Agent }) {
   const t = useTranslations("ci.ciTab");
   const toast = useToast();
   const installationsQuery = useCiInstallations(agent.id);
-  const runsQuery = useCiRuns({ agent_id: agent.id, limit: RECENT_RUNS_LIMIT });
+  const runsQuery = useCiRuns({ agent_id: agent.id, from: ALL_TIME_FROM, limit: RECENT_RUNS_LIMIT });
   const updateAgent = useUpdateAgent();
   const [wizard, setWizard] = React.useState<WizardInitial | null>(null);
   const [picking, setPicking] = React.useState(false);

@@ -218,6 +218,28 @@ describe('CiRefreshService', () => {
     }
   });
 
+  it('logs the error message when the agent run mirror fails, keeping the ci_runs row', async () => {
+    const gh = new MockGitHubClient({
+      workflowRuns: [run(1)],
+      artifacts: { 1: [art(11)] },
+      artifactZips: { 11: zip(goodResult) },
+    });
+    const h = harness([inst()], gh);
+    const svc = new CiRefreshService({
+      repo: (h.service as unknown as { deps: { repo: CiRepository } }).deps.repo,
+      agents: { getById: async () => undefined },
+      secretValues: { list: async () => [] },
+      githubConnection: { hasToken: async () => true },
+      runWriter: { insertCompletedCiRun: async () => { throw new Error('db down'); } },
+      github: async () => gh,
+      clock: { now: () => NOW },
+    });
+    const logs: { o: object; msg: string }[] = [];
+    await svc.refresh('ws', false, { info: () => {}, warn: (o, msg) => void logs.push({ o, msg }) });
+    expect(h.claimed.has('1')).toBe(true);
+    expect(logs).toEqual([{ o: { run_id: 1, ci_run_id: 'ci-1', reason: 'db down' }, msg: 'ci run mirror failed' }]);
+  });
+
   it('stores nothing for success / skipped / cancelled runs without an artifact (AC-85, EC-25)', async () => {
     const gh = new MockGitHubClient({
       workflowRuns: [run(1, { conclusion: 'success' }), run(2, { conclusion: 'skipped' }), run(3, { conclusion: 'cancelled' })],
