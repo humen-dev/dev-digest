@@ -6,6 +6,8 @@ import {
   CiExportInput,
   CiInstallation,
   CiPreview,
+  CiRefreshInput,
+  CiRefreshResult,
   CiRunsPage,
   CiRunsQuery,
   CiSecretStatus,
@@ -84,6 +86,21 @@ export default async function ciRoutes(appBase: FastifyInstance) {
     async (req) => {
       const { workspaceId } = await getContext(container, req);
       return service().runs(workspaceId, req.query);
+    },
+  );
+
+  // The body is optional: an absent / null body means a non-forced refresh.
+  app.post(
+    '/ci/refresh',
+    {
+      schema: {
+        body: CiRefreshInput.nullish().transform((b) => b ?? { force: false }),
+        response: { 200: CiRefreshResult },
+      },
+    },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return container.ciRefreshService.refresh(workspaceId, req.body.force, req.log);
     },
   );
 }

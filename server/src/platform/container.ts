@@ -71,7 +71,16 @@ import { EvalService } from '../modules/eval/service.js';
 import type { EvalRepositoryPort } from '../modules/eval/ports.js';
 import { DrizzleCiRepository } from '../modules/ci/repository.js';
 import { CiService } from '../modules/ci/service.js';
-import type { CiRepository, CiSources, RunnerBundleSource } from '../modules/ci/ports.js';
+import { CiRefreshService } from '../modules/ci/refresh-service.js';
+import type {
+  CiAgentRunWriter,
+  CiRepository,
+  CiSources,
+  GithubConnection,
+  RunnerBundleSource,
+  WorkspaceSecretValues,
+} from '../modules/ci/ports.js';
+import { insertCompletedCiRun } from '../modules/reviews/repository/run.repo.js';
 import { FsRunnerBundle } from '../adapters/ci-bundle/index.js';
 import { GitTreeReader } from '../adapters/git/tree.js';
 import { loadPromptTemplate } from './prompts.js';
@@ -185,6 +194,8 @@ export class Container {
   private _ciRepo?: CiRepository;
   private _ciBundle?: RunnerBundleSource;
   private _ciService?: CiService;
+  private _ciRefreshService?: CiRefreshService;
+  private _ciRunWriter?: CiAgentRunWriter;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -497,6 +508,41 @@ export class Container {
       },
       github: () => this.github(),
     }));
+  }
+
+  /**
+   * Export to CI, ingest side (SPEC-07): `POST /ci/refresh`. The `agent_runs`
+   * mirror is written by the reviews module's run repository function, adapted
+   * to the CI module's `CiAgentRunWriter` port here.
+   */
+  get ciRefreshService(): CiRefreshService {
+    return (this._ciRefreshService ??= new CiRefreshService({
+      repo: this.ciRepo,
+      agents: this.overrides.ciSources?.agents ?? this.agentsRepo,
+      secretValues: this.overrides.ciSources?.secretValues ?? this.ciSecretValues(),
+      githubConnection: this.overrides.ciSources?.githubConnection ?? this.ciGithubConnection(),
+      runWriter: this.ciRunWriter,
+      github: () => this.github(),
+    }));
+  }
+
+  get ciRunWriter(): CiAgentRunWriter {
+    return (this._ciRunWriter ??= { insertCompletedCiRun: (i) => insertCompletedCiRun(this.db, i) });
+  }
+
+  private ciSecretValues(): WorkspaceSecretValues {
+    return {
+      list: async () => {
+        const values = await Promise.all(CI_KNOWN_SECRET_KEYS.map((k) => this.secrets.get(k)));
+        return values.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+      },
+    };
+  }
+
+  private ciGithubConnection(): GithubConnection {
+    return {
+      hasToken: async () => !!((await this.secrets.get('GITHUB_TOKEN')) ?? (await this.secrets.get('GITHUB_PAT'))),
+    };
   }
 
   /**

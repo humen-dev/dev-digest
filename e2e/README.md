@@ -108,3 +108,4 @@ a CI artifact by `.github/workflows/e2e-web.yml`).
 | `14-project-context` | sidebar → Project Context → page heading renders; seeded repo has no local clone → "Repository not cloned" empty state |
 | `15-trace-project-context` | PR #482 → Agent runs tab → Timeline's seeded Security Reviewer run → open its trace drawer → expand "Project context — attached specs (untrusted)" → attached specs/security-baseline.md text visible |
 | `16-onboarding-tour` | sidebar → Onboarding Tour → heading + architecture overview + a seeded critical path render; seeded repo has no local clone → "Clone the repository to regenerate" hint, no Open button |
+| `18-ci-runs` | sidebar (GLOBAL) → CI Runs → `/ci-runs` subtitle renders; seeded DB has no CI runs → "No CI runs yet" empty state (no Refresh click) |

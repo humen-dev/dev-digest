@@ -184,6 +184,49 @@ export async function saveRunTrace(db: Db, runId: string, trace: RunTrace): Prom
     .onConflictDoUpdate({ target: t.runTraces.runId, set: { trace } });
 }
 
+/**
+ * SPEC-07 — mirror an ingested CI run into `agent_runs` + `run_traces` so the
+ * existing cost / latency aggregations see it. Born terminal (`done`, `source:'ci'`,
+ * `pr_id` NULL), so the stale-run reaper never touches it. Both inserts share one
+ * transaction; nothing but database work runs inside it.
+ */
+export async function insertCompletedCiRun(
+  db: Db,
+  values: {
+    workspaceId: string;
+    agentId: string | null;
+    model: string | null;
+    ranAt: Date;
+    durationMs: number | null;
+    costUsd: number | null;
+    findingsCount: number;
+    blockers: number | null;
+    trace: RunTrace;
+  },
+): Promise<string> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(t.agentRuns)
+      .values({
+        workspaceId: values.workspaceId,
+        agentId: values.agentId,
+        prId: null,
+        ranAt: values.ranAt,
+        provider: 'openrouter',
+        model: values.model,
+        durationMs: values.durationMs,
+        costUsd: values.costUsd,
+        status: 'done',
+        source: 'ci',
+        findingsCount: values.findingsCount,
+        blockers: values.blockers,
+      })
+      .returning({ id: t.agentRuns.id });
+    await tx.insert(t.runTraces).values({ runId: row!.id, trace: values.trace });
+    return row!.id;
+  });
+}
+
 export async function getRunTrace(db: Db, runId: string): Promise<RunTrace | undefined> {
   const [row] = await db.select().from(t.runTraces).where(eq(t.runTraces.runId, runId));
   return row ? (row.trace as RunTrace) : undefined;
