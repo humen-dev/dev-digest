@@ -129,6 +129,46 @@ export const MultiAgentRunRef = z.object({
 });
 export type MultiAgentRunRef = z.infer<typeof MultiAgentRunRef>;
 
+/** Overall state of a multi-agent run in the runs list (SPEC-07 AC-79). */
+export const MultiAgentOverallState = z.enum(['running', 'done', 'failed']);
+export type MultiAgentOverallState = z.infer<typeof MultiAgentOverallState>;
+
+/** One agent run of a listed multi-agent run, in column order. */
+export const MultiAgentRunsListAgent = z.object({
+  /** "Unknown agent" when the agent was deleted (EC-17). */
+  agent_name: z.string(),
+  status: AgentRunStatus,
+});
+export type MultiAgentRunsListAgent = z.infer<typeof MultiAgentRunsListAgent>;
+
+/** One row of GET /multi-agent/runs (AC-77). Totals follow AC-61/AC-62. */
+export const MultiAgentRunsListItem = z.object({
+  id: z.string(),
+  pr_id: z.string(),
+  pr_number: z.number().int(),
+  pr_title: z.string(),
+  /** repos.full_name ("owner/name"). */
+  repo_name: z.string(),
+  ran_at: z.string(),
+  state: MultiAgentOverallState,
+  /** Agent runs that are failed or cancelled. */
+  failed_count: z.number().int(),
+  agent_count: z.number().int(),
+  total_duration_ms: z.number().int(),
+  /** Sum of known cost_usd; null when none is known. */
+  total_cost_usd: z.number().nullable(),
+  unpriced_count: z.number().int(),
+  agents: z.array(MultiAgentRunsListAgent),
+});
+export type MultiAgentRunsListItem = z.infer<typeof MultiAgentRunsListItem>;
+
+/** Response of GET /multi-agent/runs — newest first; next_cursor null when no older run exists. */
+export const MultiAgentRunsPage = z.object({
+  items: z.array(MultiAgentRunsListItem),
+  next_cursor: z.string().nullable(),
+});
+export type MultiAgentRunsPage = z.infer<typeof MultiAgentRunsPage>;
+
 // ---------------------------------------------------------------------------
 // Per-agent Stats (GET /agents/:id/stats)
 // ---------------------------------------------------------------------------
