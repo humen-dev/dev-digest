@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | draft |
+| Status | approved (2026-10-12) |
 | Goal | A user exports a tuned review agent to a GitHub repository (PR or zip). The agent then reviews every PR inside GitHub Actions with the studio engine and can block merges. Verified CI results appear in the CI tab and on the CI Runs page (SPEC-07 G-1…G-5). |
 | Requirements source | [`specs/2026-10-12-export-to-ci.md`](../../specs/2026-10-12-export-to-ci.md) (SPEC-07, approved, amended in place 2026-10-12). Reference implementation `upstream/full-functionality` (FF), read-only copies in the session scratchpad `ff-ref/`. |
 | Execution mode | multi-agent (parallel waves) — chosen by the user |
