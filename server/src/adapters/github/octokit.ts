@@ -11,6 +11,9 @@ import type {
   OpenPrPayload,
   CommitFilesPayload,
   IssueMeta,
+  RepoInfo,
+  WorkflowRun,
+  RunArtifact,
 } from '@devdigest/shared';
 import { withRetry, withTimeout } from '../../platform/resilience.js';
 
@@ -368,5 +371,156 @@ export class OctokitGitHubClient implements GitHubClient {
       withTimeout(this.octokit.rest.users.getAuthenticated(), TIMEOUT),
     );
     return res.data.login;
+  }
+
+  // ---------- SPEC-07 (export to CI) ----------
+
+  async getRepository(repo: RepoRef): Promise<RepoInfo> {
+    const res = await withRetry(() =>
+      withTimeout(this.octokit.rest.repos.get({ owner: repo.owner, repo: repo.name }), TIMEOUT),
+    );
+    return {
+      id: res.data.id,
+      full_name: res.data.full_name,
+      default_branch: res.data.default_branch,
+      html_url: res.data.html_url,
+    };
+  }
+
+  async getPullRequestState(repo: RepoRef, n: number): Promise<'open' | 'merged' | 'closed'> {
+    const res = await withRetry(() =>
+      withTimeout(
+        this.octokit.rest.pulls.get({ owner: repo.owner, repo: repo.name, pull_number: n }),
+        TIMEOUT,
+      ),
+    );
+    return mapStatus(res.data.state, Boolean(res.data.merged_at)) as 'open' | 'merged' | 'closed';
+  }
+
+  /** Completed `pull_request` runs of one workflow file (`workflow_id` accepts the file name). */
+  async listWorkflowRuns(
+    repo: RepoRef,
+    opts: { workflowPath: string; perPage?: number },
+  ): Promise<WorkflowRun[]> {
+    const workflowId = opts.workflowPath.split('/').pop() ?? opts.workflowPath;
+    return withRetry(() =>
+      withTimeout(
+        (async () => {
+          const res = await this.octokit.rest.actions.listWorkflowRuns({
+            owner: repo.owner,
+            repo: repo.name,
+            workflow_id: workflowId,
+            event: 'pull_request',
+            status: 'completed',
+            per_page: opts.perPage ?? 30,
+          });
+          return res.data.workflow_runs.map((r) => ({
+            id: r.id,
+            run_attempt: r.run_attempt ?? 1,
+            event: r.event,
+            status: r.status ?? 'unknown',
+            conclusion: r.conclusion,
+            head_sha: r.head_sha,
+            html_url: r.html_url,
+            path: r.path,
+            repository_id: r.repository.id,
+            repository_full_name: r.repository.full_name,
+            repository_html_url: r.repository.html_url,
+            display_title: r.display_title ?? r.name ?? '',
+            created_at: r.created_at,
+            run_started_at: r.run_started_at ?? null,
+            pull_requests: (r.pull_requests ?? []).map((pr) => pr.number),
+          }));
+        })(),
+        TIMEOUT,
+      ),
+    );
+  }
+
+  async listRunArtifacts(repo: RepoRef, runId: number): Promise<RunArtifact[]> {
+    return withRetry(() =>
+      withTimeout(
+        (async () => {
+          const res = await this.octokit.rest.actions.listWorkflowRunArtifacts({
+            owner: repo.owner,
+            repo: repo.name,
+            run_id: runId,
+            per_page: 100,
+          });
+          return res.data.artifacts.map((a) => ({
+            id: a.id,
+            name: a.name,
+            size_in_bytes: a.size_in_bytes,
+            expired: a.expired,
+          }));
+        })(),
+        TIMEOUT,
+      ),
+    );
+  }
+
+  /**
+   * Artifact zip bytes. Re-reads the provider-reported compressed size and
+   * throws (`status: 413`) BEFORE buffering the body when it exceeds
+   * `maxBytes` — the check holds even if a caller skipped its own.
+   */
+  async downloadArtifact(repo: RepoRef, artifactId: number, maxBytes: number): Promise<Uint8Array> {
+    return withRetry(() =>
+      withTimeout(
+        (async () => {
+          const meta = await this.octokit.rest.actions.getArtifact({
+            owner: repo.owner,
+            repo: repo.name,
+            artifact_id: artifactId,
+          });
+          if (meta.data.size_in_bytes > maxBytes) {
+            throw Object.assign(
+              new Error(
+                `Artifact ${artifactId} is ${meta.data.size_in_bytes} bytes, over the ${maxBytes}-byte cap`,
+              ),
+              { status: 413 },
+            );
+          }
+          const res = await this.octokit.rest.actions.downloadArtifact({
+            owner: repo.owner,
+            repo: repo.name,
+            artifact_id: artifactId,
+            archive_format: 'zip',
+          });
+          // Octokit follows the redirect and returns the raw zip as an ArrayBuffer.
+          return new Uint8Array(res.data as ArrayBuffer);
+        })(),
+        TIMEOUT,
+      ),
+    );
+  }
+
+  /**
+   * Actions secret NAMES only — the endpoint never returns values. A 403 (PAT
+   * without "Secrets: read") yields `null` so the caller shows "unknown", never
+   * a wrong "not set".
+   */
+  async listRepoSecretNames(repo: RepoRef): Promise<string[] | null> {
+    try {
+      return await withRetry(() =>
+        withTimeout(
+          (async () => {
+            const res = await this.octokit.rest.actions.listRepoSecrets({
+              owner: repo.owner,
+              repo: repo.name,
+              per_page: 100,
+            });
+            return res.data.secrets.map((s) => s.name);
+          })(),
+          TIMEOUT,
+        ),
+      );
+    } catch (err) {
+      const status =
+        (err as { status?: number })?.status ??
+        (err as { response?: { status?: number } })?.response?.status;
+      if (status === 403) return null;
+      throw err;
+    }
   }
 }

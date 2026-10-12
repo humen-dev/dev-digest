@@ -17,6 +17,9 @@ import type {
   OpenPrPayload,
   CommitFilesPayload,
   IssueMeta,
+  RepoInfo,
+  WorkflowRun,
+  RunArtifact,
   GitClient,
   CloneOptions,
   UnifiedDiff,
@@ -128,13 +131,36 @@ export interface MockGitHubOptions {
   login?: string;
   /** Existing inline review comments returned by listReviewComments. */
   comments?: PrReviewComment[];
+  // ---- SPEC-07 (export to CI) ----
+  /** getRepository result; an Error value is thrown instead (e.g. a 404/403 stub). */
+  repoInfo?: RepoInfo | Error;
+  /** getPullRequestState by PR number; default 'open'. */
+  prStates?: Record<number, 'open' | 'merged' | 'closed'>;
+  /** listWorkflowRuns result; an Error value is thrown instead. */
+  workflowRuns?: WorkflowRun[] | Error;
+  /** listRunArtifacts by run id. */
+  artifacts?: Record<number, RunArtifact[]>;
+  /** downloadArtifact bytes by artifact id. */
+  artifactZips?: Record<number, Uint8Array>;
+  /** listRepoSecretNames result (null = 403). */
+  secretNames?: string[] | null;
+  /** Thrown by commitFiles / openPullRequest when set (permission / failure stubs). */
+  commitError?: Error;
+  openPrError?: Error;
 }
+
+/** Ordered record of the write-side calls a CI test asserts on. */
+export type MockGitHubCall =
+  | { method: 'commitFiles'; payload: CommitFilesPayload }
+  | { method: 'openPullRequest'; payload: OpenPrPayload }
+  | { method: 'downloadArtifact'; artifactId: number; maxBytes: number };
 
 export class MockGitHubClient implements GitHubClient {
   public posted: { n: number; review: GitHubReviewPayload }[] = [];
   public openedPrs: OpenPrPayload[] = [];
   public committed: CommitFilesPayload[] = [];
   public createdComments: CreateReviewCommentInput[] = [];
+  public calls: MockGitHubCall[] = [];
 
   constructor(private opts: MockGitHubOptions = {}) {}
 
@@ -219,11 +245,15 @@ export class MockGitHubClient implements GitHubClient {
   }
 
   async openPullRequest(_repo: RepoRef, payload: OpenPrPayload): Promise<{ url: string }> {
+    this.calls.push({ method: 'openPullRequest', payload });
+    if (this.opts.openPrError) throw this.opts.openPrError;
     this.openedPrs.push(payload);
     return { url: 'https://github.com/mock/mock/pull/1' };
   }
 
   async commitFiles(_repo: RepoRef, payload: CommitFilesPayload): Promise<{ branch: string }> {
+    this.calls.push({ method: 'commitFiles', payload });
+    if (this.opts.commitError) throw this.opts.commitError;
     this.committed.push(payload);
     return { branch: payload.branch };
   }
@@ -239,6 +269,52 @@ export class MockGitHubClient implements GitHubClient {
 
   async currentLogin(): Promise<string> {
     return this.opts.login ?? 'mock-user';
+  }
+
+  // ---- SPEC-07 (export to CI) ----
+
+  async getRepository(repo: RepoRef): Promise<RepoInfo> {
+    const info = this.opts.repoInfo;
+    if (info instanceof Error) throw info;
+    return (
+      info ?? {
+        id: 123456,
+        full_name: `${repo.owner}/${repo.name}`,
+        default_branch: 'main',
+        html_url: `https://github.com/${repo.owner}/${repo.name}`,
+      }
+    );
+  }
+
+  async getPullRequestState(_repo: RepoRef, n: number): Promise<'open' | 'merged' | 'closed'> {
+    return this.opts.prStates?.[n] ?? 'open';
+  }
+
+  async listWorkflowRuns(
+    _repo: RepoRef,
+    _opts: { workflowPath: string; perPage?: number },
+  ): Promise<WorkflowRun[]> {
+    const runs = this.opts.workflowRuns;
+    if (runs instanceof Error) throw runs;
+    return runs ?? [];
+  }
+
+  async listRunArtifacts(_repo: RepoRef, runId: number): Promise<RunArtifact[]> {
+    return this.opts.artifacts?.[runId] ?? [];
+  }
+
+  async downloadArtifact(_repo: RepoRef, artifactId: number, maxBytes: number): Promise<Uint8Array> {
+    this.calls.push({ method: 'downloadArtifact', artifactId, maxBytes });
+    const bytes = this.opts.artifactZips?.[artifactId];
+    if (!bytes) throw Object.assign(new Error(`artifact ${artifactId} not found`), { status: 404 });
+    if (bytes.byteLength > maxBytes) {
+      throw Object.assign(new Error(`artifact ${artifactId} over the ${maxBytes}-byte cap`), { status: 413 });
+    }
+    return bytes;
+  }
+
+  async listRepoSecretNames(_repo: RepoRef): Promise<string[] | null> {
+    return this.opts.secretNames === undefined ? [] : this.opts.secretNames;
   }
 }
 

@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import { z } from 'zod';
 import { homedir } from 'node:os';
-import { join, isAbsolute, resolve } from 'node:path';
+import { join, isAbsolute, resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Central, zod-validated environment config. Loaded once at startup.
@@ -34,6 +35,9 @@ const EnvSchema = z.object({
   // whose `.md` files are excluded from discovery, on top of the fs adapter's
   // own defaults (dot-dirs, node_modules). Comma-separated; empty by default.
   PROJECT_DOCS_EXCLUDED_DIRS: z.string().optional(),
+  // SPEC-07: directory holding the built agent-runner bundle copied into an
+  // export as `.devdigest/runner/`. Relative paths resolve against the cwd.
+  CI_RUNNER_BUNDLE_DIR: z.string().optional(),
   API_PORT: z.coerce.number().int().default(3001),
   WEB_PORT: z.coerce.number().int().default(3000),
   DEVDIGEST_CLONE_DIR: z.string().optional(),
@@ -71,7 +75,19 @@ export type AppConfig = {
   intentLinkAllowlist: string[];
   /** Extra directory names excluded from project-doc discovery (D8, AC-5). Empty by default. */
   projectDocsExcludedDirs: string[];
+  /**
+   * SPEC-07 — absolute path of the built agent-runner bundle (`index.js`, chunks,
+   * `package.json`). A missing or empty directory is a precondition failure the
+   * CI module reports as "runner bundle missing" (EC-4), not a boot error.
+   */
+  ciRunnerBundleDir: string;
 };
+
+// `server/src/platform/config.ts` -> server package root -> sibling `agent-runner`.
+const DEFAULT_CI_RUNNER_BUNDLE_DIR = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../agent-runner/dist',
+);
 
 const DEFAULT_INTENT_LINK_ALLOWLIST =
   'github.com,raw.githubusercontent.com,gist.github.com,gist.githubusercontent.com';
@@ -81,6 +97,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const cloneDirRaw =
     parsed.DEVDIGEST_CLONE_DIR ?? join(homedir(), '.devdigest', 'workspace');
   const cloneDir = isAbsolute(cloneDirRaw) ? cloneDirRaw : resolve(process.cwd(), cloneDirRaw);
+  const ciRunnerBundleDir = parsed.CI_RUNNER_BUNDLE_DIR
+    ? isAbsolute(parsed.CI_RUNNER_BUNDLE_DIR)
+      ? parsed.CI_RUNNER_BUNDLE_DIR
+      : resolve(process.cwd(), parsed.CI_RUNNER_BUNDLE_DIR)
+    : DEFAULT_CI_RUNNER_BUNDLE_DIR;
   return {
     databaseUrl: parsed.DATABASE_URL,
     apiPort: parsed.API_PORT,
@@ -100,5 +121,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       .split(',')
       .map((d) => d.trim())
       .filter(Boolean),
+    ciRunnerBundleDir,
   };
 }

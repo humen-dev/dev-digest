@@ -4,7 +4,7 @@
  *
  *   node scripts/agent-check.mjs <package> [--full] [--it] [--no-tests] [files…]
  *
- *   <package>   server | client | reviewer-core | e2e | mcp
+ *   <package>   server | client | reviewer-core | e2e | mcp | agent-runner
  *   files…      the files you own (repo-relative, package-relative or absolute).
  *               Typecheck errors in them are printed in full; errors elsewhere are
  *               only counted and listed by file ("other files"). Tests run with
@@ -25,7 +25,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const PACKAGES = ['server', 'client', 'reviewer-core', 'e2e', 'mcp'];
+const PACKAGES = ['server', 'client', 'reviewer-core', 'e2e', 'mcp', 'agent-runner'];
 const MAX_OWN_TS_ERRORS = 15;
 const MAX_OTHER_FILES = 5;
 const MAX_FAILED_TESTS = 5;
