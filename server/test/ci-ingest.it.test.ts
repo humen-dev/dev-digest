@@ -147,7 +147,7 @@ d('CI ingest (Testcontainers pg)', () => {
       costUsd: 0.05,
       durationMs: 2500,
       prNumber: 8,
-      prTitle: 'Ship it',
+      prTitle: 't',
       githubUrl: `https://github.com/${REPO}/actions/runs/1`,
       prUrl: `https://github.com/${REPO}/pull/8`,
       source: 'gha',

@@ -7,7 +7,7 @@ import { strToU8, zipSync } from 'fflate';
 import type { RunArtifact, WorkflowRun } from '@devdigest/shared';
 import { MockGitHubClient } from '../src/adapters/mocks.js';
 import { CiRefreshService } from '../src/modules/ci/refresh-service.js';
-import { WORKFLOW_PATH, REFRESH_DEBOUNCE_MS } from '../src/modules/ci/constants.js';
+import { WORKFLOW_PATH, REFRESH_DEBOUNCE_MS, MAX_ARTIFACT_ZIP_BYTES } from '../src/modules/ci/constants.js';
 import type {
   CiInstallationRecord,
   CiLogger,
@@ -143,6 +143,79 @@ describe('CiRefreshService', () => {
     const row = h.claimed.get('1')!;
     expect(row.jobUrl).toBe(`https://github.com/${REPO}/actions/runs/1`);
     expect(row.prUrl).toBe(`https://github.com/${REPO}/pull/5`);
+  });
+
+  it('stores PR number, title and link from run metadata, not the sidecar (AC-80)', async () => {
+    const gh = new MockGitHubClient({
+      workflowRuns: [run(1, { pull_requests: [7], display_title: 'Real title' })],
+      artifacts: { 1: [art(11)] },
+      artifactZips: { 11: zip(goodResult, { ...goodMeta, pr_number: 5, pr_title: 'spoofed' }) },
+    });
+    const h = harness([inst()], gh);
+    await h.service.refresh('ws', false);
+    expect(h.claimed.get('1')).toMatchObject({
+      prNumber: 7,
+      prTitle: 'Real title',
+      prUrl: `https://github.com/${REPO}/pull/7`,
+    });
+  });
+
+  it('stores null PR number and link when the run carries no pull request (AC-80)', async () => {
+    const gh = new MockGitHubClient({
+      workflowRuns: [run(1, { pull_requests: [] })],
+      artifacts: { 1: [art(11)] },
+      artifactZips: { 11: zip(goodResult) },
+    });
+    const h = harness([inst()], gh);
+    await h.service.refresh('ws', false);
+    expect(h.claimed.get('1')).toMatchObject({ prNumber: null, prUrl: null });
+  });
+
+  describe('rejected artifacts end to end (AC-77, UT-6, UT-7, EC-16, EC-17, EC-19)', () => {
+    // Secret-shaped fixture built at runtime (server/INSIGHTS.md).
+    const fakeKey = ['s', 'k-', 'x'.repeat(24)].join('');
+    const rawZip = (res: string | undefined, m: string | undefined): Uint8Array => {
+      const files: Record<string, Uint8Array> = {};
+      if (res !== undefined) files['devdigest-result.json'] = strToU8(res);
+      if (m !== undefined) files['devdigest-run.json'] = strToU8(m);
+      return zipSync(files);
+    };
+    const J = JSON.stringify;
+    const cases: { name: string; reason: string; run?: Partial<WorkflowRun>; artifact?: Partial<RunArtifact>; bytes?: Uint8Array; noDownload?: boolean }[] = [
+      { name: 'expired', reason: 'artifact expired', artifact: { expired: true }, noDownload: true },
+      { name: 'tooLarge', reason: 'artifact too large', artifact: { size_in_bytes: MAX_ARTIFACT_ZIP_BYTES + 1 }, noDownload: true },
+      { name: 'badEntry', reason: 'artifact entry name invalid', bytes: zipSync({ '../x': strToU8('x') }) },
+      { name: 'metadataMismatch', reason: 'metadata mismatch', bytes: rawZip(J(goodResult), J({ ...goodMeta, commit_sha: 'd'.repeat(40) })) },
+      { name: 'secret', reason: 'secret-shaped content', bytes: rawZip(J({ ...goodResult, agent: fakeKey }), J(goodMeta)) },
+      { name: 'resultSchema', reason: 'schema invalid: devdigest-result.json', bytes: rawZip('{"nope":1}', J(goodMeta)) },
+      { name: 'metaSchema', reason: 'schema invalid: devdigest-run.json', bytes: rawZip(J(goodResult), '{"nope":1}') },
+      { name: 'workflowPath', reason: 'workflow path mismatch', run: { path: '.github/workflows/other.yml' }, bytes: rawZip(J(goodResult), J(goodMeta)) },
+    ];
+    for (const c of cases) {
+      it(`${c.name} → failed row with the reason, no counts, no agent run`, async () => {
+        const gh = new MockGitHubClient({
+          workflowRuns: [run(1, c.run)],
+          artifacts: { 1: [{ ...art(11), ...c.artifact }] },
+          artifactZips: c.bytes ? { 11: c.bytes } : {},
+        });
+        const h = harness([inst()], gh);
+        const out = await h.service.refresh('ws', false);
+        expect(out).toMatchObject({ ingested: 0, failed: 1 });
+        expect(h.claimed.get('1')).toMatchObject({
+          status: 'failed',
+          failureReason: c.reason,
+          findingsCount: null,
+          critical: null,
+          warning: null,
+          suggestion: null,
+          costUsd: null,
+        });
+        expect(h.agentRuns).toHaveLength(0);
+        if (c.noDownload) expect(gh.calls.filter((x) => x.method === 'downloadArtifact')).toHaveLength(0);
+        const text = JSON.stringify([h.claimed.get('1'), h.logs]);
+        expect(text).not.toContain(fakeKey);
+      });
+    }
   });
 
   it('stores nothing for success / skipped / cancelled runs without an artifact (AC-85, EC-25)', async () => {

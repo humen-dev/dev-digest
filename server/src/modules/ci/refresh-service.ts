@@ -282,14 +282,15 @@ export class CiRefreshService {
     });
     if (!verdict.accepted) return storeFailed(verdict.reason);
 
-    const { artifact, meta } = verdict;
+    const { artifact } = verdict;
     const status = ciRunStatus(artifact);
-    const prNumber = meta.pr_number;
+    // PR number / title / link: GitHub run metadata only, never the sidecar (AC-80).
+    const prNumber = prNumberFromRun;
     const row: NewCiRunInput = {
       ...base,
-      commitSha: meta.commit_sha,
+      commitSha: run.head_sha,
       prNumber,
-      prTitle: meta.pr_title,
+      prTitle: run.display_title,
       prUrl: prUrlFor(prNumber),
       agentName: artifact.agent,
       status: status.status,
@@ -331,7 +332,7 @@ export class CiRefreshService {
     return 'ingested';
   }
 
-  private traceFor(artifact: CiResultArtifact, prNumber: number, model: string): RunTrace {
+  private traceFor(artifact: CiResultArtifact, prNumber: number | null, model: string): RunTrace {
     return buildRunTrace({
       config: { agent: artifact.agent, version: artifact.version ?? null, provider: 'openrouter', model, pr: prNumber, source: 'ci' },
       stats: {
