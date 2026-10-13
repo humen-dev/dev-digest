@@ -186,15 +186,33 @@ describe("ExportWizard — Preview step", () => {
     vi.useFakeTimers();
     renderWizard({ initial: { step: "preview", repo: REPO } });
 
-    expect(screen.getByText(".devdigest/agents/sec.yaml")).toBeInTheDocument();
-    expect(screen.getByText("name: sec").tagName).toBe("PRE"); // manifest is read-only
+    // Two panes: every file in the list, the workflow selected and editable first.
+    const files = screen.getAllByRole("option");
+    expect(files.map((o) => o.textContent)).toEqual([
+      ".devdigest/agents/sec.yaml",
+      ".github/workflows/devdigest-review.yml",
+      ".devdigest/runner/index.js",
+    ]);
+    expect(screen.getByRole("option", { name: ".github/workflows/devdigest-review.yml" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("editable")).toBeInTheDocument();
     const workflow = screen.getByRole("textbox", { name: ".github/workflows/devdigest-review.yml" }) as HTMLTextAreaElement;
     expect(workflow.value).toBe("name: DevDigest Review");
-    expect(screen.getAllByRole("textbox")).toHaveLength(1);
-    expect(screen.getByText(`2.0 KB · sha256 ${HASH}`)).toBeInTheDocument();
 
-    fireEvent.change(workflow, { target: { value: "name: edited" } });
-    expect(workflow.value).toBe("name: edited");
+    // The manifest is read-only (AC-12); the runner shows size + hash only (AC-13).
+    fireEvent.click(screen.getByRole("option", { name: ".devdigest/agents/sec.yaml" }));
+    expect(screen.getByText("name: sec").tagName).toBe("PRE");
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByText("read-only")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: ".devdigest/runner/index.js" }));
+    expect(screen.getByText(`2.0 KB · sha256 ${HASH}`)).toBeInTheDocument();
+    expect(screen.queryByText("name: sec")).not.toBeInTheDocument();
+
+    // Back to the workflow to edit it.
+    fireEvent.click(screen.getByRole("option", { name: ".github/workflows/devdigest-review.yml" }));
+
+    const editor = screen.getByRole("textbox", { name: ".github/workflows/devdigest-review.yml" }) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "name: edited" } });
+    expect(editor.value).toBe("name: edited");
     expect(lastInput()).not.toHaveProperty("workflow");
     expect(continueBtn()).toBeDisabled(); // still settling
     act(() => void vi.advanceTimersByTime(499));

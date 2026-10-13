@@ -1,31 +1,38 @@
 "use client";
 
+import React from "react";
 import { useTranslations } from "next-intl";
-import { Badge, Skeleton } from "@devdigest/ui";
+import { Icon, Skeleton } from "@devdigest/ui";
 import type { CiFile, CiPreview } from "@devdigest/shared";
-import { errorMessage, formatBytes } from "../../helpers";
+import { defaultPreviewPath, errorMessage, formatBytes } from "../../helpers";
 import { s } from "../../styles";
 
+/** Right pane body: workflow → editable textarea (AC-12), runner → size + hash only (AC-13), others read-only. */
 function FileBody({ file, draft, onDraft }: { file: CiFile; draft: string | null; onDraft: (v: string) => void }) {
-  if (file.kind === "runner" || file.contents === null) return null;
+  const t = useTranslations("ci.exportWizard");
+  if (file.kind === "runner" || file.contents === null) {
+    return (
+      <div style={s.viewerMeta}>{t("runnerMeta", { size: formatBytes(file.bytes), hash: file.sha256 })}</div>
+    );
+  }
   if (file.editable) {
     return (
       <textarea
         aria-label={file.path}
-        style={s.editor}
+        style={s.viewerEditor}
         spellCheck={false}
         value={draft ?? file.contents}
         onChange={(e) => onDraft(e.target.value)}
       />
     );
   }
-  return <pre style={s.filePre}>{file.contents}</pre>;
+  return <pre style={s.viewerPre}>{file.contents}</pre>;
 }
 
 /**
- * Step 2 — every generated file. The workflow is an editable textarea (AC-12), the others are
- * read-only, and the runner shows size + hash only (AC-13). Violations block Continue
- * (the wizard reads them too); warnings are informational.
+ * Step 2 — every generated file in a two-pane viewer: the file list on the left, the selected
+ * file on the right (the workflow is selected first). Violations block Continue (the wizard
+ * reads them too); warnings are informational.
  */
 export function PreviewStep({
   preview,
@@ -39,6 +46,7 @@ export function PreviewStep({
   onDraft: (v: string) => void;
 }) {
   const t = useTranslations("ci.exportWizard");
+  const [selectedPath, setSelectedPath] = React.useState<string | null>(null);
 
   if (!preview) {
     if (error) {
@@ -56,22 +64,50 @@ export function PreviewStep({
     );
   }
 
+  const selected =
+    preview.files.find((f) => f.path === selectedPath) ??
+    preview.files.find((f) => f.path === defaultPreviewPath(preview.files)) ??
+    preview.files[0];
+
   return (
     <div style={s.fieldGroup}>
-      <span style={s.label}>{t("filesToCreate")}</span>
-      <div style={s.fileList}>
-        {preview.files.map((f) => (
-          <div key={f.path} style={s.fileCard}>
-            <div style={s.fileHead}>
-              <span style={s.fileHeadPath}>{f.path}</span>
-              {f.kind === "runner" && (
-                <span style={s.hint}>{t("runnerMeta", { size: formatBytes(f.bytes), hash: f.sha256 })}</span>
-              )}
-              <Badge>{f.editable ? t("editable") : t("readOnly")}</Badge>
-            </div>
-            <FileBody file={f} draft={draft} onDraft={onDraft} />
+      <div style={s.previewPanes}>
+        <div style={s.previewList}>
+          <span id="ci-files-label" style={s.previewListTitle}>
+            {t("filesToCreate")}
+          </span>
+          <div role="listbox" aria-labelledby="ci-files-label">
+            {preview.files.map((f) => {
+              const active = f.path === selected?.path;
+              return (
+                <button
+                  key={f.path}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => setSelectedPath(f.path)}
+                  style={s.previewItem(active)}
+                >
+                  <Icon.FileText size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <span style={s.previewItemPath}>{f.path}</span>
+                </button>
+              );
+            })}
           </div>
-        ))}
+        </div>
+
+        {selected && (
+          <div style={s.viewer}>
+            <div style={s.viewerHead}>
+              <span style={s.viewerPath}>{selected.path}</span>
+              <span style={s.viewerBadge}>
+                {selected.editable && <Icon.Edit size={12} />}
+                {selected.editable ? t("editable") : t("readOnly")}
+              </span>
+            </div>
+            <FileBody key={selected.path} file={selected} draft={draft} onDraft={onDraft} />
+          </div>
+        )}
       </div>
 
       {error ? (

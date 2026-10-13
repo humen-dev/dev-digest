@@ -61,3 +61,8 @@ export function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   return `${(n / 1024).toFixed(1)} KB`;
 }
+
+/** Preview opens on the workflow — the one editable file — or the first file. */
+export function defaultPreviewPath(files: readonly { path: string; kind: string }[]): string | undefined {
+  return (files.find((f) => f.kind === "workflow") ?? files[0])?.path;
+}
