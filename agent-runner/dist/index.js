@@ -36174,7 +36174,7 @@ function redactKey(text, key) {
  * GITHUB_REPOSITORY, PR_NUMBER). This is intentional, not a `SecretsProvider`
  * bypass: the runner executes OUTSIDE the server DI graph (in the target
  * repo's own CI), so the `SecretsProvider`/`process.env` chokepoint — which is
- * scoped to `server/` — does not apply here (see `agent-runner/CLAUDE.md`).
+ * scoped to `server/` — does not apply here (see `agent-runner/AGENTS.md`).
  *
  * All actual logic lives in `run.ts` (`runCi`), which takes every dependency
  * (fs, fetch, LLM provider, clock) as an injectable parameter so it can be
