@@ -1,7 +1,7 @@
 # Spec: Multi-Agent Review (agent picker, Configure run, Columns / Tabs results, Where agents disagree)
 
 Spec ID: SPEC-07
-Status: approved
+Status: implemented
 Created: 2026-10-12
 Approved: 2026-10-12 by user
 Modules: client · server
@@ -557,6 +557,7 @@ Sources: the user's request relayed by the main session (the sidebar item opens 
 | 2026-10-12 | closure annotations from plan §9 follow-ups (user-approved, no behaviour added): AC-57, AC-64, AC-65, AC-66, AC-71 marked deferred and the shared pre-work item dropped from Data and state; Verify by of AC-24 (event ordering, no timers), AC-30 (sequential posts; check-then-insert race accepted), AC-61 (deterministic totals unit + stored timestamps), NFR-1 / NFR-2 / NFR-8 (manual); AC-19 / AC-63 cost examples aligned with the shared cost format ("$0.100", "$0.00 + N unpriced"); Compatibility lists every additive contract and schema change | spec-creator |
 | 2026-10-12 | revision "runs list" — status implemented → draft (pending re-approval) by explicit user decision to revise in place instead of a new spec. Added US-11, G-8, AC-75 – AC-92, EC-16 – EC-23, NFR-12 – NFR-15, UT-11 – UT-14, UX-8 – UX-10, F-22 – F-34, Q10 – Q13; removed AC-67, AC-68 (ids retired, not reused) and the history-browser Non-goal; updated Module interactions, Data and state, Compatibility, Traceability. Every requirement not listed here is unchanged and remains implemented | spec-creator |
 | 2026-10-12 | status → approved (user decision "approve SPEC-07", revision "runs list") | spec-creator |
+| 2026-10-13 | status → implemented (user decision, revision "runs list": AC-75 – AC-92, EC-16 – EC-23, NFR-12 – NFR-15, UT-11 – UT-14). Commits cdc1b32 (wave 0 contracts + folder rename), 1ac0aa3 (U1 `GET /multi-agent/runs`), 5b59bea (U2 runs list page), 7f70cc3 (review fix: calendar-invalid cursor date → 422); plan `docs/plans/multi-agent-runs-list.md`. Plan §9 follow-ups (no behaviour added): (1) per user decision no new automated tests were written for this revision — its Verify-by rows were checked by code inspection, the existing suites and live API checks, so those test shapes describe intended tests, not tests that exist; (2) "repository name" in AC-77, AC-80, EC-21 and UT-14 means `repos.full_name` (`owner/name`). Manual checks still pending by the user: EC-22 (Back), NFR-15 (keyboard / axe), live polling AC-89 / EC-23 | spec-creator |
 
 ## Self-check
 - [x] every AC / EC / NFR / UT rule: one EARS pattern, one `shall`, observable response, no vague words (VP-1 is a deliberately non-EARS process obligation, labelled as such)
