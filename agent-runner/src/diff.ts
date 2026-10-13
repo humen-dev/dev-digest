@@ -1,27 +1,31 @@
 import type { UnifiedDiff, DiffHunk } from '@devdigest/shared';
 
 /**
- * Repo-relative path prefixes whose diff sections are dropped BEFORE review.
- * These are DevDigest's own exported artifacts, not the target repo's code:
+ * Diff sections dropped BEFORE review — only DevDigest's own generated artifacts:
  *
- *  - `.devdigest/` — the checked-in agent config AND the ncc runner bundle
- *    (`.devdigest/runner/index.js`), a single minified megafile. GitHub rejects
- *    an inline comment on such a file with 422 "diff too large" and — because a
- *    review is all-or-nothing — fails the ENTIRE review. This prefix is the fix
- *    for that 422; it only ever appears in the diff of the export/update PR
- *    itself, but that PR would otherwise never post a passing review.
- *  - `.github/workflows/` — the generated GHA workflow; reviewing our own
- *    generated CI YAML is pure noise.
+ *  - `.devdigest/runner/` (prefix) — the ncc runner bundle, a single minified
+ *    megafile. GitHub rejects an inline comment on it with 422 "diff too large"
+ *    and — because a review is all-or-nothing — fails the ENTIRE review.
+ *  - `.github/workflows/devdigest-review.yml` (exact path) — the generated workflow.
+ *
+ * Everything else stays reviewable on purpose: other workflows (a PR adding a
+ * `pull_request_target` or write-all job is exactly what a reviewer must see)
+ * and the agent config under `.devdigest/agents`, `skills` and `memory.jsonl`,
+ * which changes the reviewer's own prompt and gate once merged.
  *
  * Stripping them from the RAW diff (not just the parsed file list) matters:
  * single-pass review feeds `diff.raw` straight to the model
  * (`reviewer-core/review/run.ts`), so filtering only `files` would still spend
  * tokens on — and let the model cite — the ignored paths.
  */
-export const IGNORED_DIFF_PREFIXES = ['.devdigest/', '.github/workflows/'] as const;
+export const IGNORED_DIFF_PREFIXES = ['.devdigest/runner/'] as const;
+export const IGNORED_DIFF_PATHS = ['.github/workflows/devdigest-review.yml'] as const;
 
 function isIgnoredDiffPath(path: string): boolean {
-  return IGNORED_DIFF_PREFIXES.some((prefix) => path.startsWith(prefix));
+  return (
+    (IGNORED_DIFF_PATHS as readonly string[]).includes(path) ||
+    IGNORED_DIFF_PREFIXES.some((prefix) => path.startsWith(prefix))
+  );
 }
 
 /**
