@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useTranslations } from "next-intl";
 import { Badge, Icon } from "@devdigest/ui";
 import type { CiPostAs, CiSecretStatus, CiTrigger } from "@devdigest/shared";
@@ -12,6 +13,13 @@ const SECRET_STATUS_KEY = { set: "set", not_set: "notSet", unknown: "unknown" } 
   CiSecretStatus["status"],
   string
 >;
+
+/** Badge look per status: set → green check (like GITHUB_TOKEN "ready"), not set → amber dot, unknown → neutral. */
+const SECRET_STATUS_BADGE = {
+  set: { icon: "Check", color: "var(--ok)" },
+  not_set: { dot: true, color: "var(--warn)" },
+  unknown: {},
+} as const satisfies Record<CiSecretStatus["status"], React.ComponentProps<typeof Badge>>;
 
 /** Step 3 — triggers, post-as, expected secrets and the required-check note. */
 export function ConfigureStep({
@@ -86,7 +94,7 @@ export function ConfigureStep({
           <div key={secret.name} style={s.secretRow}>
             <span className="mono">{secret.name}</span>
             <span style={s.secretDesc}>{secret.name === OPENROUTER_SECRET_NAME ? t("secretOpenRouterDesc") : ""}</span>
-            <Badge>{t(`secret.${SECRET_STATUS_KEY[secret.status]}`)}</Badge>
+            <Badge {...SECRET_STATUS_BADGE[secret.status]}>{t(`secret.${SECRET_STATUS_KEY[secret.status]}`)}</Badge>
           </div>
         ))}
         <div style={s.secretRow}>

@@ -268,6 +268,11 @@ describe("ExportWizard — Configure step", () => {
     expect(screen.getByRole("radio", { name: /GitHub review/ })).toBeChecked();
     expect(screen.getByText("recommended")).toBeInTheDocument();
     for (const label of ["set", "not set", "unknown", "ready"]) expect(screen.getByText(label)).toBeInTheDocument();
+    // "set" looks like GITHUB_TOKEN "ready" (green + check); "not set" is amber; "unknown" stays neutral.
+    expect(screen.getByText("set")).toHaveStyle({ color: "var(--ok)" });
+    expect(screen.getByText("set").querySelector("svg")).not.toBeNull();
+    expect(screen.getByText("not set")).toHaveStyle({ color: "var(--warn)" });
+    expect(screen.getByText("unknown")).not.toHaveStyle({ color: "var(--ok)" });
     expect(screen.getByText("GITHUB_TOKEN")).toBeInTheDocument();
     expect(screen.getByText(/A required status check plus Fail CI on blocks merges/)).toBeInTheDocument();
   });
