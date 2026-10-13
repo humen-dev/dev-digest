@@ -136,6 +136,6 @@
     "openTrace": "Open run trace & logs",
     "deleteRun": "Delete run",
     "multiAgent": "Multi-agent",
-    "multiAgentOpen": "Multi-agent run — open its results"
+    "multiAgentOpen": "Multi-agent — open the multi-agent results"
   }
 }
