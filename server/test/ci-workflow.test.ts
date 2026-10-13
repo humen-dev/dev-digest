@@ -33,7 +33,8 @@ describe('buildWorkflowYaml', () => {
 
   it('job if is the fork check, with timeout and concurrency (AC-21, AC-24, NFR-1)', () => {
     const { doc, job } = gen(['opened'], 'none');
-    expect(job.if).toBe('github.event.pull_request.head.repo.fork == false');
+    // Cross-repo (fork) PRs are skipped; same-repo PRs run even when the repo itself is a fork.
+    expect(job.if).toBe('github.event.pull_request.head.repo.full_name == github.repository');
     expect(job['timeout-minutes']).toBe(15);
     expect(doc.concurrency).toEqual({
       group: 'devdigest-review-${{ github.event.pull_request.number }}',

@@ -92,8 +92,11 @@ export function buildWorkflowYaml(input: BuildWorkflowInput): string {
       [JOB_ID]: {
         'runs-on': 'ubuntu-latest',
         'timeout-minutes': 15,
-        // Second, independent defence: never run for a fork-headed PR.
-        if: 'github.event.pull_request.head.repo.fork == false',
+        // Second, independent defence: never run for a PR opened from another
+        // repository (a fork). Compare the head repo with this repo instead of
+        // reading `head.repo.fork`: that flag is also true for every same-repo PR
+        // when the installed repository is itself a fork, which would skip all runs.
+        if: 'github.event.pull_request.head.repo.full_name == github.repository',
         permissions: permissionsBlock(postAs),
         steps: [
           {
