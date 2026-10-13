@@ -145,6 +145,7 @@ export function FindingsTab({
             Timeline
           </SectionLabel>
           <RunHistory
+            prId={prId}
             runs={prRuns ?? []}
             commits={prCommits}
             findingsByRun={findingsByRun}
