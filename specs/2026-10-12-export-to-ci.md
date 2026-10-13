@@ -1,7 +1,7 @@
 # Spec: Export to CI — review agents in GitHub Actions, CI tab, CI Runs
 
 Spec ID: SPEC-07
-Status: approved
+Status: implemented
 Created: 2026-10-12
 Approved: 2026-10-12 by user
 Modules: client · server · agent-runner (consumes reviewer-core unchanged)
@@ -582,6 +582,7 @@ none — Q-1 to Q-7 were resolved on 2026-10-12 (see Traceability → resolved o
 | 2026-10-12 | revised (draft): resolved Q-1–Q-7 against `upstream/full-functionality`. Zip export stores no installation and works without write access (AC-82, AC-83). The CI tab offers three Fail CI on options; `any` shows none selected plus a Config hint (AC-52, EC-11). One record per GitHub run id; re-run attempts ignored (AC-78, EC-22, Data and state). NFR numbers split into FF-aligned and assumed. Notes on the check name and on the absence of a REQUEST_CHANGES fallback. | spec-creator |
 | 2026-10-12 | status → approved (user: "approve") | spec-creator |
 | 2026-10-12 | amended in place per explicit user decision (override of approved-spec immutability; not yet implemented or committed): bootstrap guard, credential-pattern definition, planner follow-ups. New: AC-84, AC-85, AC-86, EC-25, EC-26, NFR-15, Terms "Bootstrap guard". Changed: Terms "Credential-shaped string", AC-8, AC-25, AC-39, AC-53 (Verify by), AC-77, EC-16, Module interactions (republish removed), Assumptions, Traceability. Wording fix (no behaviour change): the guard is "the first step after the base-commit checkout" (Terms, AC-84). | spec-creator |
+| 2026-10-13 | status → implemented (user: "можемо помітити нашу специфікацію і план як implemented"). Branch `emdash/export-to-ci-5uimj`, plan `docs/plans/export-to-ci.md`. Final plan-verifier: 315 MET / 0 PARTIAL / 0 NOT MET. 13 rows not verifiable locally: live e2e flow 18, manual GitHub demos AC-43/AC-50/AC-84, the required-check name, and runner checks blocked by a hook (the orchestrator ran those, 50/50). Post-plan UI refinements requested by the user, no AC body changed: (1) the Target-step repository field is a searchable dropdown of the workspace's imported repositories; `owner/name` validation (AC-4) is unchanged and a pre-filled non-imported repository stays selectable; (2) the Preview step is a two-pane viewer (file list + selected file), and the secret status badges are colour-coded. | spec-creator |
 
 ## Self-check
 - [x] every AC / EC / NFR / UT rule: one EARS pattern, one `shall`, observable response, no vague words
