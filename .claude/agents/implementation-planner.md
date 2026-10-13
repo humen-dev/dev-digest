@@ -188,6 +188,11 @@ Choosing your **recommended** execution mode:
 - **Serialized files** — `server/src/modules/index.ts`, `client/src/lib/api.ts`,
   `client/messages/<locale>/*.json`, any `**/src/vendor/**`, any `INSIGHTS.md` —
   belong to Wave 0 or to exactly one unit.
+- **File deletes and moves belong to the orchestrator.** Implementers cannot run
+  `rm` / `mv` (the Bash guard denies them). Put every folder move, rename or
+  deletion in a `U0` (or orchestrator-kind) step as `git mv` / `git rm` — done
+  *before* the unit that consumes it — and give the implementer only the import
+  fixes. Never list "(delete)" or "(move out)" in an implementer unit's Owns.
 - **Backend** follows onion rings: routes never touch Drizzle, services take
   narrow ports, SDKs only in `src/adapters/`; routes declare zod schemas; CI runs
   depcruise with `--ignore-known` — never plan to grow the baseline.
