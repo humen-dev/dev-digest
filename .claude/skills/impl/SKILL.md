@@ -109,7 +109,9 @@ For each wave, in order:
    gap that the plan's §3 already specifies), else stop and ask.
 3. **Commit** `feat(<slug>): wave <k> — U<a>, U<b>` (rule 3).
 4. **Verify:** `plan-verifier` with `plan`, `scope: U<a>,U<b>,…` (the wave's
-   units, compact report). Save `w<k>-verify.md`.
+   units, compact report) **plus the spec rows those units cite** (`S<NN>-AC-…`,
+   `EC-…`, `UT-…` listed in each unit's acceptance criteria) — so a spec gap is
+   found in its wave, not first at `scope: all`. Save `w<k>-verify.md`.
 5. **FAIL / INCOMPLETE** → group the not-MET rows by unit, launch that unit's
    agent with `mode: fix` and the rows as `findings` (ID, file:line, quoted
    requirement), all units in parallel. If a fix needs a change only you may make
@@ -144,6 +146,13 @@ a new wave. `PT state set <slug> phase=review round=1 reviewBase=<HEAD sha>`.
   > finding: ID `B-<k>`, severity CRITICAL | WARNING | SUGGESTION, file:line,
   > evidence (≤2 lines), the failing input/state, the expected behaviour.
   > Confidence ≥ 80 only; zero findings is a good answer.
+
+  **`--no-bugs` and no new tests in the run** → still dispatch this reviewer once,
+  scoped to the changed client state hooks only (`client/**/use*.ts`, plus the
+  component that consumes each): stale state on input change, mutation `reset()`
+  while pending, error-vs-empty states, query `isError` with cached data. These
+  bugs pass plan-verifier and architecture review and otherwise surface only at
+  `/pr-self-review`, where each fix costs another gate round.
 - `security-reviewer` (`model: "sonnet"`) — **only if** the diff touches a route
   (`server/src/modules/*/routes.ts`), request input or Zod schemas at the edge,
   outbound fetch/URLs, filesystem paths, secrets/env, LLM prompts
