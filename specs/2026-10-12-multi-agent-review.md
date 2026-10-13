@@ -1,9 +1,9 @@
 # Spec: Multi-Agent Review (agent picker, Configure run, Columns / Tabs results, Where agents disagree)
 
 Spec ID: SPEC-07
-Status: implemented
+Status: approved
 Created: 2026-10-12
-Approved: 2026-10-12 by user
+Approved: 2026-10-13 by user
 Modules: client · server
 Supersedes: none
 Superseded by: none
@@ -45,6 +45,19 @@ Today, after the first release (input to revision 2026-10-12 "runs list"):
   `server/src/modules/reviews/routes.ts:82-85`). It has no list endpoint and no
   paginated endpoint at all.
 
+Today, after revision "runs list" (input to revision 2026-10-13 "timeline badge"):
+- The PR page's "Agent runs" tab (`client/src/app/repos/[repoId]/pulls/[number]/_components/PrDetailHeader/PrDetailHeader.tsx:120`)
+  shows a Timeline of every agent run of the PR interleaved with its commits
+  (`.../_components/FindingsTab/FindingsTab.tsx:139-156`,
+  `.../_components/RunHistory/RunHistory.tsx:90-263`). A row shows status, score,
+  agent name, model, counts, time, tokens and cost, but nothing tells whether the
+  run belonged to a multi-agent run, and no row links to multi-agent results.
+- The timeline reads `GET /pulls/:id/runs` (`server/src/modules/reviews/routes.ts:148-151`,
+  `client/src/lib/hooks/reviews.ts:40-47`). Its item contract `RunSummary`
+  (`server/src/vendor/shared/contracts/trace.ts:119-140`) has no multi-agent run
+  id, although `agent_runs.multi_run_id` exists (`server/src/db/schema/runs.ts:34`)
+  and the read already loads the whole row (`server/src/modules/reviews/repository/run.repo.ts:45-68`).
+
 ## Goals / Non-goals
 **Goals**
 | ID | Goal | Success measure |
@@ -57,6 +70,7 @@ Today, after the first release (input to revision 2026-10-12 "runs list"):
 | G-6 | Live per-agent status and trace | Each column changes status within 5 s of the API recording it (AC-35). View trace opens the existing drawer (AC-58) |
 | G-7 | The "1 agent vs 3 agents" measurement is recorded with real numbers | VP-1 table filled in the implementation PR |
 | G-8 | Any earlier multi-agent run of the workspace can be opened at any time | From the sidebar, any run is 1 click away on the first page, or reachable through "Load more" (AC-75, AC-83, AC-87) |
+| G-9 | Every multi-agent run of a PR, not only the latest, is reachable from that PR's page | Each timeline row of a multi-agent agent run carries a 1-click link to its own run's results (AC-71, AC-93 – AC-96) |
 
 **Non-goals**
 - Any change to `ci/`, `agent-runner/` or `reviewer-core/`. The grounding gate and untrusted-input wrapping stay as they are.
@@ -86,7 +100,7 @@ Today, after the first release (input to revision 2026-10-12 "runs list"):
 
 ## Acceptance criteria (EARS)
 
-**Deferred:** AC-57, AC-64, AC-65, AC-66 and AC-71 are not implemented in this release (user decision 2026-10-12). They stay here as follow-up requirements and are marked in their Priority cell; a follow-up spec or plan picks them up.
+**Deferred:** AC-57, AC-64, AC-65 and AC-66 are not implemented in this release (user decision 2026-10-12). They stay here as follow-up requirements and are marked in their Priority cell; a follow-up spec or plan picks them up. AC-71 was deferred too; revision 2026-10-13 "timeline badge" un-defers and redefines it (user decision).
 
 Terms defined once:
 - A **multi-agent run** is one grouping identity over the agent runs started together on one PR.
@@ -209,7 +223,7 @@ Terms defined once:
 | AC-68 | — | *Removed in revision 2026-10-12 (user decision). It required a redirect to Configure run when there was no run; replaced by AC-86 and AC-85.* | US-10 | — | — |
 | AC-69 | Ubiquitous | The web app shall carry the multi-agent run id in the results page URL, so that a reload or a shared link opens the same run. | US-10 | Should | unit — render with `?multiRunId=X` → the request names X |
 | AC-70 | Event-driven | WHEN the user clicks "Configure run" on the results page, the web app shall open Configure run with the same PR and agent set preselected. | US-10 | Should | unit — click → preselected PR and agents |
-| AC-71 | Optional feature | WHERE a PR has a multi-agent run, the web app shall show on the PR page a link to that PR's latest multi-agent results that starts no run. | US-10 | Could · **deferred** (user decision 2026-10-12, follow-up) | unit — link present; clicking it sends no POST |
+| AC-71 | Optional feature | WHERE an agent run row of the PR page's "Agent runs" Timeline has a non-null multi-agent run id, the web app shall show in that row a "Multi-agent" badge linking to `/multi-agent/<prId>?multiRunId=<that row's multi-agent run id>`. | US-10 | Must (redefined in revision 2026-10-13; previously "link to the latest results", deferred) | unit (RTL) — two rows of different multi-agent runs → two badges, each `href` naming its own row's id; neither names the other's |
 | AC-72 | State-driven | WHILE at least one agent run of the shown multi-agent run is `running`, the web app shall show a "Cancel all" button in the results header. | US-5 | Should | unit — running fixture → button present; all-terminal fixture → absent |
 | AC-73 | Event-driven | WHEN the user clicks "Cancel all", the web app shall send the existing `POST /runs/:id/cancel` for every agent run of that multi-agent run that is `running`. | US-5 | Should | unit — 2 running + 1 done → 2 cancel calls |
 
@@ -241,6 +255,19 @@ Terms defined once:
 | AC-91 | State-driven | WHILE the runs list is shown, the web app shall show the breadcrumbs "Global › Multi-Agent Review". | US-11 | Should | unit — crumb labels on the list page |
 | AC-92 | Ubiquitous | The web app shall link the "Multi-Agent Review" breadcrumb on Configure run and on the results page to the runs list. | US-11 | Should | unit — crumb `href` is `/multi-agent` on both pages (behaviour already present: `ConfigureRun.tsx:32`, `MultiAgentResults.tsx:72-75`) |
 
+**Multi-agent badge in the PR timeline (US-10, revision 2026-10-13)**
+
+Terms defined once:
+- The **PR timeline** is the "Timeline" section of the PR page's "Agent runs" tab: every agent run of the PR interleaved with its commits, fed by `GET /pulls/:id/runs`.
+- A row's **multi-agent run id** is the `multi_run_id` value of its item in that response.
+
+| ID | Pattern | Requirement | Story | Priority | Verify by |
+|---|---|---|---|---|---|
+| AC-93 | Optional feature | WHERE an agent run row of the PR timeline has a null multi-agent run id, the web app shall render that row with no "Multi-agent" badge and with today's content. | US-10 | Must | unit (RTL) — fixture of one single run (null id) and one multi-agent run → exactly one badge, in the multi-agent row; the single row's existing texts unchanged (existing `RunHistory.test.tsx` passes) |
+| AC-94 | Ubiquitous | The web app shall render each "Multi-agent" badge of the PR timeline as a link with an `href` and an icon, whose accessible name contains "Multi-agent" and states that it opens the multi-agent results. | US-10 | Should | unit — `getByRole('link', { name: /multi-agent/i })` has the results URL as `href`; the icon is present |
+| AC-95 | Event-driven | WHEN the user activates a "Multi-agent" badge of the PR timeline, the web app shall open that badge's results URL in the current tab and send no POST request. | US-10 | Must | unit — click the badge → the navigation target is the badge's URL; the fetch mock records no POST; a modifier-click is left to the browser (no `preventDefault`) |
+| AC-96 | Ubiquitous | The API shall return with each item of `GET /pulls/:id/runs` a `multi_run_id` field holding the id of the multi-agent run that agent run belongs to, or null when it belongs to none. | US-10 | Must | integration (`*.it.test.ts`) — PR with one multi-agent run of 2 agents and one `POST /pulls/:id/review {agentId}` run → the 2 items carry the multi-agent run id, the single item carries null |
+
 ## Edge cases
 | ID | Case | Expected behaviour (EARS, or "→ AC-n") | Verify by |
 |---|---|---|---|
@@ -267,6 +294,10 @@ Terms defined once:
 | EC-21 | Long PR title or repository name | WHILE a row's PR title is wider than its column, the web app shall truncate it with an ellipsis and show the full title as the row's tooltip. | unit — 300-character title → full title in the `title` attribute |
 | EC-22 | Back from results opened from the list | WHEN the user goes browser-Back from a results page opened from the runs list, the web app shall show the runs list. | manual — open a row, press Back → the list is shown (no redirect sits in the history) |
 | EC-23 | A run started on another tab or through the PR picker while the list is open and nothing runs | → AC-90 (shown on the next visit); no polling while no shown run is `running` (AC-89) | unit |
+| EC-24 | The multi-agent run of a timeline row was deleted (`agent_runs.multi_run_id` set null on delete, `server/src/db/schema/runs.ts:34`) | → AC-96 returns null, AC-93 shows no badge | integration — delete the multi-agent run row, read `GET /pulls/:id/runs` → `multi_run_id` null |
+| EC-25 | Agent runs created before the multi-agent feature, or through `POST /pulls/:id/review` (`agentId` / `all`, which create no multi-agent run) | → AC-96 returns null, AC-93 shows no badge (existing rows keep `multi_run_id` null, no backfill) | integration — covered by AC-96's single-run item |
+| EC-26 | A timeline row of a multi-agent run that is still `running` | WHILE a timeline row's agent run is `running` and has a non-null multi-agent run id, the web app shall show its "Multi-agent" badge with the same link as when the run is settled. | unit — running fixture with an id → badge present with the results URL |
+| EC-27 | Several multi-agent runs on the same PR (EC-15) | → AC-71: each row links to its own multi-agent run, so earlier runs stay reachable | unit — AC-71's two-run fixture |
 
 ## Module interactions
 ```mermaid
@@ -297,6 +328,11 @@ sequenceDiagram
   A-->>W: MultiAgentRun {columns, groups/conflicts, totals}
   W->>A: GET /runs/:id/trace (View trace)
   W->>A: POST /findings/:id/(accept|dismiss) · POST /runs/:id/cancel
+  U->>W: open PR page "Agent runs" tab (Timeline)
+  W->>A: GET /pulls/:id/runs (existing; re-requested every 4 s while a run is running)
+  A-->>W: RunSummary[] each + multi_run_id (null for single runs)
+  U->>W: click "Multi-agent" badge of a row (plain link, no request)
+  W->>W: navigate to /multi-agent/:prId?multiRunId=<row's id>
 ```
 
 | From → To | Contract (endpoint / function / tool / table) | Data | Source of truth | On failure / timeout / stale data |
@@ -313,6 +349,8 @@ sequenceDiagram
 | web app → API | `GET /pulls/:id/multi-agent/latest` (existing, `server/src/modules/reviews/routes.ts:77-80`) | `{id, pr_id, pr_number} \| null` | Postgres | Error → no "View latest results" link on Configure run (AC-15) |
 | web app → API | `GET /multi-agent/latest` (existing, `server/src/modules/reviews/routes.ts:82-85`) | `{id, pr_id, pr_number} \| null` | Postgres | No longer called by the web app after revision 2026-10-12; kept unchanged for compatibility |
 | web app → API | `GET /multi-agent/runs?cursor=&limit=` (new, revision 2026-10-12) | page of list items (AC-77) + next cursor | Postgres (`multi_agent_runs`, `agent_runs`, `pull_requests`, `repos`, `agents`); totals and state computed on read | 422 for a malformed cursor or limit (UT-11, UT-12); error → list error state (EC-18) or inline "Load more" error (EC-19); stale while running → re-requested every 4 s (AC-89) |
+| web app → API | `GET /pulls/:id/runs` (existing, `server/src/modules/reviews/routes.ts:148-151`; polled every 4 s while a run is `running`, `client/src/lib/hooks/reviews.ts:40-47`), item `RunSummary` gains `multi_run_id` (revision 2026-10-13) | agent runs of the PR, each with its multi-agent run id or null | `agent_runs.multi_run_id` (`server/src/db/schema/runs.ts:34`) | Request fails → the timeline's existing behaviour (no rows from this read), no badges; a field missing from an older API → treated as null, no badge (AC-93); a multi-agent run deleted meanwhile → the next read returns null (EC-24); a badge followed to a run that no longer exists → results page 404 state (EC-6) |
+| web app (PR timeline) → web app (results page) | route `/multi-agent/<prId>?multiRunId=<id>` (existing, AC-69) | PR id and multi-agent run id | the row's `multi_run_id` | Unknown or foreign id → not-found state (EC-6, UT-2) |
 
 ## Data and state
 - **Multi-agent run** (existing `multi_agent_runs` stub): owned by the API, scoped to the workspace and the PR. It gains:
@@ -324,6 +362,7 @@ sequenceDiagram
 - **Existing agent runs** have no multi-agent run. They belong to none and are never shown in multi-agent results. No backfill.
 - **Groups and conflicts** are computed on read from persisted findings and never stored.
 - **Runs list items** (revision 2026-10-12) are computed on read from existing rows. No new table, column or migration. The existing indexes `multi_agent_runs_ws_ran_at_idx (workspace_id, ran_at DESC)` and `agent_runs_multi_run_id_idx` (`server/src/db/migrations/0020_multi_agent_review.sql:4-5`) cover the page read and the per-run agent aggregation. The cursor is opaque to the web app and encodes only a position in the list order; it never widens the workspace scope (UT-13).
+- **Timeline multi-agent run id** (revision 2026-10-13) is read from the existing `agent_runs.multi_run_id` column (`server/src/db/schema/runs.ts:34`) by the existing run-history read. No new table, column, index or migration; no backfill (rows without a multi-agent run stay null).
 - **Remembered agent selection** (AC-2) is kept on the client per workspace. It is not persisted on the server.
 - **Deletion:** deleting an agent run through the existing `DELETE /runs/:id` removes it from its multi-agent run's columns. Deleting the PR cascades to the multi-agent run (`runs.ts:48-50`). Deleting an agent leaves its runs with "Unknown agent" (EC-4).
 
@@ -348,8 +387,15 @@ sequenceDiagram
   - new additive vendored contracts for the runs list page and its item, changed identically in `server/src/vendor/shared` and `client/src/vendor/shared`. Existing contracts are unchanged;
   - `GET /multi-agent/latest` stays, unused by the web app. `GET /pulls/:id/multi-agent/latest`, the start flow (AC-6, AC-13), AC-15, AC-69 and AC-70 are unchanged;
   - no migration.
+- **Revision 2026-10-13 (timeline badge):**
+  - `RunSummary` (`server/src/vendor/shared/contracts/trace.ts:119-140`, the item of `GET /pulls/:id/runs`) gains `multi_run_id: string | null` — additive, changed identically in `server/src/vendor/shared` and `client/src/vendor/shared`. Every existing field keeps its name, type and value;
+  - the MCP server reads `GET /pulls/:id/runs` through a non-strict object schema that keeps only the fields it names (`mcp/src/api/schemas.ts:68-86`), so the extra field leaves every MCP tool's output unchanged; `mcp/` code is unchanged;
+  - PR timeline rows of single runs (null id) render as today (AC-93); the start flow, the results page and the runs list are unchanged;
+  - since every PR-page launch creates a multi-agent run (Q7, AC-6), new PR-page runs show the badge; runs started through `POST /pulls/:id/review` (API / MCP) do not (EC-25);
+  - no migration, no new endpoint.
 - No feature flag. Users who never open the picker or the page see only the concurrent execution change.
 - `ci/`, `agent-runner/`, `reviewer-core/` and `mcp/` are unchanged.
+- An MCP tool or an e2e flow is still out of scope for the timeline badge (Non-goals).
 
 ## Design review
 **Sources analysed**
@@ -443,6 +489,26 @@ Sources: the user's request relayed by the main session (the sidebar item opens 
 | F-33 | Compatibility | Existing pointers, shortcut and start flow | Compatibility, AC-75, EC-22 |
 | F-34 | Security | Cursor, limit, workspace scope, rendered PR and repository names | UT-11 – UT-14 |
 
+**Revision 2026-10-13 — timeline badge**
+
+Sources: the user's decision relayed by the main session (un-defer AC-71 as variant b: a per-row "multi-agent" badge in the PR timeline linking to that row's own multi-agent run, so older runs are reachable too); code cited inline. No design frames; the existing timeline `Badge` usage (`RunHistory.tsx:160-162`) sets the visual language. The main session asked for defaults instead of a question round; they are recorded below as Q14 – Q18.
+
+| Q | Decision | Source |
+|---|---|---|
+| Q14 spec mechanics | Revise SPEC-07 in place (back to draft for re-approval), same as revision "runs list"; AC-71 id kept and redefined, not retired | user decision 2026-10-13 |
+| Q15 link target | Each row's badge opens that row's own multi-agent run, not the PR's latest (variant b) | user decision → AC-71, EC-27 |
+| Q16 badge form | Text "Multi-agent" with an icon; a real link (`href`), current tab on click, modifier-click left to the browser | default taken by spec-creator → AC-94, AC-95 |
+| Q17 badge presence | Only for a non-null `multi_run_id`; a deleted multi-agent run (FK set null) → no badge; also shown while the run is `running` | default → AC-93, EC-24, EC-26 |
+| Q18 data source | The id comes with the existing `GET /pulls/:id/runs` items; no extra request per row | default → AC-96, NFR-16 |
+
+| ID | Lens | Gap | Resolution |
+|---|---|---|---|
+| F-35 | Module interaction | `RunSummary` has no multi-agent run id although the column exists (`trace.ts:119-140`, `runs.ts:34`) | AC-96, Compatibility |
+| F-36 | Gap | AC-71 as written pointed only to the latest run; earlier runs of the PR were unreachable from the PR page | AC-71 (redefined), EC-27 |
+| F-37 | Corner case | Deleted multi-agent run, legacy and API-started runs, running rows | EC-24, EC-25, EC-26, AC-93 |
+| F-38 | Compatibility | The MCP server reads the same endpoint (`mcp/src/api/http-client.ts:103`) | Compatibility (non-strict schema, `mcp/src/api/schemas.ts:68-86`) |
+| F-39 | Security | The badge `href` is built from a response field; the endpoint must stay workspace-scoped | UT-15, UT-16 |
+
 ## Non-functional requirements
 | ID | Category | Requirement | Verify by |
 |---|---|---|---|
@@ -461,6 +527,8 @@ Sources: the user's request relayed by the main session (the sidebar item opens 
 | NFR-13 | Performance | WHEN the API serves `GET /multi-agent/runs`, the API shall read no row of the `findings` table. | integration — query log of a page read contains no `findings` access |
 | NFR-14 | Cost (LLM calls) | WHEN the API serves `GET /multi-agent/runs`, the API shall make 0 LLM calls. | integration — stub LLM call counter = 0 after the read |
 | NFR-15 | A11y | The web app shall make every runs list row, "Load more", Retry and "Configure run" operable from the keyboard. | manual — keyboard walk-through of the list; axe check with 0 serious violations |
+| NFR-16 | Performance | WHEN the PR timeline renders N agent run rows, the web app shall issue 0 requests beyond the existing `GET /pulls/:id/runs` to decide and link the "Multi-agent" badges. | unit — fixture of 3 multi-agent rows → the fetch mock records only the existing reads, no `/multi-agent` request |
+| NFR-17 | A11y | The web app shall make every "Multi-agent" badge of the PR timeline reachable with Tab and activatable with Enter. | unit — focus the badge link, press Enter → navigation to its URL; manual keyboard walk-through |
 
 **Verification procedure (non-EARS process obligation from the user's acceptance scenario)**
 - **VP-1 — "1 vs 3" measurement.** Before `implemented`, the verifier records a table in the implementation PR description for seeded PR #482: one agent (Security Reviewer) vs three agents (Security, Performance, General Reviewer).
@@ -481,6 +549,7 @@ Sources: the user's request relayed by the main session (the sidebar item opens 
 | Agent run error text | provider and adapter errors (DB) | untrusted for rendering |
 | `cursor` and `limit` query parameters of `GET /multi-agent/runs` | URL | untrusted |
 | Repository name in runs list rows | GitHub / import (DB) | untrusted for rendering |
+| `multi_run_id` in `GET /pulls/:id/runs` items | API response read from a `uuid` column (`server/src/db/schema/runs.ts:34`) | untrusted at the web app boundary (used to build a link target) |
 | Estimates, totals, groups, overall state | computed by the API from DB rows | trusted (derived) |
 
 ## Untrusted inputs
@@ -500,6 +569,8 @@ Sources: the user's request relayed by the main session (the sidebar item opens 
 | UT-12 | `limit` | oversized payload | IF the `limit` parameter is not an integer from 1 to 50, THEN the API shall answer HTTP 422. | integration — `limit=0`, `51`, `abc` → 422; `50` → 200 |
 | UT-13 | `cursor` | broken access control (IDOR) | IF a request carries a cursor obtained from another workspace's list, THEN the API shall return only multi-agent runs of the caller's workspace. | integration — cursor from workspace B used in workspace A → every item belongs to A |
 | UT-14 | PR title, repository name and agent names in runs list rows | HTML injection | IF a PR title, repository name or agent name shown in the runs list contains markup, THEN the web app shall render it as plain text. | unit — `<img onerror>` title and agent name fixture → literal text, no element |
+| UT-15 | `multi_run_id` in timeline items | link-target injection | IF a timeline item's `multi_run_id` contains characters outside a UUID, THEN the web app shall URL-encode it as the `multiRunId` query value so that the badge `href` stays a same-origin `/multi-agent/<prId>` path. | unit — `multi_run_id` of `x&y=javascript:alert(1)` → `href` starts with `/multi-agent/`, the value is percent-encoded |
+| UT-16 | PR id in `GET /pulls/:id/runs` | broken access control (IDOR) | IF `GET /pulls/:id/runs` names a PR of another workspace, THEN the API shall return no agent run, so no `multi_run_id` of another workspace is exposed. | integration — PR of workspace B requested from workspace A → empty list (scope already at `server/src/modules/reviews/repository/run.repo.ts:49`) |
 
 ## Assumptions and dependencies
 - The diff loader, intent derivation and grounding gate stay as they are. Concurrency safety was confirmed by R-1: per-run loggers, a run bus keyed per run, method-local cost accumulators.
@@ -522,7 +593,14 @@ Sources: the user's request relayed by the main session (the sidebar item opens 
 | US-7 | AC-45 – AC-57, AC-74, EC-10, EC-11, EC-14, NFR-5 |
 | US-8 | AC-58 – AC-60 |
 | US-9 | AC-61 – AC-66, NFR-3, VP-1 |
-| US-10 | AC-15, AC-69 – AC-71, EC-5, EC-6, EC-7, EC-15 (AC-67/AC-68 removed → AC-75, AC-83, AC-85, AC-86) |
+| US-10 | AC-15, AC-69 – AC-71, AC-93 – AC-96, EC-5, EC-6, EC-7, EC-15, EC-24 – EC-27, NFR-16, NFR-17, UT-15, UT-16 (AC-67/AC-68 removed → AC-75, AC-83, AC-85, AC-86) |
+| G-9 | AC-71, AC-93 – AC-96 |
+| F-35 – F-39 | see Revision 2026-10-13 — timeline badge |
+| Q14 | Revision history; AC-71 (redefined) |
+| Q15 | AC-71, EC-27 |
+| Q16 | AC-94, AC-95, NFR-17 |
+| Q17 | AC-93, EC-24, EC-26 |
+| Q18 | AC-96, NFR-16 |
 | US-11 | AC-75 – AC-92, EC-16 – EC-23, NFR-12 – NFR-15, UT-11 – UT-14 |
 | F-1 – F-21 | see Gaps found |
 | F-22 – F-34 | see Revision 2026-10-12 — runs list |
@@ -558,6 +636,8 @@ Sources: the user's request relayed by the main session (the sidebar item opens 
 | 2026-10-12 | revision "runs list" — status implemented → draft (pending re-approval) by explicit user decision to revise in place instead of a new spec. Added US-11, G-8, AC-75 – AC-92, EC-16 – EC-23, NFR-12 – NFR-15, UT-11 – UT-14, UX-8 – UX-10, F-22 – F-34, Q10 – Q13; removed AC-67, AC-68 (ids retired, not reused) and the history-browser Non-goal; updated Module interactions, Data and state, Compatibility, Traceability. Every requirement not listed here is unchanged and remains implemented | spec-creator |
 | 2026-10-12 | status → approved (user decision "approve SPEC-07", revision "runs list") | spec-creator |
 | 2026-10-13 | status → implemented (user decision, revision "runs list": AC-75 – AC-92, EC-16 – EC-23, NFR-12 – NFR-15, UT-11 – UT-14). Commits cdc1b32 (wave 0 contracts + folder rename), 1ac0aa3 (U1 `GET /multi-agent/runs`), 5b59bea (U2 runs list page), 7f70cc3 (review fix: calendar-invalid cursor date → 422); plan `docs/plans/multi-agent-runs-list.md`. Plan §9 follow-ups (no behaviour added): (1) per user decision no new automated tests were written for this revision — its Verify-by rows were checked by code inspection, the existing suites and live API checks, so those test shapes describe intended tests, not tests that exist; (2) "repository name" in AC-77, AC-80, EC-21 and UT-14 means `repos.full_name` (`owner/name`). Manual checks still pending by the user: EC-22 (Back), NFR-15 (keyboard / axe), live polling AC-89 / EC-23 | spec-creator |
+| 2026-10-13 | revision "timeline badge" — status implemented → draft (pending re-approval) by explicit user decision to revise in place. AC-71 un-deferred and redefined (variant b: per-row "Multi-agent" badge in the PR "Agent runs" Timeline linking to that row's own multi-agent run; Priority Could → Must). Added G-9, AC-93 – AC-96, EC-24 – EC-27, NFR-16, NFR-17, UT-15, UT-16, F-35 – F-39, Q14 – Q18 (Q16 – Q18 are defaults taken by spec-creator at the main session's request); additive `RunSummary.multi_run_id` on `GET /pulls/:id/runs`; updated Problem, Module interactions, Data and state, Compatibility, Inputs, Traceability. Every requirement not listed here is unchanged and remains implemented | spec-creator |
+| 2026-10-13 | status → approved (user decision "approve SPEC-07", revision "timeline badge") | spec-creator |
 
 ## Self-check
 - [x] every AC / EC / NFR / UT rule: one EARS pattern, one `shall`, observable response, no vague words (VP-1 is a deliberately non-EARS process obligation, labelled as such)
