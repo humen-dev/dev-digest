@@ -6,6 +6,18 @@ export function isRepoValid(repo: string): boolean {
   return REPO_FULL_NAME_RE.test(repo.trim());
 }
 
+/**
+ * Repo picker options — the workspace's imported repos (`owner/name`), sorted.
+ * A pre-filled repo that is not imported (e.g. "Update CI config" on an older
+ * installation) is kept as an option so the picker still shows it.
+ */
+export function repoOptions(repos: readonly { full_name: string }[], current: string): string[] {
+  const names = new Set(repos.map((r) => r.full_name));
+  const value = current.trim();
+  if (value) names.add(value);
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
 /** Add or remove one trigger, keeping the canonical order. */
 export function toggleTrigger(current: CiTrigger[], trigger: CiTrigger): CiTrigger[] {
   const next = current.includes(trigger) ? current.filter((x) => x !== trigger) : [...current, trigger];

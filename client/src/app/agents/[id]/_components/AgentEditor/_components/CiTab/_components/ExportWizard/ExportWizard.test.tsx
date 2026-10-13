@@ -35,6 +35,8 @@ const h = vi.hoisted(() => ({
   exportMutate: vi.fn(),
   archiveMutate: vi.fn(),
   exportPending: false,
+  repos: [] as { full_name: string }[],
+  reposLoading: false,
 }));
 
 vi.mock("@/lib/hooks/ci", () => ({
@@ -56,7 +58,12 @@ vi.mock("@/lib/hooks/ci", () => ({
   useCiArchive: () => ({ mutate: h.archiveMutate, isPending: false, error: null }),
 }));
 
+vi.mock("@/lib/hooks/core", () => ({
+  useRepos: () => ({ data: h.repos, isLoading: h.reposLoading }),
+}));
+
 import { ExportWizard } from "./ExportWizard";
+import { isRepoValid, repoOptions } from "./helpers";
 
 function renderWizard(props: Partial<React.ComponentProps<typeof ExportWizard>> = {}) {
   const onClose = vi.fn();
@@ -71,12 +78,21 @@ function renderWizard(props: Partial<React.ComponentProps<typeof ExportWizard>> 
 const continueBtn = () => screen.getByRole("button", { name: /continue/i });
 const lastInput = () => h.previewInputs.at(-1) as CiExportInputBody | null;
 
+/** Open the repo picker, filter it, and click an option. */
+function pickRepo(name: string, query = name) {
+  fireEvent.click(screen.getByText("Search repositories…"));
+  fireEvent.change(screen.getByPlaceholderText("Search repositories…"), { target: { value: query } });
+  fireEvent.click(screen.getByRole("button", { name }));
+}
+
 beforeEach(() => {
   h.targets = { data: [GHA], isLoading: false, isError: false, refetch: vi.fn() };
   h.preview = { data: makePreview(), isError: false, error: null };
   h.previewInputs = [];
   h.secrets = [];
   h.exportPending = false;
+  h.repos = [{ full_name: REPO }, { full_name: "burnjohn/dev-digest" }];
+  h.reposLoading = false;
   h.exportMutate.mockReset();
   h.archiveMutate.mockReset();
 });
@@ -87,7 +103,7 @@ afterEach(() => {
 });
 
 describe("ExportWizard — Target step", () => {
-  it("shows 4 steps with Target current, one card per target, and validates the repo", () => {
+  it("shows 4 steps with Target current, one card per target, and a searchable repo picker", () => {
     h.targets.data = [GHA, { target: "circle", label_key: "exportWizard.targets.gha" }];
     renderWizard();
 
@@ -98,13 +114,16 @@ describe("ExportWizard — Target step", () => {
     expect(steps.filter((li) => li.hasAttribute("aria-current"))).toHaveLength(1);
     expect(screen.getAllByRole("radio")).toHaveLength(2);
 
-    const input = screen.getByPlaceholderText("acme/payments-api");
-    for (const bad of ["acme", "acme/", "/x", "a b/c", "a/b/c", `${"a".repeat(101)}/x`]) {
-      fireEvent.change(input, { target: { value: bad } });
-      expect(screen.getByRole("alert")).toHaveTextContent("owner/name");
-      expect(continueBtn()).toBeDisabled();
-    }
-    fireEvent.change(input, { target: { value: REPO } });
+    expect(continueBtn()).toBeDisabled(); // no repo picked yet
+    fireEvent.click(screen.getByText("Search repositories…"));
+    const search = screen.getByPlaceholderText("Search repositories…");
+    expect(screen.getByRole("button", { name: REPO })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "burnjohn/dev-digest" })).toBeInTheDocument();
+    fireEvent.change(search, { target: { value: "burn" } });
+    expect(screen.queryByRole("button", { name: REPO })).not.toBeInTheDocument(); // filtered out
+    fireEvent.change(search, { target: { value: "payments" } });
+    fireEvent.click(screen.getByRole("button", { name: REPO }));
+
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(continueBtn()).toBeEnabled();
     expect(lastInput()).toBeNull(); // nothing is requested until Continue
@@ -112,6 +131,30 @@ describe("ExportWizard — Target step", () => {
     fireEvent.click(continueBtn());
     expect(lastInput()).toMatchObject({ repo: REPO, target: "gha" });
     expect(screen.getByText("FILES TO CREATE")).toBeInTheDocument(); // advanced to Preview
+  });
+
+  it("validates the owner/name shape (AC-4) and flags an invalid pre-filled repo", () => {
+    for (const bad of ["acme", "acme/", "/x", "a b/c", "a/b/c", `${"a".repeat(101)}/x`]) {
+      expect(isRepoValid(bad)).toBe(false);
+    }
+    expect(isRepoValid(REPO)).toBe(true);
+
+    renderWizard({ initial: { step: "target", repo: "a b/c" } });
+    expect(screen.getByRole("alert")).toHaveTextContent("owner/name");
+    expect(continueBtn()).toBeDisabled();
+  });
+
+  it("lists imported repos sorted and keeps a pre-filled repo that is not imported", () => {
+    expect(repoOptions([{ full_name: "z/b" }, { full_name: "a/c" }], "")).toEqual(["a/c", "z/b"]);
+    expect(repoOptions([{ full_name: "a/c" }], "old/repo")).toEqual(["a/c", "old/repo"]);
+  });
+
+  it("shows an add-repository hint when no repos are imported", () => {
+    h.repos = [];
+    renderWizard();
+    expect(screen.getByText("No repositories imported yet.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add a repository" })).toHaveAttribute("href", "/onboarding");
+    expect(continueBtn()).toBeDisabled();
   });
 
   it("shows an error with Retry when targets fail to load", () => {
@@ -128,7 +171,7 @@ describe("ExportWizard — Target step", () => {
       error: new ApiError("provider", 422, "VALIDATION", { reason: "provider_not_supported", provider: "anthropic" }),
     };
     renderWizard();
-    fireEvent.change(screen.getByPlaceholderText("acme/payments-api"), { target: { value: REPO } });
+    pickRepo(REPO, "payments");
     fireEvent.click(continueBtn());
 
     expect(screen.getByText(/Agent provider "anthropic" is not supported in CI/)).toBeInTheDocument();
