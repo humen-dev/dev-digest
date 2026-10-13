@@ -65,6 +65,7 @@ export async function listRunsForPull(
     score: run.score,
     blockers: run.blockers,
     cost_usd: run.costUsd,
+    multi_run_id: run.multiRunId ?? null,
   }));
 }
 
