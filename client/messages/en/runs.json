@@ -121,7 +121,7 @@
   },
   "page": {
     "title": "Multi-Agent Review",
-    "subtitle": "this PR through every enabled agent in parallel",
+    "subtitle": "this PR through the agents you pick, in parallel",
     "selectPr": "Select PR",
     "prItem": "#{number} · {title}",
     "view": {
@@ -130,15 +130,15 @@
     },
     "runAll": "Run all agents",
     "running": "Running…",
-    "meta": "{count} agents · fan-out via p-queue · {duration}s total · {cost}",
+    "meta": "{count} agents · parallel fan-out · {duration}s total · {cost}",
     "noAgents": {
       "title": "Enable agents to run reviews",
-      "body": "Multi-agent review runs the PR through every enabled agent in parallel. You have no agents enabled yet.",
+      "body": "Multi-agent review runs the PR through the agents you pick, in parallel. You have no agents enabled yet.",
       "cta": "Go to Agents"
     },
     "noRun": {
       "title": "No multi-agent run yet",
-      "bodyReady": "Run all enabled agents on this PR to see N columns + conflicts.",
+      "bodyReady": "Pick agents and run them on this PR to compare their findings side by side.",
       "bodySelect": "Select a PR to begin.",
       "cta": "Run all agents"
     },

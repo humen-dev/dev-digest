@@ -7,12 +7,14 @@ import type { RunSummary, PrCommit, FindingRecord } from "@devdigest/shared";
 import { formatCost } from "@/lib/format-cost";
 import { FindingsHoverCard } from "../../../_components/FindingsHoverCard";
 import { FindingsPreviewList } from "../../../_components/FindingsPreviewList";
+import { MultiAgentRunBadge } from "./_components/MultiAgentRunBadge";
 
 /**
  * PR timeline — every agent run interleaved with the PR's commits, newest-first
  * and DB-backed so it survives reload. Showing commits between runs makes it
  * clear which commit each review ran against. Failed runs show their error
- * inline; clicking a run row opens its trace.
+ * inline; clicking a run row opens its trace. Runs of a multi-agent run carry a
+ * "Multi-agent" badge-link to that run's results.
  *
  * The badge reflects the review OUTCOME, not just the run lifecycle: a finished
  * run that found blockers reads "rejected" (red), never a green "done". Outcome
@@ -88,6 +90,7 @@ function tsOf(s: string | null | undefined): number {
 }
 
 export function RunHistory({
+  prId,
   runs,
   commits = [],
   findingsByRun,
@@ -95,6 +98,8 @@ export function RunHistory({
   onGoToReview,
   onDelete,
 }: {
+  /** PR id — with a run's `multi_run_id` it builds the row's "Multi-agent" badge link. */
+  prId?: string | null;
   runs: RunSummary[];
   commits?: PrCommit[];
   /** run_id → that run's findings, for the row hover-preview popover. */
@@ -160,6 +165,7 @@ export function RunHistory({
             <Badge color={o.color} bg={o.bg} icon={o.icon}>
               {t(`runStatus.${o.key}`)}
             </Badge>
+            {prId && r.multi_run_id ? <MultiAgentRunBadge prId={prId} multiRunId={r.multi_run_id} /> : null}
             {settled && r.score != null && <CircularScore score={r.score} size={30} stroke={3} />}
             <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>

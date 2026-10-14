@@ -69,6 +69,10 @@ Every other command — installs, builds, tests, typecheck, redirects (`>`),
 `$(…)`, `tee` — is denied. Don't retry a denied command in another form; note
 what you could not run under *Not reviewed*.
 
+**Read and search files with the Read / Grep / Glob tools — never `cat`, `head`,
+`tail`, `grep`, `git grep`, `ls` or `cd <absolute path>` in Bash** (all denied;
+each denial is a wasted turn). `git diff` / `git show` stay the way to see changes.
+
 ## Step 0 — interview mode
 
 Return a clarification request **instead of a review** only when the scope can't

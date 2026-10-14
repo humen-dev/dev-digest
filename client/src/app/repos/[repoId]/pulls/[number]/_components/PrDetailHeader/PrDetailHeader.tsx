@@ -2,7 +2,7 @@
 
 import React, { useCallback } from "react";
 import { Icon, Avatar, Badge, Button, Tabs } from "@devdigest/ui";
-import { RunReviewDropdown } from "../RunReviewDropdown";
+import { AgentPicker } from "../AgentPicker";
 import { s } from "./styles";
 import { useStickyHeightVar } from "./hooks";
 import type { PrDetail } from "@/lib/types";
@@ -93,7 +93,7 @@ export function PrDetailHeader({
             View on GitHub
           </Button>
           {prId && (
-            <RunReviewDropdown
+            <AgentPicker
               prId={prId}
               warnMerged={pr.status === "merged" || pr.status === "closed"}
               onRunStart={handleRunStart}

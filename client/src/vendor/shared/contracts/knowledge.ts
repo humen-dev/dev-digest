@@ -318,6 +318,10 @@ export const Agent = z.object({
   // Inject repo-intel context (repo skeleton + callers + rank note) into this
   // agent's review prompt. Default on; gated again by the global flag.
   repo_intel: z.boolean().default(true),
+  // SPEC-07 estimates (GET /agents): means over this agent's `done` runs.
+  est_duration_ms: z.number().int().nullable().optional(), // mean duration_ms of done runs
+  est_cost_usd: z.number().nullable().optional(), // mean cost_usd of done runs with known cost
+  has_history: z.boolean().optional(), // >= 1 done run
 });
 export type Agent = z.infer<typeof Agent>;
 

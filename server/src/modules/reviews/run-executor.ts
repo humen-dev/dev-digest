@@ -118,34 +118,41 @@ export class ReviewRunExecutor {
     );
     runLog.info(intentLogLine(intentResult));
 
-    for (const { agent, runId } of jobs) {
-      const agentStart = Date.now();
-      logger?.info(
-        { runId, agent: agent.name, provider: agent.provider, model: agent.model, prId: pull.id },
-        `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
-      );
-      try {
-        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog, intentResult);
+    // SPEC-07: all agents of the batch run concurrently (AC-24). Each agent's
+    // failure is isolated (AC-25): runOneAgent persists its own failure, and
+    // allSettled never lets one rejection abort the others. Every agent narrows
+    // the fanned-out logger to its own run, so a buffer holds the shared pre-work
+    // events plus only that agent's events.
+    await Promise.allSettled(
+      jobs.map(async ({ agent, runId }) => {
+        const agentStart = Date.now();
         logger?.info(
-          {
-            runId,
-            agent: agent.name,
-            findings: outcome.findings.length,
-            grounding: outcome.grounding,
-            durationMs: Date.now() - agentStart,
-          },
-          `review: agent "${agent.name}" done — ${outcome.findings.length} finding(s)`,
+          { runId, agent: agent.name, provider: agent.provider, model: agent.model, prId: pull.id },
+          `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
         );
-      } catch (err) {
-        // runOneAgent already persisted the failure/cancel (status + error +
-        // trace) and completed the bus; here we only log at the run level.
-        const cancelled = err instanceof RunCancelledError;
-        logger?.[cancelled ? 'info' : 'error'](
-          { runId, agent: agent.name, err: (err as Error).message, durationMs: Date.now() - agentStart },
-          `review: agent "${agent.name}" ${cancelled ? 'cancelled' : 'failed'}`,
-        );
-      }
-    }
+        try {
+          const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog, intentResult);
+          logger?.info(
+            {
+              runId,
+              agent: agent.name,
+              findings: outcome.findings.length,
+              grounding: outcome.grounding,
+              durationMs: Date.now() - agentStart,
+            },
+            `review: agent "${agent.name}" done — ${outcome.findings.length} finding(s)`,
+          );
+        } catch (err) {
+          // runOneAgent already persisted the failure/cancel (status + error +
+          // trace) and completed the bus; here we only log at the run level.
+          const cancelled = err instanceof RunCancelledError;
+          logger?.[cancelled ? 'info' : 'error'](
+            { runId, agent: agent.name, err: (err as Error).message, durationMs: Date.now() - agentStart },
+            `review: agent "${agent.name}" ${cancelled ? 'cancelled' : 'failed'}`,
+          );
+        }
+      }),
+    );
   }
 
   /** Execute a single agent's review against a PR, streaming progress. */

@@ -13,7 +13,7 @@ import { usePrComments, useCreatePrComment, usePrReviews, useFindingAction } fro
 import { useSmartDiff } from "@/lib/hooks/smart-diff";
 import { notify } from "@/lib/toast";
 import type { PrDetail } from "@devdigest/shared";
-import { FindingCard } from "../FindingCard";
+import { FindingCard } from "@/components/review/FindingCard";
 import { SmartDiffHeader } from "./_components/SmartDiffHeader";
 import { RoleGroup } from "./_components/RoleGroup";
 import { buildRoleGroups, countFlaggedFiles, currentFindings, parseDiffTarget, pathsWithFindings } from "./helpers";
