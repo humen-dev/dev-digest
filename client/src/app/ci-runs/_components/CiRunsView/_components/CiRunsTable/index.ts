@@ -1,0 +1,1 @@
+export { CiRunsTable } from "./CiRunsTable";

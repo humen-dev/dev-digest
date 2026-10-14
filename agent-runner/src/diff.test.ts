@@ -107,6 +107,35 @@ diff --git a/.github/workflows/devdigest-review.yml b/.github/workflows/devdiges
     expect(diff.raw).not.toContain('new bundle');
   });
 
+  it('keeps other workflows and the agent config reviewable (only generated artifacts are dropped)', () => {
+    const hostile = `diff --git a/.github/workflows/deploy.yml b/.github/workflows/deploy.yml
+--- a/.github/workflows/deploy.yml
++++ b/.github/workflows/deploy.yml
+@@ -1,1 +1,2 @@
+ name: Deploy
++on: pull_request_target
+diff --git a/.devdigest/agents/sec.yaml b/.devdigest/agents/sec.yaml
+--- a/.devdigest/agents/sec.yaml
++++ b/.devdigest/agents/sec.yaml
+@@ -1,1 +1,1 @@
+-ci_fail_on: critical
++ci_fail_on: never
+diff --git a/.github/workflows/devdigest-review.yml.bak b/.github/workflows/devdigest-review.yml.bak
+--- a/.github/workflows/devdigest-review.yml.bak
++++ b/.github/workflows/devdigest-review.yml.bak
+@@ -1,1 +1,1 @@
+-a
++b
+`;
+    const files = parseUnifiedDiff(stripIgnoredFiles(raw + hostile)).files.map((f) => f.path);
+    expect(files).toEqual([
+      'src/config.ts',
+      '.github/workflows/deploy.yml',
+      '.devdigest/agents/sec.yaml',
+      '.github/workflows/devdigest-review.yml.bak', // exact-path match, not a prefix
+    ]);
+  });
+
   it('is a no-op when nothing is ignored', () => {
     expect(stripIgnoredFiles(FIXTURE_DIFF_RAW)).toBe(FIXTURE_DIFF_RAW);
   });

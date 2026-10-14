@@ -1,9 +1,12 @@
-import type { Finding } from '@devdigest/shared';
+import type { Finding, Verdict, CiFailOn, CiPostOutcome } from '@devdigest/shared';
 import { CiResultArtifact } from '@devdigest/shared';
 import { RunnerError } from './errors.js';
 
-/** Runner version string embedded in every artifact (informational only). */
-export const RUNNER_VERSION = '1';
+/**
+ * Runner version string embedded in every artifact. v2 (SPEC-07): verdict,
+ * blockers, ci_fail_on and post_outcome; artifact written after posting.
+ */
+export const RUNNER_VERSION = '2';
 
 export interface BuildResultArtifactInput {
   findings: Finding[];
@@ -11,6 +14,11 @@ export interface BuildResultArtifactInput {
   durationMs: number;
   agent: string;
   prNumber: number;
+  /** Deterministic verdict (same rule as reviewer-core's `toReviewPayload`), not the model's. */
+  verdict: Verdict;
+  blockers: number;
+  ciFailOn: CiFailOn;
+  postOutcome: CiPostOutcome;
 }
 
 function severityCounts(findings: Finding[]): { critical: number; warning: number; suggestion: number } {
@@ -41,6 +49,10 @@ export function buildResultArtifact(input: BuildResultArtifactInput): CiResultAr
     agent: input.agent,
     version: RUNNER_VERSION,
     pr_number: input.prNumber,
+    verdict: input.verdict,
+    blockers: input.blockers,
+    ci_fail_on: input.ciFailOn,
+    post_outcome: input.postOutcome,
   };
   const result = CiResultArtifact.safeParse(candidate);
   if (!result.success) {

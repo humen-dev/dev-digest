@@ -44,7 +44,10 @@ export const NAV: NavGroup[] = [
   },
   {
     section: "GLOBAL",
-    items: [{ key: "multi-agent", label: "Multi-Agent Review", icon: "Users", href: "/multi-agent", gKey: "m" }],
+    items: [
+      { key: "multi-agent", label: "Multi-Agent Review", icon: "Users", href: "/multi-agent", gKey: "m" },
+      { key: "ci-runs", label: "CI Runs", icon: "Workflow", href: "/ci-runs" },
+    ],
   },
 ];
 

@@ -18,7 +18,8 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+/** Fetch + error normalisation shared by every helper below; returns the OK response. */
+async function request(path: string, init?: RequestInit): Promise<Response> {
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
@@ -57,9 +58,25 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     }
     throw new ApiError(message, res.status, code, details);
   }
+  return res;
+}
 
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await request(path, init);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
+}
+
+/** POST returning the HTTP status alongside the JSON body (201 vs 200 matters, SPEC-08 AC-34). */
+export async function postWithStatus<T>(path: string, body?: unknown): Promise<{ status: number; data: T }> {
+  const res = await request(path, { method: "POST", body: body ? JSON.stringify(body) : undefined });
+  return { status: res.status, data: (await res.json()) as T };
+}
+
+/** POST returning a binary body (e.g. the CI export zip), same error normalisation as apiFetch. */
+export async function postBlob(path: string, body?: unknown): Promise<Blob> {
+  const res = await request(path, { method: "POST", body: body ? JSON.stringify(body) : undefined });
+  return res.blob();
 }
 
 export const api = {

@@ -1,5 +1,11 @@
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import type { LLMProvider, GitHubReviewPayload, CiResultArtifact } from '@devdigest/shared';
+import type {
+  LLMProvider,
+  GitHubReviewPayload,
+  CiResultArtifact,
+  CiPostOutcome,
+  Verdict,
+} from '@devdigest/shared';
 import { reviewPullRequest, toReviewPayload, gateTriggered, countBlockers } from '@devdigest/reviewer-core';
 import { loadManifest } from './manifest.js';
 import { loadSkillBodies } from './skills.js';
@@ -23,13 +29,17 @@ import { RunnerError } from './errors.js';
  * against the GROUNDED findings — never from `review.verdict` (the model's
  * self-report), which is discarded here on purpose.
  *
- * Hard-fail (Q5): a single try/catch wraps the ENTIRE pipeline. Any failure —
- * invalid manifest (AC-20), missing skill file, unresolvable CI context,
- * diff-fetch failure, or an LLM/model-call error inside `reviewPullRequest` —
- * short-circuits to `{ exitCode: 1, artifact: null, posted: null }` before any
- * GitHub post or artifact write. Do not add per-stage catches that post partial
- * state; the whole point is that a failure anywhere upstream of "we have a
- * grounded review" produces NOTHING (no synthetic review skeleton).
+ * Hard-fail (Q5, SPEC-07 AC-51): a single try/catch wraps the pipeline. Any
+ * failure up to "we have a grounded review" — invalid manifest (AC-20), missing
+ * skill file, unresolvable CI context, diff-fetch failure, or an LLM/model-call
+ * error inside `reviewPullRequest` — short-circuits to
+ * `{ exitCode: 1, artifact: null, posted: null }` before any GitHub post or
+ * artifact write (no synthetic review skeleton).
+ *
+ * Posting is the ONE stage with its own catch (SPEC-07 AC-49, EC-18): once the
+ * review is grounded, a failed post is recorded as `post_outcome: 'post_failed'`,
+ * the artifact is still written AFTER the post, and the exit code is decided by
+ * the gate alone.
  */
 
 export type PostAs = 'github_review' | 'pr_comment' | 'none';
@@ -63,7 +73,7 @@ export interface RunCiDeps {
 export interface RunCiSuccess {
   exitCode: number;
   artifact: CiResultArtifact;
-  posted: { kind: PostAs; payload?: GitHubReviewPayload };
+  posted: { kind: PostAs; payload?: GitHubReviewPayload; outcome: CiPostOutcome; error?: string };
   blockers: number;
   gateTriggered: boolean;
   error?: undefined;
@@ -136,31 +146,45 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
     });
     const blockers = countBlockers(outcome.review.findings, manifest.ci_fail_on);
     const triggered = gateTriggered(outcome.review.findings, manifest.ci_fail_on);
+    const verdict = verdictFromEvent(payload.event);
 
-    // 6. Build + write the artifact before posting, so a GitHub-side posting
-    //    failure never loses the already-computed, already-grounded result.
+    // 6. Post per `post_as` (SPEC-07 AC-46..48) in its OWN catch: a GitHub-side
+    //    failure is recorded, never turned into a hard failure (EC-18).
+    let postOutcome: CiPostOutcome = 'not_requested';
+    let postError: string | undefined;
+    if (deps.postAs !== 'none') {
+      try {
+        if (deps.postAs === 'github_review') {
+          await postGithubReview(ctx, githubToken as string, payload, fetchImpl);
+        } else {
+          await postPrComment(ctx, githubToken as string, payload.body, fetchImpl);
+        }
+        postOutcome = 'posted';
+      } catch (err) {
+        postOutcome = 'post_failed';
+        postError = err instanceof Error ? err.message : String(err);
+      }
+    }
+
+    // 7. Write the artifact AFTER posting so it records the post outcome (AC-49).
     const artifact = buildResultArtifact({
       findings: outcome.review.findings,
       costUsd: outcome.costUsd,
       durationMs,
       agent: manifest.name,
       prNumber: ctx.prNumber,
+      verdict,
+      blockers,
+      ciFailOn: manifest.ci_fail_on,
+      postOutcome,
     });
     writeFile(deps.resultPath, `${JSON.stringify(artifact, null, 2)}\n`);
 
-    // 7. Post per `post_as` (AC-24).
-    if (deps.postAs === 'github_review') {
-      await postGithubReview(ctx, githubToken as string, payload, fetchImpl);
-    } else if (deps.postAs === 'pr_comment') {
-      await postPrComment(ctx, githubToken as string, payload.body, fetchImpl);
-    }
-    // 'none' → post nothing (exit-code only).
-
-    // 8. Exit non-zero IFF the gate triggered REQUEST_CHANGES (AC-25).
+    // 8. Exit non-zero IFF the gate triggered (AC-45), whatever the post outcome.
     return {
       exitCode: triggered ? 1 : 0,
       artifact,
-      posted: { kind: deps.postAs, payload },
+      posted: { kind: deps.postAs, payload, outcome: postOutcome, ...(postError ? { error: postError } : {}) },
       blockers,
       gateTriggered: triggered,
     };
@@ -170,4 +194,14 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
     const message = err instanceof Error ? err.message : String(err);
     return { exitCode: 1, artifact: null, posted: null, error: message };
   }
+}
+
+/**
+ * The deterministic verdict, read off the event `toReviewPayload` already
+ * derived from grounded severities + `ci_fail_on` (never the model's verdict).
+ */
+function verdictFromEvent(event: GitHubReviewPayload['event']): Verdict {
+  if (event === 'APPROVE') return 'approve';
+  if (event === 'REQUEST_CHANGES') return 'request_changes';
+  return 'comment';
 }

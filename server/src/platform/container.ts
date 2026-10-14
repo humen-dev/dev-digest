@@ -69,6 +69,19 @@ import { GENERATION_DEADLINE_MS } from '../modules/brief/constants.js';
 import { EvalRepository } from '../modules/eval/repository.js';
 import { EvalService } from '../modules/eval/service.js';
 import type { EvalRepositoryPort } from '../modules/eval/ports.js';
+import { DrizzleCiRepository } from '../modules/ci/repository.js';
+import { CiService } from '../modules/ci/service.js';
+import { CiRefreshService } from '../modules/ci/refresh-service.js';
+import type {
+  CiAgentRunWriter,
+  CiRepository,
+  CiSources,
+  GithubConnection,
+  RunnerBundleSource,
+  WorkspaceSecretValues,
+} from '../modules/ci/ports.js';
+import { insertCompletedCiRun } from '../modules/reviews/repository/run.repo.js';
+import { FsRunnerBundle } from '../adapters/ci-bundle/index.js';
 import { GitTreeReader } from '../adapters/git/tree.js';
 import { loadPromptTemplate } from './prompts.js';
 import { EXCLUDED_DIRS, MAX_FILE_SIZE } from '../modules/repo-intel/types.js';
@@ -124,7 +137,20 @@ export interface ContainerOverrides {
   briefRepo?: BriefRepositoryPort;
   /** Eval persistence port — tests swap the port, not the service. */
   evalRepo?: EvalRepositoryPort;
+  /** Export-to-CI persistence port — tests swap the port, not the service. */
+  ciRepo?: CiRepository;
+  /** Export-to-CI outside-world ports (agents, skills, repos, runner bundle, secrets) — tests swap any subset. */
+  ciSources?: Partial<CiSources>;
 }
+
+/** Secret keys whose stored values must never appear in an exported file (AC-42). */
+const CI_KNOWN_SECRET_KEYS = [
+  'OPENAI_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'OPENROUTER_API_KEY',
+  'GITHUB_TOKEN',
+  'GITHUB_PAT',
+] as const;
 
 export class Container {
   readonly config: AppConfig;
@@ -165,6 +191,11 @@ export class Container {
   private _onboardingTourService?: OnboardingTourService;
   private _briefService?: BriefService;
   private _evalService?: EvalService;
+  private _ciRepo?: CiRepository;
+  private _ciBundle?: RunnerBundleSource;
+  private _ciService?: CiService;
+  private _ciRefreshService?: CiRefreshService;
+  private _ciRunWriter?: CiAgentRunWriter;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -438,6 +469,80 @@ export class Container {
       parser: { parse: parseUnifiedDiff },
       llm: (provider) => this.llm(provider),
     }));
+  }
+
+  get ciRepo(): CiRepository {
+    if (this.overrides.ciRepo) return this.overrides.ciRepo;
+    return (this._ciRepo ??= new DrizzleCiRepository(this.db));
+  }
+
+  /**
+   * Export to CI (SPEC-08). The agents / repos modules are adapted to the CI
+   * module's own ports here (structural match / small object literals), so `ci`
+   * imports nothing from them. The runner bundle is read from
+   * `config.ciRunnerBundleDir` through one per-process adapter.
+   */
+  get ciService(): CiService {
+    return (this._ciService ??= new CiService({
+      repo: this.ciRepo,
+      agents: this.overrides.ciSources?.agents ?? this.agentsRepo,
+      skills: this.overrides.ciSources?.skills ?? {
+        linkedSkills: async (agentId) =>
+          (await this.agentsRepo.linkedSkills(agentId)).map((l) => ({
+            name: l.skill.name,
+            body: l.skill.body,
+            enabled: l.skill.enabled,
+          })),
+      },
+      repos: this.overrides.ciSources?.repos ?? this.reposRepo,
+      bundle: this.overrides.ciSources?.bundle ?? (this._ciBundle ??= new FsRunnerBundle(this.config.ciRunnerBundleDir)),
+      secretValues: this.overrides.ciSources?.secretValues ?? {
+        list: async () => {
+          const values = await Promise.all(CI_KNOWN_SECRET_KEYS.map((k) => this.secrets.get(k)));
+          return values.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+        },
+      },
+      githubConnection: this.overrides.ciSources?.githubConnection ?? {
+        hasToken: async () =>
+          !!((await this.secrets.get('GITHUB_TOKEN')) ?? (await this.secrets.get('GITHUB_PAT'))),
+      },
+      github: () => this.github(),
+    }));
+  }
+
+  /**
+   * Export to CI, ingest side (SPEC-08): `POST /ci/refresh`. The `agent_runs`
+   * mirror is written by the reviews module's run repository function, adapted
+   * to the CI module's `CiAgentRunWriter` port here.
+   */
+  get ciRefreshService(): CiRefreshService {
+    return (this._ciRefreshService ??= new CiRefreshService({
+      repo: this.ciRepo,
+      agents: this.overrides.ciSources?.agents ?? this.agentsRepo,
+      secretValues: this.overrides.ciSources?.secretValues ?? this.ciSecretValues(),
+      githubConnection: this.overrides.ciSources?.githubConnection ?? this.ciGithubConnection(),
+      runWriter: this.ciRunWriter,
+      github: () => this.github(),
+    }));
+  }
+
+  get ciRunWriter(): CiAgentRunWriter {
+    return (this._ciRunWriter ??= { insertCompletedCiRun: (i) => insertCompletedCiRun(this.db, i) });
+  }
+
+  private ciSecretValues(): WorkspaceSecretValues {
+    return {
+      list: async () => {
+        const values = await Promise.all(CI_KNOWN_SECRET_KEYS.map((k) => this.secrets.get(k)));
+        return values.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+      },
+    };
+  }
+
+  private ciGithubConnection(): GithubConnection {
+    return {
+      hasToken: async () => !!((await this.secrets.get('GITHUB_TOKEN')) ?? (await this.secrets.get('GITHUB_PAT'))),
+    };
   }
 
   /**
