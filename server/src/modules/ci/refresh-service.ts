@@ -29,7 +29,7 @@ import type {
 } from './ports.js';
 
 /**
- * SPEC-07 — the ingest side of the CI module: `POST /ci/refresh`. For every
+ * SPEC-08 — the ingest side of the CI module: `POST /ci/refresh`. For every
  * installation of the workspace it reads GitHub (never before the debounce
  * allows), verifies each unseen run's artifact and stores one `ci_runs` row per
  * run id (+ one mirrored `agent_runs` row for accepted runs). Orchestration only:

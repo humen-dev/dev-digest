@@ -477,7 +477,7 @@ export class Container {
   }
 
   /**
-   * Export to CI (SPEC-07). The agents / repos modules are adapted to the CI
+   * Export to CI (SPEC-08). The agents / repos modules are adapted to the CI
    * module's own ports here (structural match / small object literals), so `ci`
    * imports nothing from them. The runner bundle is read from
    * `config.ciRunnerBundleDir` through one per-process adapter.
@@ -511,7 +511,7 @@ export class Container {
   }
 
   /**
-   * Export to CI, ingest side (SPEC-07): `POST /ci/refresh`. The `agent_runs`
+   * Export to CI, ingest side (SPEC-08): `POST /ci/refresh`. The `agent_runs`
    * mirror is written by the reviews module's run repository function, adapted
    * to the CI module's `CiAgentRunWriter` port here.
    */

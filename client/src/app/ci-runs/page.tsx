@@ -1,4 +1,4 @@
-/* Route: /ci-runs — workspace-scoped CI Runs (SPEC-07). Thin entry: the shell
+/* Route: /ci-runs — workspace-scoped CI Runs (SPEC-08). Thin entry: the shell
    and breadcrumb live here; filters, table, auto-refresh and the trace drawer
    are colocated under _components/CiRunsView. */
 "use client";

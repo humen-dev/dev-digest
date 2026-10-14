@@ -18,7 +18,7 @@ import { IdParams } from '../_shared/schemas.js';
 import { CiSecretsQuery } from './types.js';
 
 /**
- * CI module (SPEC-07, plan §3.7). Every route resolves the workspace first and
+ * CI module (SPEC-08, plan §3.7). Every route resolves the workspace first and
  * hands plain arguments to the service. `/ci/refresh` is added by the ingest unit.
  */
 /** Routes that write to GitHub or spend its rate limit (OWASP A06). */

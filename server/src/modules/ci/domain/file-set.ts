@@ -8,7 +8,7 @@ import { containsKnownSecretValue, containsSecretShapedValue } from './secret-sc
 import { agentSlug } from './slug.js';
 
 /**
- * SPEC-07 AC-8 / AC-10 / AC-42 / AC-86 — assemble every file the export will
+ * SPEC-08 AC-8 / AC-10 / AC-42 / AC-86 — assemble every file the export will
  * write. Pure: the caller loads the agent, skills, memory and runner bundle.
  */
 

@@ -373,7 +373,7 @@ export class OctokitGitHubClient implements GitHubClient {
     return res.data.login;
   }
 
-  // ---------- SPEC-07 (export to CI) ----------
+  // ---------- SPEC-08 (export to CI) ----------
 
   async getRepository(repo: RepoRef): Promise<RepoInfo> {
     const res = await withRetry(() =>

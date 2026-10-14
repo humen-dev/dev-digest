@@ -41,7 +41,7 @@ import type {
 } from './ports.js';
 
 /**
- * SPEC-07 — export side + reads of the CI module. Orchestration only: the file
+ * SPEC-08 — export side + reads of the CI module. Orchestration only: the file
  * set, workflow generation and validation are pure `domain/` functions; every
  * outside system (agents, skills, repos, the runner bundle, GitHub) arrives as
  * a narrow dependency. Nothing here opens a transaction or holds secret values

@@ -1,4 +1,4 @@
-/* hooks/ci.ts — React Query hooks for Export to CI, the agent CI tab and CI Runs (SPEC-07). */
+/* hooks/ci.ts — React Query hooks for Export to CI, the agent CI tab and CI Runs (SPEC-08). */
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";

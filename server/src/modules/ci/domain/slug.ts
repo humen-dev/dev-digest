@@ -1,5 +1,5 @@
 /**
- * SPEC-07 AC-8 / AC-86 — file-system-safe slug for agent manifests and skill
+ * SPEC-08 AC-8 / AC-86 — file-system-safe slug for agent manifests and skill
  * files. Lowercase; every run of characters outside `[a-z0-9]` becomes `-`;
  * leading/trailing `-` trimmed; at most 64 characters; fallback `agent`.
  */

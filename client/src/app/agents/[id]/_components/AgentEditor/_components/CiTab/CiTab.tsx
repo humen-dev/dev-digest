@@ -1,5 +1,5 @@
 /* CiTab — the agent's CI deployment: where it runs, the "Fail CI on" gate, the required-check
-   name, installations with drift, recent runs, and the Export to CI wizard entry points (SPEC-07). */
+   name, installations with drift, recent runs, and the Export to CI wizard entry points (SPEC-08). */
 "use client";
 
 import React from "react";

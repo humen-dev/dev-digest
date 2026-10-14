@@ -35,7 +35,7 @@ const EnvSchema = z.object({
   // whose `.md` files are excluded from discovery, on top of the fs adapter's
   // own defaults (dot-dirs, node_modules). Comma-separated; empty by default.
   PROJECT_DOCS_EXCLUDED_DIRS: z.string().optional(),
-  // SPEC-07: directory holding the built agent-runner bundle copied into an
+  // SPEC-08: directory holding the built agent-runner bundle copied into an
   // export as `.devdigest/runner/`. Relative paths resolve against the cwd.
   CI_RUNNER_BUNDLE_DIR: z.string().optional(),
   API_PORT: z.coerce.number().int().default(3001),
@@ -76,7 +76,7 @@ export type AppConfig = {
   /** Extra directory names excluded from project-doc discovery (D8, AC-5). Empty by default. */
   projectDocsExcludedDirs: string[];
   /**
-   * SPEC-07 — absolute path of the built agent-runner bundle (`index.js`, chunks,
+   * SPEC-08 — absolute path of the built agent-runner bundle (`index.js`, chunks,
    * `package.json`). A missing or empty directory is a precondition failure the
    * CI module reports as "runner bundle missing" (EC-4), not a boot error.
    */

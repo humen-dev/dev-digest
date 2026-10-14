@@ -15,7 +15,7 @@ import { workspaces } from './core';
 import { agents } from './agents';
 import { agentRuns } from './runs';
 
-// SPEC-07 (export to CI) — migration 0020 reshapes both tables additively:
+// SPEC-08 (export to CI) — migration 0020 reshapes both tables additively:
 // every new column is nullable or defaulted, except `ci_installations.workspace_id`,
 // which 0020 backfills from `agents` before setting NOT NULL.
 

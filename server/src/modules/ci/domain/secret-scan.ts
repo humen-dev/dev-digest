@@ -1,5 +1,5 @@
 /**
- * SPEC-07 Term "Credential-shaped string" — one pure guard used both on
+ * SPEC-08 Term "Credential-shaped string" — one pure guard used both on
  * generated export files (AC-42, NFR-15) and on ingested artifact files
  * (AC-75, UT-7). Patterns are the reference implementation's verbatim; the
  * looser generic pattern of the `security` skill is deliberately NOT used —

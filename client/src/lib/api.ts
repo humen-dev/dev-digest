@@ -67,7 +67,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   return (await res.json()) as T;
 }
 
-/** POST returning the HTTP status alongside the JSON body (201 vs 200 matters, SPEC-07 AC-34). */
+/** POST returning the HTTP status alongside the JSON body (201 vs 200 matters, SPEC-08 AC-34). */
 export async function postWithStatus<T>(path: string, body?: unknown): Promise<{ status: number; data: T }> {
   const res = await request(path, { method: "POST", body: body ? JSON.stringify(body) : undefined });
   return { status: res.status, data: (await res.json()) as T };

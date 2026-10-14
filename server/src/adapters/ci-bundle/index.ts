@@ -2,7 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 /**
- * SPEC-07 — reads the committed CI runner bundle (`agent-runner/dist`) from disk.
+ * SPEC-08 — reads the committed CI runner bundle (`agent-runner/dist`) from disk.
  * The result is structurally a `RunnerBundleSource` (declared in
  * `modules/ci/ports.ts`; adapters never import module ports). Every file in the
  * directory ships, whatever the build named its chunks.

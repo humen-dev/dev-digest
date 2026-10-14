@@ -1,9 +1,10 @@
 {
   "name": "CI Runs nav entry opens the page; the seeded workspace has no CI runs",
-  "description": "From the seeded repo's PR list, clicks the 'CI Runs' sidebar entry (GLOBAL section) and confirms the route, the page subtitle and the empty state (SPEC-07 AC-64, AC-69). The title text 'CI Runs' equals the sidebar label, so the unique subtitle is the assertion that proves the page rendered. The seeded DB has no CI runs; Refresh is deliberately not clicked. Read-only.",
+  "description": "From the seeded repo's PR list, clicks the 'CI Runs' sidebar entry (GLOBAL section) and confirms the route, the page subtitle and the empty state (SPEC-08 AC-64, AC-69). The title text 'CI Runs' equals the sidebar label, so the unique subtitle is the assertion that proves the page rendered. The seeded DB has no CI runs; Refresh is deliberately not clicked. Read-only.",
   "steps": [
     { "cmd": ["open", "{BASE}/"], "label": "load the app root" },
     { "cmd": ["wait", "--url", "/pulls"], "label": "root redirects to the seeded repo's PR list" },
+    { "cmd": ["scrollintoview", "a[href=\"/ci-runs\"]"], "label": "scroll the GLOBAL sidebar section into view (the sidebar scrolls; clicks off-viewport are lost)" },
     { "cmd": ["find", "text", "CI Runs", "click"], "label": "GLOBAL → CI Runs in the sidebar" },
     { "cmd": ["wait", "--url", "/ci-runs"], "label": "navigate to the CI Runs route — AC-64" },
     { "cmd": ["wait", "--load", "networkidle"], "label": "runs list fetch settles" },

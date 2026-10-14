@@ -3,7 +3,7 @@ import type { CiWorkflowViolation, CiWorkflowWarning } from '@devdigest/shared';
 import { RUNNER_ENTRY, BASE_DIR } from '../constants.js';
 
 /**
- * SPEC-07 AC-14 / AC-16 — static checks on the (possibly user-edited) workflow
+ * SPEC-08 AC-14 / AC-16 — static checks on the (possibly user-edited) workflow
  * text. The text is untrusted: parsed inside try/catch, never executed.
  */
 

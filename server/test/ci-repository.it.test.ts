@@ -1,5 +1,5 @@
 /**
- * SPEC-07 `DrizzleCiRepository` over a real Postgres (Testcontainers): upsert
+ * SPEC-08 `DrizzleCiRepository` over a real Postgres (Testcontainers): upsert
  * semantics (slug kept), idempotent run claims, reader filters, orphaned runs.
  * Gated on Docker like the other `*.it.test.ts` files.
  */

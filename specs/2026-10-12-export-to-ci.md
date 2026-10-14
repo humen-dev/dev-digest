@@ -1,6 +1,6 @@
 # Spec: Export to CI — review agents in GitHub Actions, CI tab, CI Runs
 
-Spec ID: SPEC-07
+Spec ID: SPEC-08
 Status: implemented
 Created: 2026-10-12
 Approved: 2026-10-12 by user

@@ -15,7 +15,7 @@ import type {
 } from '@devdigest/shared';
 
 /**
- * SPEC-07 — the CI module's ports (application ring). Plain interfaces: no ORM,
+ * SPEC-08 — the CI module's ports (application ring). Plain interfaces: no ORM,
  * no framework, no SDK types. The `Container` adapts the agents / repos modules
  * and the filesystem to these shapes; the module never imports them.
  */

@@ -1,5 +1,5 @@
 /**
- * SPEC-07 export side + reads, DB-free: the CI routes over an in-memory
+ * SPEC-08 export side + reads, DB-free: the CI routes over an in-memory
  * `CiRepository`, fake sources and `MockGitHubClient`. `auth` is mocked too
  * (server INSIGHTS 2026-09-21).
  */

@@ -137,5 +137,8 @@ export const RunSummary = z.object({
   blockers: z.number().int().nullable(),
   // Real provider-reported run cost (USD); null when unpriced or failed/cancelled.
   cost_usd: z.number().nullable(),
+  // SPEC-07 — the multi-agent run this agent run belongs to; null for single
+  // runs, legacy rows, and when that multi-agent run was deleted (FK set null).
+  multi_run_id: z.string().nullable(),
 });
 export type RunSummary = z.infer<typeof RunSummary>;

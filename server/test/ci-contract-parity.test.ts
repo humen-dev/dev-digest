@@ -19,7 +19,7 @@ function region(text: string, from: string, to: string): string {
 const ciSection = (pkg: 'server' | 'client') =>
   region(read(pkg, 'contracts/eval-ci.ts'), '// Export-to-CI + CI Runs', '// Conformance (PRD');
 
-describe('vendored CI contracts: server and client copies are identical (SPEC-07)', () => {
+describe('vendored CI contracts: server and client copies are identical (SPEC-08)', () => {
   it('eval-ci.ts Export-to-CI section', () => {
     const s = ciSection('server');
     for (const n of ['AgentManifest', 'CiExportInput', 'CiPreview', 'CiInstallation', 'CiRun', 'CiRunMeta']) {
@@ -28,7 +28,7 @@ describe('vendored CI contracts: server and client copies are identical (SPEC-07
     expect(ciSection('client')).toBe(s);
   });
 
-  it('adapters.ts carries the SPEC-07 GitHub additions in both copies', () => {
+  it('adapters.ts carries the SPEC-08 GitHub additions in both copies', () => {
     for (const pkg of ['server', 'client'] as const) {
       const a = read(pkg, 'adapters.ts');
       for (const n of [

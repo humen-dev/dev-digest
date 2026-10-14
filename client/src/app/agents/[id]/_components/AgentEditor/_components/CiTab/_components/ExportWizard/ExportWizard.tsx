@@ -23,7 +23,7 @@ export interface ExportWizardProps {
   initial?: { step: "target" | "preview"; repo?: string; triggers?: CiTrigger[]; post_as?: CiPostAs };
 }
 
-/** SPEC-07 — Target → Preview → Configure → Install. Mounted only while open, so it starts fresh each time. */
+/** SPEC-08 — Target → Preview → Configure → Install. Mounted only while open, so it starts fresh each time. */
 export function ExportWizard({ open, ...props }: ExportWizardProps) {
   return open ? <WizardDialog {...props} /> : null;
 }

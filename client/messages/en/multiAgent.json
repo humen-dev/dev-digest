@@ -1,0 +1,98 @@
+{
+  "title": "Multi-Agent Review",
+  "crumbGlobal": "Global",
+  "crumbConfigure": "Configure run",
+  "picker": {
+    "heading": "Pick agents to run",
+    "clear": "Clear",
+    "run": "Run multi-agent review ({count})",
+    "running": "Starting…",
+    "configure": "Configure agents…",
+    "noHistory": "no history",
+    "noAgents": "No enabled agents",
+    "summary": "≈ {duration} · {cost} · parallel fan-out",
+    "mergedWarning": "Already merged — review is informational"
+  },
+  "configure": {
+    "heading": "Run a Multi-Agent Review",
+    "subtitle": "Pick a pull request and choose which agents to fan out — they run in parallel and you compare their findings side by side.",
+    "stepPr": "Pull request",
+    "selectPr": "Select a pull request…",
+    "prItem": "#{number} · {title}",
+    "stepAgents": "Agents to run",
+    "selectAll": "Select all",
+    "clearAll": "Clear all",
+    "pickPrTitle": "Pick a pull request first",
+    "pickPrBody": "Choose which PR to review above, then select the agents to run on it.",
+    "noAgentsTitle": "Enable agents to run reviews",
+    "noAgentsBody": "Multi-agent review runs the pull request through the agents you pick. You have no agents enabled yet.",
+    "noAgentsCta": "Go to Agents",
+    "viewLatest": "View latest results",
+    "inFlight": "A multi-agent run is already in flight",
+    "inFlightLink": "Open it"
+  },
+  "results": {
+    "configureRun": "Configure run",
+    "selected": "{count} selected agents · parallel",
+    "meta": "{count} agents · parallel fan-out · {duration} total · {cost}",
+    "unpriced": "{cost} + {count} unpriced",
+    "cancelAll": "Cancel all",
+    "columns": "Columns",
+    "tabs": "Tabs",
+    "viewTrace": "View trace",
+    "findingsCount": "{count, plural, one {# finding} other {# findings}}",
+    "noFindings": "No findings.",
+    "scoreLegend": "Score 0–100 · higher is better",
+    "status": {
+      "running": "running",
+      "done": "done",
+      "failed": "failed",
+      "cancelled": "cancelled"
+    },
+    "statusAnnounce": "{agent}: {status}",
+    "sharedFailure": "Shared pre-work failed: {reason}",
+    "noResults": "No results",
+    "noRunTitle": "No multi-agent run yet",
+    "noRunCta": "Configure run",
+    "notFound": "This multi-agent run could not be found.",
+    "unknownAgent": "Unknown agent",
+    "chip": "+{count} agents"
+  },
+  "list": {
+    "configureRun": "Configure run",
+    "emptyTitle": "No multi-agent runs yet",
+    "emptyCta": "Configure run",
+    "errorTitle": "Couldn't load multi-agent runs",
+    "retry": "Retry",
+    "loadMore": "Load more",
+    "loadMoreError": "Couldn't load more runs",
+    "moreAgents": "+{count} more",
+    "state": {
+      "running": "running",
+      "done": "done",
+      "failed": "{count} failed"
+    },
+    "rowLabel": "#{number} {title} · {repo} · {state}",
+    "col": {
+      "pr": "Pull request",
+      "repo": "Repository",
+      "started": "Started",
+      "agents": "Agents",
+      "time": "Time",
+      "cost": "Cost",
+      "state": "State"
+    }
+  },
+  "finding": {
+    "learn": "Learn",
+    "reply": "Reply to author",
+    "comingSoon": "Coming soon"
+  },
+  "conflicts": {
+    "heading": "Where agents disagree",
+    "onlyConflicts": "Show only conflicts",
+    "didNotFlag": "did not flag",
+    "needTwo": "Comparing agents needs at least two successful runs",
+    "noConflicts": "No conflicts — the agents agree on every flagged location."
+  }
+}

@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Status | implemented (2026-10-13) |
-| Goal | A user exports a tuned review agent to a GitHub repository (PR or zip). The agent then reviews every PR inside GitHub Actions with the studio engine and can block merges. Verified CI results appear in the CI tab and on the CI Runs page (SPEC-07 G-1…G-5). |
-| Requirements source | [`specs/2026-10-12-export-to-ci.md`](../../specs/2026-10-12-export-to-ci.md) (SPEC-07, approved, amended in place 2026-10-12). Reference implementation `upstream/full-functionality` (FF), read-only copies in the session scratchpad `ff-ref/`. |
+| Goal | A user exports a tuned review agent to a GitHub repository (PR or zip). The agent then reviews every PR inside GitHub Actions with the studio engine and can block merges. Verified CI results appear in the CI tab and on the CI Runs page (SPEC-08 G-1…G-5). |
+| Requirements source | [`specs/2026-10-12-export-to-ci.md`](../../specs/2026-10-12-export-to-ci.md) (SPEC-08, approved, amended in place 2026-10-12). Reference implementation `upstream/full-functionality` (FF), read-only copies in the session scratchpad `ff-ref/`. |
 | Execution mode | multi-agent (parallel waves) — chosen by the user |
 | Packages touched | server · client · agent-runner · e2e · shared (vendored, server + client copies) · `scripts/agent-check.mjs` |
 
@@ -24,7 +24,7 @@
   - no `/ci-runs` route;
   - no nav item (`client/src/vendor/ui/nav.ts:25-42`); only `activeKeyFor` knows the route (`client/src/components/app-shell/helpers.ts:38`).
 
-**Why it is not enough.** See SPEC-07 *Problem and user*. This plan ports FF where SPEC-07 agrees and builds SPEC-07's deltas:
+**Why it is not enough.** See SPEC-08 *Problem and user*. This plan ports FF where SPEC-08 agrees and builds SPEC-08's deltas:
 - base-commit runner, bootstrap guard (AC-84/85);
 - numeric repo id check;
 - extended artifact plus sidecar;
@@ -62,7 +62,7 @@
 | 3 | Where YAML validation runs | **Accepted rec. 3 (b).** One server validator. Preview returns violations and warnings; the client calls it with a ~500 ms debounce. No new client dependency |
 | 4 | Agent update verb | Spec AC-53 now says `PUT /agents/:id`. The client uses the existing `useUpdateAgent` (`client/src/lib/hooks/agents.ts:61`) |
 | 5 | FF writes `agent_runs` from `ci/repository.ts`, which breaks onion rule 8 | Add port `CiAgentRunWriter`, implemented in `container.ts` over a new function in `reviews/repository/run.repo.ts` (the table owner, `:117-185`) |
-| 6 | FF migration adds NOT NULL columns without defaults | New `0020_ci_export.sql`. Columns are nullable or defaulted. `ci_installations.workspace_id` is backfilled from `agents`, then set NOT NULL |
+| 6 | FF migration adds NOT NULL columns without defaults | New `0021_ci_export.sql`. Columns are nullable or defaulted. `ci_installations.workspace_id` is backfilled from `agents`, then set NOT NULL |
 | 7 | `WorkflowRun` lacks repo id, path, event and attempt; there is no repo / default-branch lookup | Extend `GitHubClient` in Wave 0 (§3.2) |
 | 8 | Runner order must become post → artifact; key check must be explicit | U3 |
 | 9 | `agent-check.mjs` does not know `agent-runner` (`scripts/agent-check.mjs:28`) | **Accepted rec. 1:** Wave 0 adds it |
@@ -230,7 +230,7 @@ listRepoSecretNames(repo: RepoRef): Promise<string[] | null>;                 //
 ```
 Errors thrown by the adapter keep a numeric `status` property (Octokit `RequestError`). Services classify them through `ci/domain/github-errors.ts` and never import an adapter.
 
-### 3.3 Database (`server/src/db/schema/ci.ts`, migration `0020_ci_export.sql`)
+### 3.3 Database (`server/src/db/schema/ci.ts`, migration `0021_ci_export.sql`)
 **`ci_installations`** adds:
 - `workspace_id uuid`, FK workspaces cascade. Backfilled with `UPDATE … FROM agents`, then `SET NOT NULL`.
 - Nullable columns:
@@ -470,7 +470,7 @@ Groups and keys, with the exact spec strings where the spec gives them:
    - `REQUIRED_CHECK_NAME`.
 
 **Acceptance criteria**
-- [ ] Manifest YAML parses with `AgentManifest`. Name, model, system prompt, strategy, `ci_fail_on` and ordered slugs equal the input; provider is `openrouter` — SPEC-07 AC-9
+- [ ] Manifest YAML parses with `AgentManifest`. Name, model, system prompt, strategy, `ci_fail_on` and ordered slugs equal the input; provider is `openrouter` — SPEC-08 AC-9
 - [ ] File set paths equal manifest + one skill file per exported skill + memory + workflow + runner files — AC-8. A given `manifestSlug` that differs from `agentSlug(name)` is used verbatim — AC-86 (domain). Disabled + injected skills are absent, with 2 warnings — AC-10. No skill → empty `skills` list and no skill files — EC-10
 - [ ] Memory renders one `{kind,content}` JSON line per row (only those keys), or an empty string — AC-11
 - [ ] Workflow structure:
@@ -528,7 +528,7 @@ Groups and keys, with the exact spec strings where the spec gives them:
 5. `installationState`: merged → active; closed → pr_closed; open → pr_open, unless an accepted run was ingested (then active).
 
 **Acceptance criteria**
-- [ ] One fixture per failed check gives the named reason — SPEC-07 AC-75, AC-77 (reasons), UT-6, EC-19
+- [ ] One fixture per failed check gives the named reason — SPEC-08 AC-75, AC-77 (reasons), UT-6, EC-19
 - [ ] Oversize, extra-entry and bomb fixtures → `failed` reasons — NFR-6. A zip over 1 MB is never downloaded (decision `tooLarge`) — UT-4. A `../x` entry → `badEntry` — UT-5
 - [ ] A secret-shaped artifact → `secret`; the returned object contains no matched text — UT-7
 - [ ] Not completed → `ignore` — EC-15. A sidecar without a result file → `noResult` — EC-16. Expired → `expired` — EC-17. `post_failed` → failed with counts and verdict kept — EC-18
@@ -559,7 +559,7 @@ Groups and keys, with the exact spec strings where the spec gives them:
 3. Leave the `reviewPullRequest`, grounding and deterministic-gate calls unchanged.
 
 **Acceptance criteria**
-- [ ] With a different head manifest in cwd, the base-dir manifest is used — SPEC-07 AC-43, UT-9
+- [ ] With a different head manifest in cwd, the base-dir manifest is used — SPEC-08 AC-43, UT-9
 - [ ] Stub LLM returns an ungrounded CRITICAL → 0 findings, verdict approve, exit 0 — AC-44, UT-14
 - [ ] Table over 4 policies × severities: exit is non-zero iff the gate triggers — AC-45. A repeated run gives the same verdict and exit — NFR-14
 - [ ] github_review → one review POST, with `approve` sent as COMMENT — AC-46. pr_comment → one comment POST — AC-47. none → only the diff GET — AC-48
@@ -608,7 +608,7 @@ Groups and keys, with the exact spec strings where the spec gives them:
    - the zip option downloads `devdigest-ci.zip` via a Blob URL.
 
 **Acceptance criteria**
-- [ ] Opens with the 4 steps in order, Target active and marked `aria-current="step"` — SPEC-07 AC-1, NFR-13
+- [ ] Opens with the 4 steps in order, Target active and marked `aria-current="step"` — SPEC-08 AC-1, NFR-13
 - [ ] Cards equal the mocked targets (1 and 2 targets) — AC-2. Regex table → inline error + Continue disabled — AC-4
 - [ ] Mocked 422 provider → message, Config link, Continue disabled — AC-6
 - [ ] Workflow textarea is editable; the manifest is not — AC-12. Runner row shows size + 64-hex hash and no content — AC-13
@@ -649,7 +649,7 @@ Groups and keys, with the exact spec strings where the spec gives them:
 6. Empty state: "No CI runs yet" with a "Set up CI for an agent" link to `/agents`. Error handling uses the `!data` guard.
 
 **Acceptance criteria**
-- [ ] Route renders title and subtitle — SPEC-07 AC-64 (unit)
+- [ ] Route renders title and subtitle — SPEC-08 AC-64 (unit)
 - [ ] A fixture row shows every column — AC-65. Job anchor attributes and href — AC-66. Trace click opens the drawer with that run id — AC-67
 - [ ] Each filter narrows the fixture rows; the default range is the last 7 days — AC-68. Empty → empty state + link — AC-69
 - [ ] Fake timers: refresh `{force:false}` at 30 s; none when the tab is hidden — AC-70. Click → `{force:true}`, label shown while pending — AC-71
@@ -699,7 +699,7 @@ Groups and keys, with the exact spec strings where the spec gives them:
 8. `ci-bundle-scan.test.ts`: load the committed `agent-runner/dist` through `FsRunnerBundle` and scan every file with the Terms pattern list.
 
 **Acceptance criteria**
-- [ ] GET `/ci/targets` body equals one `gha` entry — SPEC-07 AC-3
+- [ ] GET `/ci/targets` body equals one `gha` entry — SPEC-08 AC-3
 - [ ] `openai` agent → 422 with the provider reason; `openrouter` → 200 — AC-5
 - [ ] Install A, then export B to the same repo → `refused_reason` names A — AC-7
 - [ ] Preview path set equals the expected set — AC-8. Disabled + injected skills absent, 2 warnings — AC-10. Repo with 2 memory entries → 2 lines; unknown repo → empty — AC-11
@@ -758,7 +758,7 @@ Groups and keys, with the exact spec strings where the spec gives them:
 5. Empty state "Not in CI yet" with Add to CI. Recent runs: 10 rows + a link to `/ci-runs?agent_id=<id>`.
 
 **Acceptance criteria**
-- [ ] Click Add to CI → wizard dialog at Target — SPEC-07 AC-1 (CI tab side)
+- [ ] Click Add to CI → wizard dialog at Target — SPEC-08 AC-1 (CI tab side)
 - [ ] Agent `warning` → Warning + selected — AC-52. Selecting → `PUT /agents/:id` body `{ci_fail_on}` — AC-53. Arrow keys + accessible names — NFR-10
 - [ ] Differing values → drift marker; equal values → none — AC-54. Copy → clipboard receives the name — AC-55
 - [ ] Empty list → empty state — AC-56. Fixture installations → every element — AC-57. 2 active + 1 pr_open → "Active in 2 repos" — AC-59
@@ -794,7 +794,7 @@ Groups and keys, with the exact spec strings where the spec gives them:
 4. Logging: one structured line with the counts, one line per failed run (`run_id`, reason); no secret values.
 
 **Acceptance criteria**
-- [ ] Stub with 2 completed runs → 2 downloads — SPEC-07 AC-73
+- [ ] Stub with 2 completed runs → 2 downloads — SPEC-08 AC-73
 - [ ] Accepted run → one `ci_runs` row and one `agent_runs` row (`source='ci'`, `pr_id` NULL, `done`, cost, duration, findings) — AC-76
 - [ ] Per-check fixtures, plus a `failure` run with no artifact → `failed` rows with the reason and no counts — AC-77, AC-75 (end to end), UT-6, UT-7, EC-16, EC-17, EC-19
 - [ ] Three runs with no artifact (success, skipped, cancelled) → 0 rows in `ci_runs` and in `agent_runs` — AC-85, EC-25
@@ -821,7 +821,7 @@ Groups and keys, with the exact spec strings where the spec gives them:
 1. Boot, click the sidebar "CI Runs", wait for URL `/ci-runs`, then assert the title, the subtitle and "No CI runs yet" (the seeded DB has no CI runs). Do not click Refresh: the refresh route lands in the same wave.
 
 **Acceptance criteria**
-- [ ] Sidebar click → `/ci-runs` with title "CI Runs" and the subtitle — SPEC-07 AC-64 (e2e). The empty state is visible — AC-69
+- [ ] Sidebar click → `/ci-runs` with title "CI Runs" and the subtitle — SPEC-08 AC-64 (e2e). The empty state is visible — AC-69
 
 ## 5. Waves (execution order)
 | Wave | Units | Runs | Why this order |
@@ -838,7 +838,7 @@ Groups and keys, with the exact spec strings where the spec gives them:
 3. Vendored contracts: §3.1 into both `eval-ci.ts` copies and §3.2 into both `adapters.ts` copies, identical.
 4. Schema and migration:
    - `server/src/db/schema/ci.ts` per §3.3, including `manifest_slug`;
-   - `pnpm db:generate --name ci_export` → `0020_ci_export.sql` + meta;
+   - `pnpm db:generate --name ci_export` → `0021_ci_export.sql` + meta;
    - hand-add the backfill `UPDATE`s and `SET NOT NULL` to the new file before it is applied;
    - run `pnpm db:migrate` on a throwaway DB (`server/INSIGHTS.md:12`).
 5. `server/src/platform/config.ts`: `CI_RUNNER_BUNDLE_DIR` → `ciRunnerBundleDir`, defaulting to the sibling `agent-runner/dist` (FF `config.ts:81-107`).
@@ -886,7 +886,7 @@ Serialized files each have one owner: `modules/index.ts` (U6); `container.ts` (U
 1. `node scripts/agent-check.mjs server --full --it`, run on its own (`server/INSIGHTS.md:69`); then `cd server && pnpm exec depcruise src --config .dependency-cruiser.cjs --ignore-known`.
 2. `node scripts/agent-check.mjs client --full` · `node scripts/agent-check.mjs agent-runner --full` · `cd agent-runner && npm run build`, and confirm the committed `dist` is unchanged.
 3. `./scripts/e2e.sh` (flows 01–18).
-4. `plan-verifier scope=all` → `/pr-self-review`. Accept DET-003 for the vendored edits with the reason "SPEC-07 CI contracts, identical in both copies, parity test".
+4. `plan-verifier scope=all` → `/pr-self-review`. Accept DET-003 for the vendored edits with the reason "SPEC-08 CI contracts, identical in both copies, parity test".
 
 ## 8. Risks
 - **Migration.** Existing rows with a duplicate `(workspace_id, repo)` would break the unique index. There are no writers today, so this is unlikely. Do not silently add a defensive `DELETE` of duplicates: if the throwaway migrate fails, stop and ask. Never edit `0000`–`0019`.
@@ -903,7 +903,7 @@ Serialized files each have one owner: `modules/index.ts` (U6); `container.ts` (U
 - **Bundle size.** The 1.6 MB `index.js` goes inline in a Git Data tree under the `commitFiles` timeout (`octokit.ts:264`). Covered by NFR-3 with a 5 MB stub.
 
 ## 9. Out of scope
-- SPEC-07 Non-goals: CircleCI / Jenkins / CLI generators, fork PRs, push ingest, a marketplace action, several agents per repo, memory in prompts, the Stats tab, removing installations.
+- SPEC-08 Non-goals: CircleCI / Jenkins / CLI generators, fork PRs, push ingest, a marketplace action, several agents per repo, memory in prompts, the Stats tab, removing installations.
 - Promoting `RunTraceDrawer` (Decision 7).
 - The republish endpoint (removed from the spec).
 

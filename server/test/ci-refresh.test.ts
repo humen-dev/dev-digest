@@ -1,5 +1,5 @@
 /**
- * SPEC-07 refresh/ingest orchestration against in-memory ports (no DB, no network):
+ * SPEC-08 refresh/ingest orchestration against in-memory ports (no DB, no network):
  * debounce, degraded mode, ignored runs, idempotence, states, links, timing.
  */
 import { describe, expect, it } from 'vitest';

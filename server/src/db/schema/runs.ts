@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, jsonb, timestamp, doublePrecision } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, integer, jsonb, timestamp, doublePrecision, index, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { workspaces } from './core';
 import { agents } from './agents';
 import { pullRequests } from './pulls';
@@ -30,7 +30,13 @@ export const agentRuns = pgTable('agent_runs', {
   score: integer('score'),
   /** Findings that tripped the agent's gate (severity ≥ ciFailOn). */
   blockers: integer('blockers'),
-});
+  /** SPEC-07 — the multi-agent run this agent run belongs to; null for single runs. */
+  multiRunId: uuid('multi_run_id').references((): AnyPgColumn => multiAgentRuns.id, { onDelete: 'set null' }),
+  /** SPEC-07 — set on every terminal transition (done / failed / cancelled / reaped). */
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+}, (t) => ({
+  multiRunIdx: index('agent_runs_multi_run_id_idx').on(t.multiRunId),
+}));
 
 /** Whole trace of one run as a SINGLE jsonb document. */
 export const runTraces = pgTable('run_traces', {
@@ -49,4 +55,7 @@ export const multiAgentRuns = pgTable('multi_agent_runs', {
     .notNull()
     .references(() => pullRequests.id, { onDelete: 'cascade' }),
   ranAt: timestamp('ran_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => ({
+  wsRanAtIdx: index('multi_agent_runs_ws_ran_at_idx').on(t.workspaceId, t.ranAt.desc()),
+  prRanAtIdx: index('multi_agent_runs_pr_ran_at_idx').on(t.prId, t.ranAt.desc()),
+}));

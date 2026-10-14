@@ -1,5 +1,5 @@
 /**
- * SPEC-07 (export to CI) — fixed names, paths and limits shared by the CI
+ * SPEC-08 (export to CI) — fixed names, paths and limits shared by the CI
  * generation domain, the ingest domain and the service. Plain values only.
  */
 

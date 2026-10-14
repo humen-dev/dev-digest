@@ -1,5 +1,5 @@
 /**
- * SPEC-07 AC-11 — repo-scoped memory rows → `.devdigest/memory.jsonl`. One
+ * SPEC-08 AC-11 — repo-scoped memory rows → `.devdigest/memory.jsonl`. One
  * `{kind, content}` JSON object per line and nothing else (no embeddings, no
  * sources, no confidence). Zero rows → empty string.
  */

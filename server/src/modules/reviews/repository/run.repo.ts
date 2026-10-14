@@ -65,6 +65,7 @@ export async function listRunsForPull(
     score: run.score,
     blockers: run.blockers,
     cost_usd: run.costUsd,
+    multi_run_id: run.multiRunId ?? null,
   }));
 }
 
@@ -94,7 +95,7 @@ export async function deleteAgentRun(
 export async function cancelRunIfRunning(db: Db, runId: string): Promise<boolean> {
   const rows = await db
     .update(t.agentRuns)
-    .set({ status: 'cancelled' })
+    .set({ status: 'cancelled', finishedAt: new Date() })
     .where(and(eq(t.agentRuns.id, runId), eq(t.agentRuns.status, 'running')))
     .returning({ id: t.agentRuns.id });
   return rows.length > 0;
@@ -105,7 +106,7 @@ export async function cancelRunIfRunning(db: Db, runId: string): Promise<boolean
 export async function reapStaleRunningRuns(db: Db): Promise<number> {
   const rows = await db
     .update(t.agentRuns)
-    .set({ status: 'failed' })
+    .set({ status: 'failed', finishedAt: new Date() })
     .where(eq(t.agentRuns.status, 'running'))
     .returning({ id: t.agentRuns.id });
   return rows.length;
@@ -172,6 +173,7 @@ export async function completeAgentRun(
       blockers: values.blockers ?? null,
       costUsd: values.costUsd ?? null,
       error: values.error ?? null,
+      finishedAt: new Date(),
     })
     .where(eq(t.agentRuns.id, runId));
 }
@@ -185,7 +187,7 @@ export async function saveRunTrace(db: Db, runId: string, trace: RunTrace): Prom
 }
 
 /**
- * SPEC-07 — mirror an ingested CI run into `agent_runs` + `run_traces` so the
+ * SPEC-08 — mirror an ingested CI run into `agent_runs` + `run_traces` so the
  * existing cost / latency aggregations see it. Born terminal (`done`, `source:'ci'`,
  * `pr_id` NULL), so the stale-run reaper never touches it. Both inserts share one
  * transaction; nothing but database work runs inside it.

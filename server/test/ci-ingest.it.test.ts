@@ -1,5 +1,5 @@
 /**
- * SPEC-07 ingest end to end over a real Postgres (Testcontainers): `POST /ci/refresh`
+ * SPEC-08 ingest end to end over a real Postgres (Testcontainers): `POST /ci/refresh`
  * with a `MockGitHubClient`, real repositories, real `agent_runs` mirror.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

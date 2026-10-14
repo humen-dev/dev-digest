@@ -1,5 +1,5 @@
 /**
- * SPEC-07 NFR-2 / NFR-3 over a real Postgres (Testcontainers): the preview
+ * SPEC-08 NFR-2 / NFR-3 over a real Postgres (Testcontainers): the preview
  * answers within 3 s with 10 skills and 200 memory entries; the export within
  * 10 s with a 5 MB runner bundle and 100 ms of GitHub latency per call.
  */

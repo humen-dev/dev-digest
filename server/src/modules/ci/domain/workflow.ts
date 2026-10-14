@@ -14,7 +14,7 @@ import {
 } from '../constants.js';
 
 /**
- * SPEC-07 §3.5 — the generated GitHub Actions workflow. Pure.
+ * SPEC-08 §3.5 — the generated GitHub Actions workflow. Pure.
  *
  * Invariant: no `${{ … }}` expression is ever placed inside a `run:` value
  * (AC-26). The only `run:` bodies are fixed constants; every variable value

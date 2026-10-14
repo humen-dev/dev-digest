@@ -1,5 +1,5 @@
 /**
- * SPEC-07 NFR-15 — the committed runner bundle ships into customer repositories,
+ * SPEC-08 NFR-15 — the committed runner bundle ships into customer repositories,
  * so no file of it may match the credential-shaped patterns of the spec Term.
  */
 import { describe, expect, it } from 'vitest';

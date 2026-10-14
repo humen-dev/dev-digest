@@ -69,7 +69,7 @@ vi.mock("@/components/app-shell", () => ({ AppShell: ({ children }: { children: 
 vi.mock("@/components/repo-not-found", () => ({ RepoNotFound: () => null }));
 vi.mock("./_components/PrDetailHeader", () => ({ PrDetailHeader: () => null }));
 vi.mock("./_components/FindingsTab", () => ({ FindingsTab: () => null }));
-vi.mock("./_components/RunTraceDrawer", () => ({ default: () => null }));
+vi.mock("@/components/review/RunTraceDrawer", () => ({ default: () => null }));
 vi.mock("./_components/BlastRadius", () => ({ BlastRadius: () => null }));
 vi.mock("./_components/DiffTab", () => ({
   DiffTab: ({ targetFile, targetLine }: { targetFile?: string | null; targetLine?: string | null }) => (

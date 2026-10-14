@@ -18,7 +18,7 @@ const FIXTURES: Record<string, string> = {
   assigned: fake('api_', 'key', ': "', 'Q'.repeat(30), '"'),
 };
 
-describe('secret scan — credential-shaped patterns (SPEC-07 Term, AC-42)', () => {
+describe('secret scan — credential-shaped patterns (SPEC-08 Term, AC-42)', () => {
   for (const [name, value] of Object.entries(FIXTURES)) {
     it(`flags ${name}`, () => {
       expect(containsSecretShapedValue(`prefix ${value} suffix`)).toBe(true);

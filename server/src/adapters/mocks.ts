@@ -131,7 +131,7 @@ export interface MockGitHubOptions {
   login?: string;
   /** Existing inline review comments returned by listReviewComments. */
   comments?: PrReviewComment[];
-  // ---- SPEC-07 (export to CI) ----
+  // ---- SPEC-08 (export to CI) ----
   /** getRepository result; an Error value is thrown instead (e.g. a 404/403 stub). */
   repoInfo?: RepoInfo | Error;
   /** getPullRequestState by PR number; default 'open'. */
@@ -271,7 +271,7 @@ export class MockGitHubClient implements GitHubClient {
     return this.opts.login ?? 'mock-user';
   }
 
-  // ---- SPEC-07 (export to CI) ----
+  // ---- SPEC-08 (export to CI) ----
 
   async getRepository(repo: RepoRef): Promise<RepoInfo> {
     const info = this.opts.repoInfo;

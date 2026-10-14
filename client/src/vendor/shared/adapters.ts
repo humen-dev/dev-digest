@@ -126,7 +126,7 @@ export interface OpenPrPayload {
   body: string;
 }
 
-/** SPEC-07 — repository metadata (numeric id + default branch). */
+/** SPEC-08 — repository metadata (numeric id + default branch). */
 export interface RepoInfo {
   id: number;
   full_name: string;
@@ -134,7 +134,7 @@ export interface RepoInfo {
   html_url: string;
 }
 
-/** SPEC-07 — a GitHub Actions workflow run (only the fields CI ingest relies on). */
+/** SPEC-08 — a GitHub Actions workflow run (only the fields CI ingest relies on). */
 export interface WorkflowRun {
   id: number;
   run_attempt: number;
@@ -153,7 +153,7 @@ export interface WorkflowRun {
   pull_requests: number[];
 }
 
-/** SPEC-07 — one artifact of a workflow run. */
+/** SPEC-08 — one artifact of a workflow run. */
 export interface RunArtifact {
   id: number;
   name: string;
@@ -174,17 +174,17 @@ export interface GitHubClient {
     input: CreateReviewCommentInput,
   ): Promise<PrReviewComment>;
   openPullRequest(repo: RepoRef, payload: OpenPrPayload): Promise<{ url: string }>;
-  /** SPEC-07 — numeric repository id, default branch, html url. */
+  /** SPEC-08 — numeric repository id, default branch, html url. */
   getRepository(repo: RepoRef): Promise<RepoInfo>;
-  /** SPEC-07 — lifecycle state of a PR (merged is distinct from closed). */
+  /** SPEC-08 — lifecycle state of a PR (merged is distinct from closed). */
   getPullRequestState(repo: RepoRef, n: number): Promise<'open' | 'merged' | 'closed'>;
-  /** SPEC-07 — completed `pull_request` runs of one workflow file, newest first. */
+  /** SPEC-08 — completed `pull_request` runs of one workflow file, newest first. */
   listWorkflowRuns(repo: RepoRef, opts: { workflowPath: string; perPage?: number }): Promise<WorkflowRun[]>;
-  /** SPEC-07 — artifacts of one workflow run. */
+  /** SPEC-08 — artifacts of one workflow run. */
   listRunArtifacts(repo: RepoRef, runId: number): Promise<RunArtifact[]>;
-  /** SPEC-07 — artifact zip bytes; throws before downloading when size_in_bytes > maxBytes. */
+  /** SPEC-08 — artifact zip bytes; throws before downloading when size_in_bytes > maxBytes. */
   downloadArtifact(repo: RepoRef, artifactId: number, maxBytes: number): Promise<Uint8Array>;
-  /** SPEC-07 — Actions secret NAMES (never values); null when the credential gets 403. */
+  /** SPEC-08 — Actions secret NAMES (never values); null when the credential gets 403. */
   listRepoSecretNames(repo: RepoRef): Promise<string[] | null>;
   getIssue(repo: RepoRef, n: number): Promise<IssueMeta>;
   /** GET /user — for "posting as @user". */

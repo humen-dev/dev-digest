@@ -2,7 +2,7 @@ import { stringify as toYaml } from 'yaml';
 import { AgentManifest, type CiFailOn, type ReviewStrategy } from '@devdigest/shared';
 
 /**
- * SPEC-07 AC-9 — agent config → validated `AgentManifest` → YAML. Pure. The
+ * SPEC-08 AC-9 — agent config → validated `AgentManifest` → YAML. Pure. The
  * manifest is validated against the same contract the runner re-validates, so
  * a manifest that cannot be parsed on the other end is never produced.
  */

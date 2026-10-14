@@ -8,7 +8,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import type { Severity } from "@devdigest/shared";
-import { SEV_COLOR, SEV_COLOR_FALLBACK } from "../FindingCard/constants";
+import { SEV_COLOR, SEV_COLOR_FALLBACK } from "@/components/review/FindingCard";
 import { SEVERITY_LEVELS, type SeverityCounts } from "../FindingsTab/helpers";
 import { s, chipStyle } from "./styles";
 

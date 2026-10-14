@@ -1,7 +1,7 @@
 import type { CiPostAs, CiTrigger } from '@devdigest/shared';
 import { OPENROUTER_SECRET_NAME, REQUIRED_CHECK_NAME } from '../constants.js';
 
-/** SPEC-07 AC-37 — description of the export pull request. Pure. */
+/** SPEC-08 AC-37 — description of the export pull request. Pure. */
 
 export interface ExportPrBodyInput {
   repo: string;

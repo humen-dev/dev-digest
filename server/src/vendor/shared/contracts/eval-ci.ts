@@ -288,7 +288,7 @@ export const ComposeReviewPreview = z.object({
 export type ComposeReviewPreview = z.infer<typeof ComposeReviewPreview>;
 
 // ===========================================================================
-// Export-to-CI + CI Runs (SPEC-07)
+// Export-to-CI + CI Runs (SPEC-08)
 // ===========================================================================
 // This section is byte-identical in the server and client vendored copies
 // (pinned by server/test/ci-contract-parity.test.ts).

@@ -1,5 +1,5 @@
 /**
- * SPEC-07 export flow end to end over a real Postgres (Testcontainers): the real
+ * SPEC-08 export flow end to end over a real Postgres (Testcontainers): the real
  * agents / repos adapters and the committed runner bundle, with a
  * `MockGitHubClient`. Gated on Docker like the other `*.it.test.ts` files.
  */
