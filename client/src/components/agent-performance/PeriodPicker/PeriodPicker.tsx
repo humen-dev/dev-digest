@@ -25,6 +25,16 @@ export function PeriodPicker({
   const [from, setFrom] = useState(state.from ?? "");
   const [to, setTo] = useState(state.to ?? "");
   const [error, setError] = useState<CustomRangeError | null>(null);
+  // The URL owns the period: when it changes under us (back/forward, a preset,
+  // an applied range), re-seed the draft inputs from it during render.
+  const periodKey = `${state.range}|${state.from ?? ""}|${state.to ?? ""}`;
+  const [syncedKey, setSyncedKey] = useState(periodKey);
+  if (syncedKey !== periodKey) {
+    setSyncedKey(periodKey);
+    setFrom(state.from ?? "");
+    setTo(state.to ?? "");
+    setError(null);
+  }
   const showCustom = open || state.range === "custom";
   const today = toLocalDateString(new Date());
 

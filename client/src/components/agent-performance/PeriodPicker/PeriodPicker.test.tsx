@@ -34,4 +34,32 @@ describe("PeriodPicker — SPEC-09 AC-4, AC-9", () => {
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
     expect(screen.queryByRole("alert")).toBeNull();
   });
+
+  it("re-seeds the custom date inputs when the URL period changes (back/forward, preset)", () => {
+    const props = { onPreset: vi.fn(), onApplyCustom: vi.fn().mockReturnValue(null) };
+    const { rerender } = renderPicker(
+      <PeriodPicker state={{ range: "custom", from: "2026-10-01", to: "2026-10-05" }} {...props} />,
+    );
+    expect(screen.getByLabelText("From")).toHaveValue("2026-10-01");
+
+    // Browser back to another custom range: inputs follow the URL, not the stale draft.
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-09-20" } });
+    rerender(
+      <NextIntlClientProvider locale="en" messages={{ agentPerformance: messages }}>
+        <PeriodPicker state={{ range: "custom", from: "2026-09-01", to: "2026-09-10" }} {...props} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByLabelText("From")).toHaveValue("2026-09-01");
+    expect(screen.getByLabelText("To")).toHaveValue("2026-09-10");
+
+    // Switch to a preset, then reopen Custom: no dates from the earlier range linger.
+    rerender(
+      <NextIntlClientProvider locale="en" messages={{ agentPerformance: messages }}>
+        <PeriodPicker state={{ range: "30d" }} {...props} />
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Custom range" }));
+    expect(screen.getByLabelText("From")).toHaveValue("");
+    expect(screen.getByLabelText("To")).toHaveValue("");
+  });
 });
