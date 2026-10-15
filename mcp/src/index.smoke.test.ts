@@ -17,8 +17,8 @@ const REPO_ROOT = path.resolve(HERE, '..', '..');
 const LAUNCHER = path.join(REPO_ROOT, 'mcp', 'bin', 'devdigest-mcp.mjs');
 
 /** A "dead" API: a port we keep bound for the whole suite (so no other process
- *  can take it) that destroys every connection at once — the adapter sees a
- *  reset, never a response. It also counts connections, so a test can prove a
+ *  can take it) that resets every connection as soon as the request arrives — the
+ *  adapter sees a reset, never a response. It also counts connections, so a test can prove a
  *  tool made no API call at all. */
 interface DeadApi { url: string; connections(): number; close(): Promise<void> }
 
@@ -26,7 +26,10 @@ async function startDeadApi(): Promise<DeadApi> {
   let count = 0;
   const server = net.createServer((socket) => {
     count += 1;
-    socket.destroy();
+    // Reset (RST) once the request bytes arrive. On Windows, closing a fresh socket
+    // straight from 'connection' — destroy() or even resetAndDestroy() — can leave a
+    // cold process's first fetch hanging until its 15 s abort timeout.
+    socket.once('data', () => socket.resetAndDestroy());
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address() as net.AddressInfo;
