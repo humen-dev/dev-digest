@@ -1,7 +1,7 @@
 # Spec: Agent Performance dashboard and per-agent Stats KPIs
 
 Spec ID: SPEC-09
-Status: approved
+Status: implemented
 Created: 2026-10-15
 Approved: 2026-10-15 by user
 Modules: client · server
@@ -425,6 +425,7 @@ none — Q-1 and Q-2 resolved at approval (2026-10-15, defaults kept):
 |---|---|---|
 | 2026-10-15 | created (draft) from the user's answers to Spec review rounds 1 and 1b (all options a) | spec-creator |
 | 2026-10-15 | approved by user ("approve SPEC-09"); Q-1 and Q-2 resolved with their defaults (EC-11, AC-26) | spec-creator |
+| 2026-10-15 | implemented on branch `feat/agent-performance` (commits e0c72e0..9b27e0e, plan `docs/plans/agent-performance.md`); final verification 268/271 MET, 3 NOT VERIFIABLE (build — passed separately, manual demo, orchestrator steps). Follow-ups from plan §9 (text unchanged, for a superseding spec): the AC-61 reference to SPEC-07 EC-12 is wrong; the AC-57 / AC-74 example should read "−$1.200"; implemented defaults — custom-range KPI label formatted with Intl, "Unknown agent" row returned only when it has ≥ 1 counted run, custom `from` / `to` carried in the URL as `YYYY-MM-DD` | spec-creator |
 
 ## Self-check
 - [x] every AC / EC / NFR / UT rule: one EARS pattern, one `shall`, observable response, no vague words
