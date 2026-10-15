@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Agent, AgentStats } from "@devdigest/shared";
 import perfMessages from "../../../../../../../../messages/en/agentPerformance.json";
 
@@ -8,17 +9,24 @@ let search = "";
 const hookResult = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 const useAgentStatsMock = vi.hoisted(() => vi.fn());
 
+const useReal = vi.hoisted(() => ({ on: false }));
+const replaceMock = vi.hoisted(() => vi.fn());
+
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(search),
   usePathname: () => "/agents/ag1",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: replaceMock }),
 }));
-vi.mock("@/lib/hooks/agent-performance", () => ({
-  useAgentStats: (...args: unknown[]) => {
-    useAgentStatsMock(...args);
-    return hookResult.current;
-  },
-}));
+vi.mock("@/lib/hooks/agent-performance", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/hooks/agent-performance")>("@/lib/hooks/agent-performance");
+  return {
+    useAgentStats: (...args: Parameters<typeof actual.useAgentStats>) => {
+      if (useReal.on) return actual.useAgentStats(...args);
+      useAgentStatsMock(...args);
+      return hookResult.current;
+    },
+  };
+});
 
 import { StatsTab } from "./StatsTab";
 
@@ -52,9 +60,63 @@ function renderTab() {
 
 beforeEach(() => {
   search = "";
+  useReal.on = false;
   useAgentStatsMock.mockClear();
+  replaceMock.mockReset();
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+describe("StatsTab network", () => {
+  it("sends only GET requests to /agents/<id>/stats through load, preset change and Retry", async () => {
+    useReal.on = true;
+    const calls: { method: string; url: string }[] = [];
+    let failNext = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        calls.push({ method: init?.method ?? "GET", url: String(url) });
+        if (failNext) {
+          failNext = false;
+          throw new Error("down");
+        }
+        return new Response(JSON.stringify(STATS), { status: 200, headers: { "content-type": "application/json" } });
+      }),
+    );
+    replaceMock.mockImplementation((href: string) => {
+      search = href.split("?")[1] ?? "";
+    });
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const ui = (
+      <QueryClientProvider client={qc}>
+        <NextIntlClientProvider locale="en" messages={{ agentPerformance: perfMessages }}>
+          <StatsTab agent={AGENT} />
+        </NextIntlClientProvider>
+      </QueryClientProvider>
+    );
+    const { rerender } = render(ui);
+    expect(await screen.findByText("6.2s")).toBeInTheDocument();
+    const afterLoad = calls.length;
+
+    failNext = true;
+    fireEvent.click(screen.getByRole("button", { name: "1 day" }));
+    rerender(ui);
+    expect(await screen.findByText("Could not load agent stats.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("6.2s")).toBeInTheDocument();
+
+    expect(afterLoad).toBe(1);
+    expect(calls.length).toBeGreaterThanOrEqual(3);
+    for (const c of calls) {
+      expect(c.method).toBe("GET");
+      expect(c.url).toMatch(/\/agents\/ag1\/stats\?/);
+    }
+  });
+});
 
 describe("StatsTab", () => {
   it("shows the four KPIs with honest-cost notes and a small-sample badge", () => {
