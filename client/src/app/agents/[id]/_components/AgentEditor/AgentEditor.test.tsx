@@ -5,6 +5,7 @@ import type { Agent } from "@devdigest/shared";
 import messages from "../../../../../../messages/en/agents.json";
 import evalMessages from "../../../../../../messages/en/eval.json";
 import commonMessages from "../../../../../../messages/en/common.json";
+import perfMessages from "../../../../../../messages/en/agentPerformance.json";
 import { ToastProvider } from "../../../../../lib/toast";
 
 // Mock the data hooks so the editor renders without a network/query client.
@@ -14,8 +15,12 @@ vi.mock("../../../../../lib/hooks/agents", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => ({ get: () => null }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/agents/ag1",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
+vi.mock("@/lib/hooks/agent-performance", () => ({
+  useAgentStats: () => ({ data: undefined, isPending: true, refetch: vi.fn() }),
 }));
 vi.mock("@/lib/hooks/eval", () => ({
   useEvalAgentDetail: () => ({ data: { runs: [], latest: null, previous: null, running: null }, isError: false, refetch: vi.fn() }),
@@ -43,7 +48,7 @@ const AGENT: Agent = {
 
 function renderWithIntl(ui: React.ReactElement) {
   return render(
-    <NextIntlClientProvider locale="en" messages={{ agents: messages, eval: evalMessages, common: commonMessages }}>
+    <NextIntlClientProvider locale="en" messages={{ agents: messages, eval: evalMessages, common: commonMessages, agentPerformance: perfMessages }}>
       <ToastProvider>{ui}</ToastProvider>
     </NextIntlClientProvider>,
   );
@@ -61,6 +66,18 @@ describe("A2 Agent Editor (smoke)", () => {
     renderWithIntl(<AgentEditor agent={AGENT} tab="evals" onTab={() => {}} />);
     expect(screen.getByText("Evals")).toBeInTheDocument();
     expect(screen.getByText("No eval cases yet")).toBeInTheDocument();
+    expect(screen.queryByText("Save agent")).not.toBeInTheDocument();
+  });
+
+  it("orders the tabs Config, Skills, Context, Evals, Stats, CI and renders Stats for ?tab=stats", () => {
+    renderWithIntl(<AgentEditor agent={AGENT} tab="stats" onTab={() => {}} />);
+    const order = ["Config", "Skills", "Context", "Evals", "Stats", "CI"];
+    const names = screen
+      .getAllByRole("button")
+      .map((el) => el.textContent?.trim())
+      .filter((n) => order.includes(n ?? ""));
+    expect(names).toEqual(order);
+    expect(screen.getAllByTestId("kpi-card")).toHaveLength(4);
     expect(screen.queryByText("Save agent")).not.toBeInTheDocument();
   });
 });

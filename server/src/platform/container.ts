@@ -81,6 +81,9 @@ import type {
   WorkspaceSecretValues,
 } from '../modules/ci/ports.js';
 import { insertCompletedCiRun } from '../modules/reviews/repository/run.repo.js';
+import { DrizzleAgentPerformanceRepository } from '../modules/agent-performance/repository.js';
+import { AgentPerformanceService } from '../modules/agent-performance/service.js';
+import type { AgentPerformanceRepositoryPort } from '../modules/agent-performance/ports.js';
 import { FsRunnerBundle } from '../adapters/ci-bundle/index.js';
 import { GitTreeReader } from '../adapters/git/tree.js';
 import { loadPromptTemplate } from './prompts.js';
@@ -141,6 +144,8 @@ export interface ContainerOverrides {
   ciRepo?: CiRepository;
   /** Export-to-CI outside-world ports (agents, skills, repos, runner bundle, secrets) — tests swap any subset. */
   ciSources?: Partial<CiSources>;
+  /** Agent Performance read port (SPEC-09) — tests swap the port, not the service. */
+  agentPerformanceRepo?: AgentPerformanceRepositoryPort;
 }
 
 /** Secret keys whose stored values must never appear in an exported file (AC-42). */
@@ -196,6 +201,7 @@ export class Container {
   private _ciService?: CiService;
   private _ciRefreshService?: CiRefreshService;
   private _ciRunWriter?: CiAgentRunWriter;
+  private _agentPerformanceService?: AgentPerformanceService;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -523,6 +529,14 @@ export class Container {
       githubConnection: this.overrides.ciSources?.githubConnection ?? this.ciGithubConnection(),
       runWriter: this.ciRunWriter,
       github: () => this.github(),
+    }));
+  }
+
+  /** Agent Performance (SPEC-09) — read-only aggregates over runs and finding decisions. */
+  get agentPerformanceService(): AgentPerformanceService {
+    return (this._agentPerformanceService ??= new AgentPerformanceService({
+      repo: this.overrides.agentPerformanceRepo ?? new DrizzleAgentPerformanceRepository(this.db),
+      now: () => new Date(),
     }));
   }
 

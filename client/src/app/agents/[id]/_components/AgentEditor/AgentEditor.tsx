@@ -12,7 +12,8 @@ import { SkillsTab } from "./_components/SkillsTab";
 import { ContextTab } from "./_components/ContextTab";
 import { EvalsTab } from "./_components/EvalsTab";
 import { CiTab } from "./_components/CiTab";
-import { TABS } from "./constants";
+import { StatsTab } from "./_components/StatsTab";
+import { NON_CONFIG_TABS, TABS } from "./constants";
 import { s } from "./styles";
 
 export function AgentEditor({ agent, tab, onTab }: { agent: Agent; tab: string; onTab: (t: string) => void }) {
@@ -27,8 +28,9 @@ export function AgentEditor({ agent, tab, onTab }: { agent: Agent; tab: string; 
         {tab === "skills" && <SkillsTab agent={agent} />}
         {tab === "context" && <ContextTab agent={agent} />}
         {tab === "evals" && <EvalsTab agent={agent} />}
+        {tab === "stats" && <StatsTab agent={agent} />}
         {tab === "ci" && <CiTab agent={agent} />}
-        {tab !== "skills" && tab !== "context" && tab !== "evals" && tab !== "ci" && <ConfigTab agent={agent} />}
+        {!NON_CONFIG_TABS.has(tab) && <ConfigTab agent={agent} />}
       </div>
     </div>
   );
