@@ -4,6 +4,7 @@ import { render, screen, cleanup, fireEvent, within } from "@testing-library/rea
 import { NextIntlClientProvider } from "next-intl";
 import type { AgentPerf, AgentPerfRow } from "@devdigest/shared";
 import messages from "../../../../../messages/en/agentPerformance.json";
+import { customRangeLabel } from "@/lib/perf-period";
 
 let SEARCH = "range=30d";
 let QUERY: { data: AgentPerf | undefined; isLoading: boolean } = { data: undefined, isLoading: true };
@@ -185,5 +186,107 @@ describe("AgentPerformanceView — other states", () => {
     renderView();
     expect(screen.getByText("No reported cost in this period")).toBeInTheDocument();
     expect(screen.getByText("0 decisions")).toBeInTheDocument();
+  });
+});
+
+const squash = (s: string | null) => (s ?? "").replace(/\s+/gu, " ");
+
+describe("AgentPerformanceView — labels, legends, last run, recent runs, long names", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("names the period in the KPI labels and shows the subtitle (AC-3, AC-12)", () => {
+    QUERY = { data: perf(), isLoading: false };
+    SEARCH = "range=1d";
+    const { unmount } = renderView();
+    expect(screen.getByText("Total runs · 1d")).toBeInTheDocument();
+    expect(screen.getByText("Total cost · 1d")).toBeInTheDocument();
+    expect(screen.getByText(messages.subtitle)).toBeInTheDocument();
+    unmount();
+
+    SEARCH = "range=custom&from=2026-01-05&to=2026-01-10";
+    renderView();
+    const label = squash(customRangeLabel("2026-01-05", "2026-01-10", "en", new Date()));
+    expect(label).not.toBe("");
+    expect(screen.getByText((c) => squash(c) === `Total runs · ${label}`)).toBeInTheDocument();
+    expect(screen.getByText((c) => squash(c) === `Total cost · ${label}`)).toBeInTheDocument();
+  });
+
+  it("lists every donut segment with formatCost values under both headings (AC-50, AC-54)", () => {
+    QUERY = {
+      data: perf({
+        cost_by_agent: [
+          { key: "a1", label: "Security Reviewer", value: 2 },
+          { key: "a2", label: "Cheap", value: 0.00004 },
+        ],
+        cost_by_model: [
+          { key: "m1", label: "model-one", value: 0.0013 },
+          { key: "m2", label: "model-zero", value: 0 },
+        ],
+      }),
+      isLoading: false,
+    };
+    renderView();
+    const section = screen.getByRole("region", { name: "Cost breakdown" });
+    expect(within(section).getByText("By agent")).toBeInTheDocument();
+    expect(within(section).getByText("By model")).toBeInTheDocument();
+    expect(within(section).getByText("$2.000")).toBeInTheDocument();
+    expect(within(section).getByText("$0.000040")).toBeInTheDocument();
+    expect(within(section).getByText("$0.0013")).toBeInTheDocument();
+    expect(within(section).getByText("$0.00")).toBeInTheDocument();
+    expect(within(section).getByText("Cheap")).toBeInTheDocument();
+    expect(within(section).getByText("model-zero")).toBeInTheDocument();
+  });
+
+  it("shows the last run as '4m ago' carrying the ISO timestamp (AC-56)", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-15T12:00:00.000Z"));
+    const iso = "2026-10-15T11:56:00.000Z";
+    const data = perf();
+    data.agents = [agent("a1", "Security Reviewer", { last_run_at: iso })];
+    QUERY = { data, isLoading: false };
+    renderView();
+    const time = screen.getByText("4m ago");
+    expect(time.tagName).toBe("TIME");
+    expect(time).toHaveAttribute("datetime", iso);
+    expect(time).toHaveAttribute("title", iso);
+  });
+
+  it("expands to all 5 recent runs, and an empty row says 'No runs in this period' (AC-60, EC-20)", () => {
+    const runs = Array.from({ length: 5 }, (_, i) => ({
+      run_id: `r${i}`,
+      ran_at: new Date(Date.now() - (i + 1) * 60_000).toISOString(),
+      status: "done" as const,
+      source: "local" as const,
+      duration_ms: 1000 * (i + 1),
+      cost_usd: 0.01 * (i + 1),
+    }));
+    const data = perf();
+    data.agents = [
+      agent("a1", "Security Reviewer", { recent_runs: runs }),
+      agent("a3", "Idle", { runs: 0, decided: 0, accept_rate: null, avg_cost_usd: null, avg_duration_ms: null, last_run_at: null, recent_runs: [] }),
+    ];
+    QUERY = { data, isLoading: false };
+    renderView();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show latest runs for Security Reviewer" }));
+    expect(screen.getAllByText("Done")).toHaveLength(5);
+    expect(screen.getAllByText("Local")).toHaveLength(5);
+
+    expect(screen.getAllByText("No runs in this period")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Show latest runs for Idle" }));
+    expect(screen.getAllByText("No runs in this period")).toHaveLength(2);
+  });
+
+  it("keeps a 200-character name whole in title and truncates it visually (EC-12)", () => {
+    const name = "A".repeat(200);
+    const data = perf();
+    data.agents = [agent("a1", name)];
+    QUERY = { data, isLoading: false };
+    renderView();
+    const el = screen.getAllByTitle(name).find((e) => e.textContent === name)!;
+    expect(el).toBeDefined();
+    expect(el.style.textOverflow).toBe("ellipsis");
+    expect(el.style.whiteSpace).toBe("nowrap");
+    expect(el.style.overflow).toBe("hidden");
   });
 });

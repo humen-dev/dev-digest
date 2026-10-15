@@ -194,6 +194,35 @@ d('Agent performance (Testcontainers pg)', () => {
     expect(row.accept_rate).toBeCloseTo(3 / 5);
   });
 
+  it('counts a finding accepted then dismissed through the real write path as dismissed (AC-21, EC-9)', async () => {
+    const f = await fresh();
+    const a = await f.agent('A');
+    const runId = await f.run(a, FROM_MS + DAY);
+    const reviewId = await f.decide(runId, ['pending', 'pending']);
+    const [target] = await pg.handle.db.select().from(t.findings).where(eq(t.findings.reviewId, reviewId));
+    const act = async (action: 'accept' | 'dismiss') => {
+      const res = await f.app.inject({ method: 'POST', url: `/findings/${target!.id}/${action}` });
+      expect(res.statusCode).toBe(200);
+    };
+    const snap = async () => {
+      const row = f.row((await f.perf()).body, a);
+      const s = (await f.stats(a)).body;
+      expect([s.accepted, s.dismissed, s.pending, s.decided]).toEqual([row.accepted, row.dismissed, row.pending, row.decided]);
+      return row;
+    };
+
+    await act('accept');
+    const accepted = await snap();
+    expect([accepted.accepted, accepted.dismissed, accepted.decided]).toEqual([1, 0, 1]);
+
+    await act('dismiss');
+    const dismissed = await snap();
+    expect(dismissed.accepted).toBe(accepted.accepted - 1);
+    expect(dismissed.dismissed).toBe(accepted.dismissed + 1);
+    expect(dismissed.decided).toBe(accepted.decided);
+    expect(dismissed.pending).toBe(1);
+  });
+
   it('sums priced cost only, counts unpriced runs, keeps previous-period trend fields (AC-22, AC-23, AC-28, AC-31..33)', async () => {
     const f = await fresh();
     const a = await f.agent('A');
