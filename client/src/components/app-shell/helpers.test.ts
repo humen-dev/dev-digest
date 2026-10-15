@@ -20,6 +20,12 @@ describe("activeKeyFor", () => {
   });
 });
 
+describe("Agent Performance active key — SPEC-09 AC-2", () => {
+  it("resolves /agent-performance to its nav item", () => {
+    expect(activeKeyFor("/agent-performance")).toBe("agent-performance");
+  });
+});
+
 describe("Eval Dashboard nav — SPEC-05 AC-62", () => {
   it("lists the item in SKILLS LAB and resolves /eval to it", () => {
     const lab = NAV.find((g) => g.section === "SKILLS LAB");

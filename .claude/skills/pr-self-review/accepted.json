@@ -157,6 +157,24 @@
       "reason": "Pre-existing on this branch (commit f0a9683 'add agent-runner', before SPEC-07). agent-runner/ is out of bounds for the multi-agent-review worktree (SPEC-07 Non-goals); moving the body into agent-runner/AGENTS.md is a separate follow-up. User decision 2026-10-12.",
       "addedBy": "mgume",
       "addedAt": "2026-10-12"
+    },
+    {
+      "key": "DET-003|client/src/vendor/shared/contracts/productionize.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (same precedent as the intent-layer/SPEC-07 entries). SPEC-09 Agent Performance replaced the AgentPerf block byte-identically in the server/ and client/ copies (only pre-existing PluginAgent.provider drift differs; verified by plan-verifier C-3.2 and architecture-reviewer, 2026-10-15; plan docs/plans/agent-performance.md U0 §3.2).",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-15"
+    },
+    {
+      "key": "DET-003|server/src/vendor/shared/contracts/productionize.ts|vendored shared contract edited in a copy",
+      "reason": "No upstream @devdigest/shared package exists in this repo — the vendored copies ARE the source (same precedent as the intent-layer/SPEC-07 entries). SPEC-09 Agent Performance replaced the AgentPerf block byte-identically in the server/ and client/ copies (only pre-existing PluginAgent.provider drift differs; verified by plan-verifier C-3.2 and architecture-reviewer, 2026-10-15; plan docs/plans/agent-performance.md U0 §3.2).",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-15"
+    },
+    {
+      "key": "DET-012|server/src/db/seed-performance.ts|debug leftover in an added line",
+      "reason": "Not a debug leftover: user-facing CLI output of the standalone demo seed script (pnpm exec tsx src/db/seed-performance.ts), mirroring the main seed's CLI block (server/src/db/seed.ts:1287-1298). Never runs in the API process, so the Pino logger does not apply. SPEC-09 plan U2 step 5.",
+      "addedBy": "mgume",
+      "addedAt": "2026-10-15"
     }
   ]
 }

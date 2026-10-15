@@ -13,11 +13,14 @@ export function Donut({
   size = 130,
   stroke = 22,
   valuePrefix = "$",
+  formatValue,
 }: {
   segments: DonutSegment[];
   size?: number;
   stroke?: number;
   valuePrefix?: string;
+  /** Overrides the legend value text (default: valuePrefix + value.toFixed(2)). */
+  formatValue?: (v: number) => string;
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
@@ -46,8 +49,7 @@ export function Donut({
             <span style={{ width: 9, height: 9, borderRadius: 2, background: s.color }} />
             <span style={{ color: "var(--text-secondary)", flex: 1 }}>{s.label}</span>
             <span className="mono tnum" style={{ color: "var(--text-primary)", fontWeight: 600 }}>
-              {valuePrefix}
-              {s.value.toFixed(2)}
+              {formatValue ? formatValue(s.value) : `${valuePrefix}${s.value.toFixed(2)}`}
             </span>
           </div>
         ))}

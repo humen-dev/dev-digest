@@ -9,6 +9,7 @@ avoid. Linked (not preloaded) from [`CLAUDE.md`](./CLAUDE.md) — read on demand
 > Date each entry so stale ones are easy to prune.
 
 ## What Works
+- 2026-10-15 — To prove "DB query count does not depend on N" (an N+1 guard) in an IT test, wrap the Testcontainers client in a second drizzle instance with `logger: { logQuery: () => void (queries += 1) }` and inject it via `ContainerOverrides` (`server/test/agent-performance-perf.it.test.ts:103`); compare the count for 1 vs 50 agents. No SQL spy/proxy needed — every statement drizzle sends goes through `logQuery`.
 - 2026-09-27 — Seed fixtures are insert-once: the demo PR block in `server/src/db/seed.ts:277` is guarded by `if (!pr)`, so re-running `pnpm db:seed` on an already-seeded dev DB does NOT pick up changed `pr_files` rows or patches. To verify a seed change, start a throwaway Postgres container on a spare port, point `DATABASE_URL` at it, run `pnpm db:migrate && pnpm db:seed`, hit the API, then `docker rm -f` it — never touch `devdigest-postgres` and never `docker compose down -v` (wipes `devdigest_pgdata`). The Smart Diff seed (PR #482 with all five roles) was verified this way.
 
 ## What Doesn't Work
