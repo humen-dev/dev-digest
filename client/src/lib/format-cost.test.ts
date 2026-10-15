@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { formatCost } from "./format-cost";
+import { formatCost, formatCostDelta } from "./format-cost";
+
+describe("formatCostDelta — SPEC-09 AC-57", () => {
+  it("signs with U+2212 / + and reuses formatCost precision", () => {
+    expect(formatCostDelta(-1.2)).toBe("−$1.200");
+    expect(formatCostDelta(0.5)).toBe("+$0.500");
+    expect(formatCostDelta(0.0013)).toBe("+$0.0013");
+    expect(formatCostDelta(0)).toBe("$0.00");
+  });
+});
 
 describe("formatCost", () => {
   it("renders '—' for no data (null/undefined), never '$0.00'", () => {

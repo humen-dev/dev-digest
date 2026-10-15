@@ -18,3 +18,9 @@ export function formatCost(costUsd: number | null | undefined): string {
   // cheap is effectively free; show a floor rather than "$1.2e-7".
   return sig2.includes("e") ? "<$0.000001" : `$${sig2}`;
 }
+
+/** Signed cost change: sign (U+2212 minus) + `formatCost(|Δ|)`; exactly 0 → "$0.00". */
+export function formatCostDelta(delta: number): string {
+  if (delta === 0) return "$0.00";
+  return `${delta < 0 ? "−" : "+"}${formatCost(Math.abs(delta))}`;
+}
