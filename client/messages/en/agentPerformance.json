@@ -1,32 +1,91 @@
 {
   "title": "Agent Performance",
-  "subtitle": "Accept-rate is the headline quality signal · cost shown as a breakdown",
-  "loadError": "Could not load agent performance.",
-  "summary": {
-    "totalRuns": "Total runs",
-    "avgAcceptRate": "Avg accept-rate",
-    "totalCost": "Total cost",
-    "mostActive": "Most active"
+  "subtitle": "Which agents earn their keep — accept rate is the quality signal",
+  "period": {
+    "oneDay": "1 day",
+    "thirtyDays": "30 days",
+    "custom": "Custom range",
+    "from": "From",
+    "to": "To",
+    "apply": "Apply",
+    "short1d": "1d",
+    "short30d": "30d",
+    "errors": {
+      "order": "The start date must be on or before the end date.",
+      "future": "The end date cannot be after today.",
+      "tooLong": "A custom range can span at most 365 days."
+    }
   },
-  "costByAgent": "Cost by agent",
-  "costByModel": "Cost by model",
-  "noCost": "No cost recorded yet.",
-  "sort": {
-    "acceptRate": "accept-rate",
-    "runs": "runs",
-    "cost": "cost"
+  "kpi": {
+    "totalRuns": "Total runs · {period}",
+    "totalCost": "Total cost · {period}",
+    "avgAccept": "Avg accept rate",
+    "mostActive": "Most-active agent",
+    "decisions": "{accepted} / {decided} decisions",
+    "mostActiveMeta": "{runs} runs · {rate}% accept",
+    "mostActiveMetaNoRate": "{runs} runs",
+    "avgCostRun": "Avg cost/run",
+    "avgDuration": "Avg duration",
+    "acceptRate": "Accept rate",
+    "ringLabel": "Accept rate {rate}%",
+    "ringEmpty": "Accept rate not available"
+  },
+  "cost": {
+    "label": "Provider-reported, not reconciled with billing",
+    "unpriced": "{count} runs without a reported cost are not included",
+    "ciEstimate": "Includes CI runs whose cost may be an estimate",
+    "deltaLabel": "{delta} vs previous period"
+  },
+  "trend": {
+    "sparkline": "Runs per {size, select, hour {hour} other {day}}: first {first}, last {last}",
+    "up": "up from {rate}%",
+    "down": "down from {rate}%"
   },
   "table": {
     "agent": "Agent",
-    "accept": "Accept",
     "runs": "Runs",
-    "findings": "Findings",
+    "avgCost": "Avg cost",
+    "avgDuration": "Avg duration",
+    "acceptRate": "Accept rate",
+    "lastRun": "Last run",
+    "view": "View",
+    "rateCell": "{rate}% · {accepted}/{decided}",
+    "smallSample": "Small sample (n={n})",
+    "disabled": "Disabled",
+    "noRuns": "No runs in this period",
+    "unknownAgent": "Unknown agent",
+    "ago": "{time} ago",
+    "justNow": "just now",
+    "expand": "Show latest runs for {name}"
+  },
+  "recent": {
+    "time": "Time",
+    "status": "Status",
+    "source": "Source",
+    "duration": "Duration",
     "cost": "Cost",
-    "trend": "Trend"
+    "statusValue": {
+      "done": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "sourceValue": {
+      "local": "Local",
+      "ci": "CI"
+    }
   },
-  "empty": {
-    "title": "No agent runs yet",
-    "body": "Run a review (manually) to populate per-agent performance."
+  "breakdown": {
+    "heading": "Cost breakdown",
+    "byAgent": "By agent",
+    "byModel": "By model",
+    "noCost": "No reported cost in this period"
   },
-  "perAgent": "Per-agent"
+  "states": {
+    "loadError": "Could not load agent performance.",
+    "statsLoadError": "Could not load agent stats.",
+    "retry": "Retry",
+    "emptyTitle": "No agent runs in this period",
+    "emptyCta": "Go to Pull Requests",
+    "zeroDecisions": "0 decisions"
+  }
 }

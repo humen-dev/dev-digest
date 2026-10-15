@@ -177,28 +177,34 @@ export type MultiAgentRunsPage = z.infer<typeof MultiAgentRunsPage>;
 export const StatPoint = z.object({ label: z.string(), value: z.number() });
 export type StatPoint = z.infer<typeof StatPoint>;
 
+/** Closed period [from, to], ISO-8601 UTC. */
+export const PerfPeriod = z.object({ from: z.string(), to: z.string() });
+export type PerfPeriod = z.infer<typeof PerfPeriod>;
+
+/** AC-34: 24 hour buckets when to−from ≤ 24 h, else one per 24 h counted back from `to`; oldest first. */
+export const PerfRunBuckets = z.object({
+  size: z.enum(['hour', 'day']),
+  buckets: z.array(z.object({ start: z.string(), runs: z.number().int() })),
+});
+export type PerfRunBuckets = z.infer<typeof PerfRunBuckets>;
+
 export const AgentStats = z.object({
   agent_id: z.string(),
   agent_name: z.string(),
+  period: PerfPeriod,
+  previous_period: PerfPeriod,
   runs: z.number().int(),
-  findings_total: z.number().int(),
-  /** accept-rate is the headline quality signal. 0..1 over acted findings. */
+  unpriced_runs: z.number().int(),
+  avg_cost_usd: z.number().nullable(),
+  prev_avg_cost_usd: z.number().nullable(),
+  avg_duration_ms: z.number().nullable(),
   accepted: z.number().int(),
   dismissed: z.number().int(),
   pending: z.number().int(),
+  decided: z.number().int(),
+  /** accepted / decided, 0..1; null when decided = 0. */
   accept_rate: z.number().nullable(),
-  dismiss_rate: z.number().nullable(),
-  avg_findings_per_run: z.number().nullable(),
-  total_cost_usd: z.number().nullable(),
-  avg_cost_usd: z.number().nullable(),
-  avg_latency_ms: z.number().nullable(),
-  findings_by_severity: z.object({
-    CRITICAL: z.number().int(),
-    WARNING: z.number().int(),
-    SUGGESTION: z.number().int(),
-  }),
-  /** recent runs for a small trend chart (oldest→newest). */
-  trend: z.array(StatPoint),
+  run_buckets: PerfRunBuckets,
 });
 export type AgentStats = z.infer<typeof AgentStats>;
 
